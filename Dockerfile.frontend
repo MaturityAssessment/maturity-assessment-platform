@@ -1,0 +1,74 @@
+# Multi-stage build for Next.js frontend
+FROM node:20-slim AS base
+
+# Install dependencies only when needed
+FROM base AS deps
+WORKDIR /app
+
+# Install Yarn
+RUN corepack enable && corepack prepare yarn@4.16.0 --activate
+
+# Copy package files
+COPY frontend/package.json frontend/yarn.lock* frontend/.yarnrc.yml* ./
+
+# Install dependencies
+RUN yarn install --immutable
+
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+
+# Install Yarn
+RUN corepack enable && corepack prepare yarn@4.16.0 --activate
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY frontend ./
+
+# Set environment variables for build
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Accept build argument for API URL
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ARG NEXT_PUBLIC_TOKEN
+ENV NEXT_PUBLIC_TOKEN=${NEXT_PUBLIC_TOKEN}
+ARG NEXT_PUBLIC_REFRESH_TOKEN
+ENV NEXT_PUBLIC_REFRESH_TOKEN=${NEXT_PUBLIC_REFRESH_TOKEN}
+
+# Debug: Print the API URL to verify it's set
+RUN echo "Building with NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}"
+
+# Build the application
+RUN yarn build
+
+# Production image, copy all the files and run next
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOST=0.0.0.0
+ENV PORT=3000
+
+# Accept build argument again for runtime (Next.js standalone may need it)
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ARG NEXT_PUBLIC_TOKEN
+ENV NEXT_PUBLIC_TOKEN=${NEXT_PUBLIC_TOKEN}
+ARG NEXT_PUBLIC_REFRESH_TOKEN
+ENV NEXT_PUBLIC_REFRESH_TOKEN=${NEXT_PUBLIC_REFRESH_TOKEN}
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy necessary files from standalone build
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+CMD ["node", "server.js"]
+

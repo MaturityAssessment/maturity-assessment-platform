@@ -1,0 +1,70 @@
+package com.master_thesis.maturity_assessment.maturity_models.models;
+
+import jakarta.persistence.*;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.ToString;
+import lombok.EqualsAndHashCode;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Entity
+@Table(name = "dimensions")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString(exclude = { "maturityModel", "modules", "mappingRules", "gatingRules" })
+@EqualsAndHashCode(exclude = { "maturityModel", "modules", "mappingRules", "gatingRules" })
+public class Dimension {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String dimensionId;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(nullable = false)
+    private Double weight = 1.0;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "aggregation_rule", nullable = false, length = 32)
+    private AggregationRule aggregationRule = AggregationRule.WEIGHTED_AVERAGE;
+
+    @Column(name = "sort_order", nullable = false)
+    private Integer sortOrder = 0;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "maturity_model_id")
+    private MaturityModel maturityModel;
+
+    @OneToMany(mappedBy = "dimension", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @OrderBy("sortOrder ASC")
+    private List<Module> modules;
+
+    @OneToMany(mappedBy = "dimension", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @OrderBy("levelNumber ASC")
+    private List<DimensionMappingRule> mappingRules;
+
+    @OneToMany(mappedBy = "dimension", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @OrderBy("order ASC")
+    private List<GatingRule> gatingRules;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+}

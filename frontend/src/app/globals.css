@@ -1,0 +1,180 @@
+@import 'tippy.js/dist/tippy.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.13 0.028 261.692);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.13 0.028 261.692);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.13 0.028 261.692);
+  --primary: oklch(0.21 0.034 264.665);
+  --primary-foreground: oklch(0.985 0.002 247.839);
+  --secondary: oklch(0.967 0.003 264.542);
+  --secondary-foreground: oklch(0.21 0.034 264.665);
+  --muted: oklch(0.967 0.003 264.542);
+  --muted-foreground: oklch(0.551 0.027 264.364);
+  --accent: oklch(0.967 0.003 264.542);
+  --accent-foreground: oklch(0.21 0.034 264.665);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0.002 247.839);
+  --border: oklch(0.928 0.006 264.531);
+  --input: oklch(0.928 0.006 264.531);
+  --ring: oklch(0.707 0.022 261.325);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0.002 247.839);
+  --sidebar-foreground: oklch(0.13 0.028 261.692);
+  --sidebar-primary: oklch(0.21 0.034 264.665);
+  --sidebar-primary-foreground: oklch(0.985 0.002 247.839);
+  --sidebar-accent: oklch(0.967 0.003 264.542);
+  --sidebar-accent-foreground: oklch(0.21 0.034 264.665);
+  --sidebar-border: oklch(0.928 0.006 264.531);
+  --sidebar-ring: oklch(0.707 0.022 261.325);
+}
+
+.dark {
+  --background: oklch(0.13 0.028 261.692);
+  --foreground: oklch(0.985 0.002 247.839);
+  --card: oklch(0.21 0.034 264.665);
+  --card-foreground: oklch(0.985 0.002 247.839);
+  --popover: oklch(0.21 0.034 264.665);
+  --popover-foreground: oklch(0.985 0.002 247.839);
+  --primary: oklch(0.928 0.006 264.531);
+  --primary-foreground: oklch(0.21 0.034 264.665);
+  --secondary: oklch(0.278 0.033 256.848);
+  --secondary-foreground: oklch(0.985 0.002 247.839);
+  --muted: oklch(0.278 0.033 256.848);
+  --muted-foreground: oklch(0.707 0.022 261.325);
+  --accent: oklch(0.278 0.033 256.848);
+  --accent-foreground: oklch(0.985 0.002 247.839);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.985 0.002 247.839);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.551 0.027 264.364);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.21 0.034 264.665);
+  --sidebar-foreground: oklch(0.985 0.002 247.839);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0.002 247.839);
+  --sidebar-accent: oklch(0.278 0.033 256.848);
+  --sidebar-accent-foreground: oklch(0.985 0.002 247.839);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.551 0.027 264.364);
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  *:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .model-changelog {
+    @apply text-[15px] leading-7 text-slate-700;
+  }
+
+  .model-changelog > *:first-child {
+    @apply mt-0;
+  }
+
+  .model-changelog > *:last-child {
+    @apply mb-0;
+  }
+
+  .model-changelog h1 {
+    @apply mb-5 mt-8 border-b border-slate-200 pb-3 text-2xl font-bold tracking-tight text-slate-950;
+  }
+
+  .model-changelog h2 {
+    @apply mb-3 mt-8 text-xl font-bold tracking-tight text-slate-950;
+  }
+
+  .model-changelog h3 {
+    @apply mb-2 mt-6 text-base font-bold text-slate-900;
+  }
+
+  .model-changelog p,
+  .model-changelog ul,
+  .model-changelog ol,
+  .model-changelog blockquote,
+  .model-changelog pre,
+  .model-changelog table {
+    @apply mb-4;
+  }
+
+  .model-changelog ul {
+    @apply list-disc pl-6;
+  }
+
+  .model-changelog ol {
+    @apply list-decimal pl-6;
+  }
+
+  .model-changelog li {
+    @apply my-1.5 pl-1;
+  }
+
+  .model-changelog a {
+    @apply font-medium text-indigo-700 underline decoration-indigo-200 underline-offset-2 hover:decoration-indigo-600;
+  }
+
+  .model-changelog blockquote {
+    @apply border-l-4 border-indigo-200 bg-indigo-50/60 py-2 pl-4 pr-3 text-slate-600;
+  }
+
+  .model-changelog code {
+    @apply rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.88em] text-slate-800;
+  }
+
+  .model-changelog pre {
+    @apply overflow-x-auto rounded-lg bg-slate-950 p-4 text-sm text-slate-100;
+  }
+
+  .model-changelog pre code {
+    @apply bg-transparent p-0 text-inherit;
+  }
+
+  .model-changelog table {
+    @apply w-full border-collapse overflow-hidden text-left text-sm;
+  }
+
+  .model-changelog th {
+    @apply border border-slate-200 bg-slate-50 px-3 py-2 font-semibold text-slate-800;
+  }
+
+  .model-changelog td {
+    @apply border border-slate-200 px-3 py-2;
+  }
+
+  .model-changelog hr {
+    @apply my-8 border-slate-200;
+  }
+}

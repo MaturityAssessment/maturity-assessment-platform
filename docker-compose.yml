@@ -1,0 +1,87 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: maturity-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in the VM .env file}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in the VM .env file}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the VM .env file}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - maturity-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: maturity-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:?Set PGADMIN_DEFAULT_EMAIL in the VM .env file}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?Set PGADMIN_DEFAULT_PASSWORD in the VM .env file}
+      SCRIPT_NAME: "/pgadmin-filipevm"
+      PGADMIN_CONFIG_SCRIPT_NAME: '"/pgadmin-filipevm"'
+      PGADMIN_CONFIG_REVERSE_PROXY: "True"
+    ports:
+      - "0.0.0.0:5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - maturity-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: maturity-backend
+    env_file:
+      - ./backend/.env
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB in the VM .env file}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER in the VM .env file}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the VM .env file}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Set CORS_ALLOWED_ORIGINS in the VM .env file}
+    ports:
+      - "0.0.0.0:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - maturity-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_API_URL: /filipevm
+        NEXT_PUBLIC_TOKEN: auth_token
+        NEXT_PUBLIC_REFRESH_TOKEN: refresh_token
+    container_name: maturity-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: /filipevm
+      NEXT_PUBLIC_TOKEN: auth_token
+      NEXT_PUBLIC_REFRESH_TOKEN: refresh_token
+    ports:
+      - "0.0.0.0:3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - maturity-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  maturity-network:
+    driver: bridge
