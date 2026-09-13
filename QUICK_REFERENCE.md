@@ -29,110 +29,17 @@ psql -U postgres -d maturity-db
 | Database    | localhost:5432               | PostgreSQL database     |
 | pgAdmin     | http://localhost:5050        | Database admin (Docker) |
 
-## Authentication Flow
+## API quick reference
 
-```bash
-# 1. Register
-POST /api/v1/auth/register
-{
-  "email": "user@example.com",
-  "password": "password",
-  "name": "John Doe",
-  "organizationName": "Acme Corp"
-}
+Use the [backend API endpoint index](./backend/docs/api/README.md#endpoint-index)
+for the complete current route list and links to request/response contracts.
 
-# 2. Login (get tokens)
-POST /api/v1/auth/login
-{
-  "email": "user@example.com",
-  "password": "password"
-}
-# Returns: { "accessToken": "...", "refreshToken": "..." }
-
-# 3. Use access token
-GET /api/v1/assessments
-Header: Authorization: Bearer <accessToken>
-
-# 4. Refresh when expired
-POST /api/v1/auth/refresh
-{ "refreshToken": "..." }
-```
-
-## Role Hierarchy
-
-```
-ADMIN    → Can do everything
-CURATOR  → Manage models, domains, view all assessments
-CURATOR → Review assessments, view open answers
-USER     → Create and view own assessments
-```
-
-Higher roles inherit all permissions of lower roles.
-
-## Common API Endpoints
-
-### Authentication
-
-```bash
-POST   /api/v1/auth/register          # Register new user
-POST   /api/v1/auth/login             # Login (returns tokens)
-POST   /api/v1/auth/refresh           # Refresh access token
-GET    /api/v1/user/me                # Get current user
-```
-
-### Admin (ADMIN only)
-
-```bash
-GET    /api/v1/admin/users             # List all users
-POST   /api/v1/admin/users             # Create user
-PUT    /api/v1/admin/users/{id}        # Update user
-DELETE /api/v1/admin/users/{id}        # Delete user
-```
-
-### Domains
-
-```bash
-GET    /api/v1/domain                  # List domains
-GET    /api/v1/domain/with-models      # Domains with models
-GET    /api/v1/domain/{id}             # Get domain
-POST   /api/v1/domain                  # Create domain (CURATOR+)
-DELETE /api/v1/domain/{id}             # Delete domain (CURATOR+)
-```
-
-### Maturity Models
-
-```bash
-GET    /api/v1/maturity-model              # List all models
-GET    /api/v1/maturity-model/{id}         # Get model details
-GET    /api/v1/maturity-model/active       # List active models (optional domainId)
-POST   /api/v1/maturity-model              # Create model (CURATOR+)
-POST   /api/v1/maturity-model/upload       # Upload YAML model (CURATOR+)
-PUT    /api/v1/maturity-model/{id}         # Update model (CURATOR+)
-PUT    /api/v1/maturity-model/{id}/activate # Activate model (CURATOR+)
-DELETE /api/v1/maturity-model/{id}         # Delete model (CURATOR+)
-```
-
-### Assessments
-
-```bash
-POST   /api/v1/assessments              # Create assessment (multipart)
-GET    /api/v1/assessments              # Get user's assessments
-GET    /api/v1/assessments/all          # All assessments (CURATOR+)
-GET    /api/v1/assessments/{id}         # Get assessment by ID
-GET    /api/v1/assessments/pending      # Pending assessments (CURATOR+)
-PUT    /api/v1/assessments/{id}/complete # Mark complete (CURATOR+)
-GET    /api/v1/assessments/{id}/open-answers # Open answers (CURATOR+)
-DELETE /api/v1/assessments/{id}         # Delete assessment
-```
-
-### Evidence
-
-```bash
-GET    /api/v1/evidence/assessment/{id}                    # Evidence for assessment
-GET    /api/v1/evidence/assessment/{id}/question/{qId}     # Evidence by question
-GET    /api/v1/evidence/{evidenceId}/download               # Download file
-DELETE /api/v1/evidence/{evidenceId}                        # Delete evidence
-```
+- [First request and login example](./backend/docs/api/getting-started.md)
+- [Registration approval, tokens, and permissions](./backend/docs/api/authentication.md)
+- [Assessment workflow](./backend/docs/api/workflows/assessments.md)
+- [Campaign workflow](./backend/docs/api/workflows/campaigns.md)
+- [Model management workflow](./backend/docs/api/workflows/model-management.md)
+- [Updating the documentation](./backend/docs/api/maintaining.md)
 
 ## Project Structure Quick Map
 
@@ -182,15 +89,10 @@ NEXT_PUBLIC_REFRESH_TOKEN=refresh_token
 
 ## Question Types
 
-| Type                    | Answer Format    | Scoring           |
-| ----------------------- | ---------------- | ----------------- |
-| `boolean`               | true/false       | configured correct answer → 1; other → 0 |
-| `likert`                | configured point | direction-aware normalization to 0–1 |
-| `open_answer`           | free text + evaluator level | evaluator level 1–N normalized to 0–1 |
-| `numeric`               | bounded integer  | direction-aware normalization to 0–1 |
-| `percentage`            | bounded integer  | direction-aware normalization to 0–1 |
-| `evidence`              | file upload      | based on upload   |
-| `boolean_justification` | true/false + text | true=5, false=1  |
+See the [question-type contract](./backend/docs/api/reference/maturity-models.md#question-types)
+for supported types, authoring settings, and respondent values, and the
+[review request contract](./backend/docs/api/reference/assessments.md#review-request)
+for manual score rules.
 
 ## Database Tables
 
@@ -263,7 +165,7 @@ docker compose up --build
 | Issue           | Look Here                                        |
 | --------------- | ------------------------------------------------ |
 | Setup problems  | [GETTING_STARTED.md](./GETTING_STARTED.md)       |
-| API questions   | [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)   |
+| API questions   | [API documentation](./backend/docs/api/README.md)   |
 | Database schema | [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md)       |
 | Architecture    | [ARCHITECTURE.md](./ARCHITECTURE.md)             |
 | Code patterns   | Backend/Frontend Development Guides              |

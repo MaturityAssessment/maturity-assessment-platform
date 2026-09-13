@@ -23,7 +23,7 @@ optional campaign-email setup. The application is served locally at
 
 - **[Architecture](./ARCHITECTURE.md)** - System architecture, component design, and technical decisions
 - **[Database Schema](./DATABASE_SCHEMA.md)** - Complete database structure and relationships
-- **[API Documentation](./API_DOCUMENTATION.md)** - REST API reference with all endpoints
+- **[API Documentation](./backend/docs/api/README.md)** - REST API reference with all endpoints
 
 ### Development Guides
 
@@ -143,21 +143,11 @@ See [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) for complete schema documentation
 
 ## API Overview
 
-**Base URL:** `http://localhost:8080/api/v1`
-
-**Main Endpoints:**
-
-- `/auth/register` - User registration
-- `/auth/login` - User login (returns access + refresh tokens)
-- `/auth/refresh` - Refresh access token
-- `/admin/users` - User management (ADMIN only)
-- `/domain` - Domain management
-- `/maturity-model` - Maturity model management
-- `/assessments` - Assessment creation and retrieval
-- `/evidence` - Evidence file management
-- `/user/me` - Current user information
-
-See [API_DOCUMENTATION.md](./API_DOCUMENTATION.md) for complete API reference.
+The backend exposes the platform API at `http://localhost:8080/api/v1` locally.
+The [backend API guide](./backend/docs/api/README.md) provides getting-started
+examples, authentication rules, workflows, and the complete endpoint reference.
+See [documentation maintenance](./backend/docs/api/maintaining.md) when changing
+an endpoint.
 
 ## Docker deployment
 
@@ -273,7 +263,7 @@ Before starting development, ensure:
 | [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md)                     | System overview and architecture   |
 | [GETTING_STARTED.md](./GETTING_STARTED.md)                       | Setup and installation guide       |
 | [ARCHITECTURE.md](./ARCHITECTURE.md)                             | Technical architecture details     |
-| [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)                   | Complete API reference             |
+| [API documentation](./backend/docs/api/README.md)                   | Complete API reference             |
 | [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md)                       | Database structure and queries     |
 | [DEVELOPMENT_WORKFLOW.md](./DEVELOPMENT_WORKFLOW.md)             | Development workflows              |
 | [YAML_MODEL_GUIDE.md](./YAML_MODEL_GUIDE.md)                     | Creating maturity models with YAML |
@@ -308,7 +298,7 @@ Master's Thesis Project - Organizational Maturity Assessment Platform
 
 - [Getting Started](./GETTING_STARTED.md) - Setup instructions
 - [Quick Reference](./QUICK_REFERENCE.md) - Cheat sheet
-- [API Docs](./API_DOCUMENTATION.md) - API reference
+- [API Docs](./backend/docs/api/README.md) - API reference
 - [Architecture](./ARCHITECTURE.md) - System design
 - [Workflows](./DEVELOPMENT_WORKFLOW.md) - Development guide
 - [YAML Models](./YAML_MODEL_GUIDE.md) - Creating maturity models

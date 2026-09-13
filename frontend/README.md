@@ -182,5 +182,5 @@ Local development uses `yarn dev`; see the root Getting Started guide.
 
 - [Frontend Development Guide](./DEVELOPMENT_GUIDE.md) - Coding standards and patterns
 - [Project Overview](../PROJECT_OVERVIEW.md)
-- [API Documentation](../API_DOCUMENTATION.md)
+- [API Documentation](../backend/docs/api/README.md)
 - [Architecture](../ARCHITECTURE.md)

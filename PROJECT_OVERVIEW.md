@@ -228,7 +228,7 @@ maturity-assessment-platform/
 
 - [Architecture Details](./ARCHITECTURE.md)
 - [Getting Started Guide](./GETTING_STARTED.md)
-- [API Documentation](./API_DOCUMENTATION.md)
+- [API Documentation](./backend/docs/api/README.md)
 - [Database Schema](./DATABASE_SCHEMA.md)
 - [Backend Development Guide](./backend/DEVELOPMENT_GUIDE.md)
 - [Frontend Development Guide](./frontend/DEVELOPMENT_GUIDE.md)

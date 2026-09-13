@@ -225,6 +225,8 @@ cd frontend/
 yarn dev
 ```
 
+For a complete and easy to access bookmark, refer to the [Quick Reference](QUICK_REFERENCE.md).
+
 > ***NOTE:*** Frontend changes are usually reflected immediately in the browser, but backend changes require restarting the Spring Boot server.
 
 ## Optional integrations

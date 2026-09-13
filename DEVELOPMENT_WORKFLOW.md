@@ -387,19 +387,15 @@ yarn dev
 
 #### 4. Update Documentation
 
-**Update API_DOCUMENTATION.md:**
+Update the relevant functional reference under
+[`backend/docs/api/reference/`](./backend/docs/api/reference/) and the
+[endpoint index](./backend/docs/api/README.md#endpoint-index) in the same change.
+For the illustrative comments feature above, add its contract to the assessment
+reference only when the endpoint is implemented.
 
-```markdown
-### Add Comment to Assessment
-
-**Endpoint:** `POST /api/v1/assessments/{id}/comments`
-**Authentication:** Required
-**Request Body:**
-{
-"content": "Comment text"
-}
-**Response:** CommentResponse object
-```
+Follow the [documentation maintenance guide](./backend/docs/api/maintaining.md)
+for the endpoint template, examples, permissions, error cases, and review checks.
+Update an affected workflow when the sequence of client calls changes.
 
 ---
 
@@ -416,6 +412,7 @@ Backend steps:
 5. ✅ Create controller endpoint
 6. ✅ Add security configuration if needed
 7. ✅ Test with curl/Postman
+8. ✅ Update the [API reference and endpoint index](./backend/docs/api/maintaining.md)
 
 Frontend steps:
 

@@ -208,86 +208,22 @@ Email is disabled by default. SMTP delivery runs asynchronously after commit,
 so a temporary Gmail failure is logged without rolling back the newly created
 campaign. This POC does not yet persist delivery status or retry failed mail.
 
-## API Endpoints
+## API documentation
 
-### Base URL
+The [API guide](./docs/api/README.md) contains onboarding, authentication,
+conventions, workflows, and a complete linked endpoint reference.
+Start with [your first request](./docs/api/getting-started.md), or browse the
+[endpoint index](./docs/api/README.md#endpoint-index).
 
-```
-http://localhost:8080/api/v1
-```
-
-### Endpoint Summary
-
-**Authentication** (`/auth`)
-
-- `POST /auth/register` - Register new user
-- `POST /auth/login` - Login and get JWT tokens
-- `POST /auth/refresh` - Refresh access token
-
-**User Management** (`/user`)
-
-- `GET /user/me` - Get current user info
-
-**Admin** (`/admin/users`)
-
-- `GET /admin/users` - List users (ADMIN)
-- `POST /admin/users` - Create user (ADMIN)
-- `PUT /admin/users/{id}` - Update user (ADMIN)
-- `DELETE /admin/users/{id}` - Delete user (ADMIN)
-
-**Domains** (`/domain`)
-
-- `GET /domain` - List all domains
-- `GET /domain/with-models` - Domains with models
-- `GET /domain/{id}` - Get domain by ID
-- `POST /domain` - Create domain (CURATOR/ADMIN)
-- `DELETE /domain/{id}` - Delete domain (CURATOR/ADMIN)
-
-**Maturity Models** (`/maturity-model`)
-
-- `GET /maturity-model` - List all models
-- `GET /maturity-model/{id}` - Get model details
-- `GET /maturity-model/active` - List active models (optionally by domain)
-- `POST /maturity-model` - Create model (CURATOR/ADMIN)
-- `POST /maturity-model/upload` - Upload CSV model (CURATOR/ADMIN)
-- `PUT /maturity-model/{id}` - Update model (CURATOR/ADMIN)
-- `PUT /maturity-model/{id}/activate` - Activate model (CURATOR/ADMIN)
-- `DELETE /maturity-model/{id}` - Delete model (CURATOR/ADMIN)
-
-**Assessments** (`/assessments`)
-
-- `POST /assessments` - Create assessment (multipart/form-data)
-- `GET /assessments` - Get user's assessments
-- `GET /assessments/all` - Get all assessments (CURATOR/ADMIN)
-- `GET /assessments/{id}` - Get assessment details
-- `GET /assessments/pending` - Get pending assessments (CURATOR+)
-- `PUT /assessments/{id}/complete` - Mark as complete (CURATOR+)
-- `GET /assessments/{id}/open-answers` - Get text answers (CURATOR+)
-- `DELETE /assessments/{id}` - Delete assessment
-
-**Evidence** (`/evidence`)
-
-- `GET /evidence/assessment/{assessmentId}` - Get evidence for assessment
-- `GET /evidence/assessment/{assessmentId}/question/{questionId}` - Get evidence by question
-- `GET /evidence/{evidenceId}/download` - Download evidence file
-- `DELETE /evidence/{evidenceId}` - Delete evidence
-
-See [API_DOCUMENTATION.md](../API_DOCUMENTATION.md) for full details.
-
-## Role Hierarchy
-
-Roles are hierarchical -- higher roles inherit all permissions of lower roles:
-
-- **ADMIN** > CURATOR > USER
-- **CURATOR** > USER
-- **USER** (base role)
+When changing an endpoint, follow the
+[documentation maintenance guide](./docs/api/maintaining.md).
 
 ## Related Documentation
 
 - [Project Overview](../PROJECT_OVERVIEW.md)
 - [Architecture](../ARCHITECTURE.md)
 - [Getting Started](../GETTING_STARTED.md)
-- [API Documentation](../API_DOCUMENTATION.md)
+- [API Documentation](./docs/api/README.md)
 - [Database Schema](../DATABASE_SCHEMA.md)
 - [Development Guide](./DEVELOPMENT_GUIDE.md)
 
