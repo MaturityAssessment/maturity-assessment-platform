@@ -35,7 +35,6 @@ optional campaign-email setup. The application is served locally at
 
 ### Model Creation
 
-- **[YAML Model Guide](./YAML_MODEL_GUIDE.md)** - Creating maturity models with YAML files
 - **[Quick Reference](./QUICK_REFERENCE.md)** - Quick reference and cheat sheet
 
 ## Technology Stack

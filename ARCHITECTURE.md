@@ -8,61 +8,61 @@ The Maturity Assessment Platform is built using a modern three-tier architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         FRONTEND LAYER                           │
+│                         FRONTEND LAYER                          │
 │                     (Next.js 14 + React 18)                     │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
-│  │    Pages     │  │  Components  │  │   Context    │         │
-│  │  (App Router)│  │    (UI)      │  │  (Auth/State)│         │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘         │
-│         │                  │                  │                  │
-│         └──────────────────┴──────────────────┘                  │
-│                            │                                     │
+│                                                                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
+│  │    Pages     │  │  Components  │  │   Context    │           │
+│  │  (App Router)│  │    (UI)      │  │  (Auth/State)│           │
+│  └──────┬───────┘  └───────┬──────┘  └──────┬───────┘           │
+│         │                  │                │                   │
+│         └──────────────────┼────────────────┘                   │
+│                            │                                    │
 │                   ┌────────▼────────┐                           │
 │                   │   API Client    │                           │
 │                   │    (Axios)      │                           │
 │                   └────────┬────────┘                           │
-└────────────────────────────┼──────────────────────────────────┘
+└────────────────────────────┼────────────────────────────────────┘
                              │
                              │ HTTP/REST (JSON + Multipart)
                              │ JWT Bearer Token (Access + Refresh)
                              │
 ┌────────────────────────────▼──────────────────────────────────┐
-│                        BACKEND LAYER                           │
+│                        BACKEND LAYER                          │
 │                   (Spring Boot 3.4.4 + Java 21)               │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
+├───────────────────────────────────────────────────────────────┤
+│                                                               │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
 │  │ Controllers  │  │   Services   │  │ Repositories │         │
 │  │  (REST API)  │──│   (Business  │──│    (JPA)     │         │
 │  └──────┬───────┘  │    Logic)    │  └──────┬───────┘         │
-│         │          └──────────────┘          │                  │
-│  ┌──────▼─────────────────────────┐         │                  │
-│  │     Security Layer              │         │                  │
-│  │  - JWT Auth Filter (Access)     │         │                  │
-│  │  - Refresh Token Service        │         │                  │
-│  │  - Role Hierarchy               │         │                  │
-│  │  - CORS Configuration           │         │                  │
-│  └─────────────────────────────────┘         │                  │
-│                                               │                  │
-│  ┌──────────────────────────────────┐        │                  │
-│  │  File Storage (Evidence)         │        │                  │
-│  └──────────────────────────────────┘        │                  │
-│                                               │                  │
-└───────────────────────────────────────────────┼──────────────────┘
-                                                │
-                                                │ JDBC
-                                                │
-┌───────────────────────────────────────────────▼──────────────────┐
-│                        DATA LAYER                                │
-│                       (PostgreSQL 16)                             │
+│         │          └──────────────┘         │                 │
+│  ┌──────▼─────────────────────────┐         │                 │
+│  │     Security Layer             │         │                 │
+│  │  - JWT Auth Filter (Access)    │         │                 │
+│  │  - Refresh Token Service       │         │                 │
+│  │  - Role Hierarchy              │         │                 │
+│  │  - CORS Configuration          │         │                 │
+│  └────────────────────────────────┘         │                 │
+│                                             │                 │
+│  ┌──────────────────────────────────┐       │                 │
+│  │  File Storage (Evidence)         │       │                 │
+│  └──────────────────────────────────┘       │                 │
+│                                             │                 │
+└─────────────────────────────────────────────┼─────────────────┘
+                                              │
+                                              │ JDBC
+                                              │
+┌─────────────────────────────────────────────▼───────────────────┐
+│                        DATA LAYER                               │
+│                       (PostgreSQL 16)                           │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
+│                                                                 │
 │   Tables: users, refresh_tokens, domains, maturity_models,      │
-│           maturity_levels, dimensions, modules, practices,       │
-│           questions, assessments, dimension_results, evidence    │
-│                                                                  │
+│           maturity_levels, dimensions, modules, practices,      │
+│           questions, assessments, dimension_results, evidence   │
+│                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -72,7 +72,7 @@ The Maturity Assessment Platform is built using a modern three-tier architecture
 
 ```
 frontend/
-├── app/                        # Next.js App Router
+├── app/                       # Next.js App Router
 │   ├── layout.tsx             # Root layout with AuthProvider
 │   ├── page.tsx               # Landing page
 │   ├── login/                 # Authentication pages
@@ -279,20 +279,20 @@ USER     = ROLE_USER
 ### Docker Deployment
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                docker-compose.yml                     │
-│                                                       │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │
-│  │  Frontend   │  │   Backend   │  │  PostgreSQL  │ │
-│  │  :3000      │→ │   :8080     │→ │   :5432      │ │
-│  │ (Next.js)   │  │(Spring Boot)│  │  (postgres)  │ │
-│  └─────────────┘  └─────────────┘  └─────────────┘ │
-│                                                       │
+┌──────────────────────────────────────────────────────┐
+│                docker-compose.yml                    │
+│                                                      │
+│  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐  │
+│  │  Frontend   │  │   Backend   │  │  PostgreSQL  │  │
+│  │  :3000      │→ │   :8080     │→ │   :5432      │  │
+│  │ (Next.js)   │  │(Spring Boot)│  │  (postgres)  │  │
+│  └─────────────┘  └─────────────┘  └──────────────┘  │
+│                                                      │
 │  ┌─────────────┐                                     │
 │  │  pgAdmin    │                                     │
 │  │  :5050      │                                     │
 │  └─────────────┘                                     │
-└─────────────────────────────────────────────────────┘
+└──────────────────────────────────────────────────────┘
 ```
 
 ### Development Environment (Manual)
@@ -300,7 +300,7 @@ USER     = ROLE_USER
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │   Frontend      │     │    Backend      │     │   Database      │
-│  localhost:3000 │────▶│ localhost:8080  │────▶│ localhost:5432  │
+│  localhost:3000 │────→│ localhost:8080  │────→│ localhost:5432  │
 │   (Next.js)     │     │  (Spring Boot)  │     │  (PostgreSQL)   │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
 ```

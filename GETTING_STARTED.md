@@ -211,6 +211,22 @@ psql -h localhost -U maturity_app -d maturity-db -c \
 Then open `http://localhost:3000/filipevm/login` and sign in as the promoted
 administrator.
 
+## After first run deployment
+
+After the initial setup process, only the following commands are needed to run the project:
+
+```bash
+# Starting the backend (terminal 1)
+cd backend/
+./mvnw spring-boot:run
+
+# Starting the frontend (terminal 2)
+cd frontend/
+yarn dev
+```
+
+> ***NOTE:*** Frontend changes are usually reflected immediately in the browser, but backend changes require restarting the Spring Boot server.
+
 ## Optional integrations
 
 `backend/.env.template` also lists disabled settings for the hosted IAedu

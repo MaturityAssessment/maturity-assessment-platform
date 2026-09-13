@@ -22,11 +22,11 @@ psql -U postgres -d maturity-db
 
 ## Important URLs
 
-| Service     | URL                          | Description         |
-| ----------- | ---------------------------- | ------------------- |
-| Frontend    | http://localhost:3000        | Next.js application |
-| Backend API | http://localhost:8080/api/v1 | REST API base URL   |
-| Database    | localhost:5432               | PostgreSQL database |
+| Service     | URL                          | Description             |
+| ----------- | ---------------------------- | ----------------------- |
+| Frontend    | http://localhost:3000        | Next.js application     |
+| Backend API | http://localhost:8080/api/v1 | REST API base URL       |
+| Database    | localhost:5432               | PostgreSQL database     |
 | pgAdmin     | http://localhost:5050        | Database admin (Docker) |
 
 ## Authentication Flow
