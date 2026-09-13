@@ -61,8 +61,7 @@ maturity-assessment-platform/
 │   └── public/
 │       └── templates/         # YAML templates for maturity models
 │
-├── docker-compose.yml          # Docker for local development
-├── docker-compose.vm.yml       # Docker for VM deployment
+├── docker-compose.yml          # Docker for online VM deployment
 ├── Dockerfile.backend          # Backend Docker image
 ├── Dockerfile.frontend         # Frontend Docker image
 └── [Documentation Files]

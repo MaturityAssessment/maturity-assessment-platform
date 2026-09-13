@@ -1,8 +1,12 @@
-# Local development setup
+# Getting started
 
-This guide sets up PostgreSQL, the Spring Boot backend, and the Next.js frontend
-directly on your workstation. Docker Compose in this repository is intended for
-the online VM deployment and is not the local development path.
+This guide covers two ways to run the platform:
+
+- [Local development](#prerequisites): run PostgreSQL, Spring Boot, and Next.js directly on your workstation.
+- [Online VM deployment with Docker](#online-vm-deployment-with-docker): build and run the platform on a server using Docker Compose.
+
+The instructions below start with local development. For a server deployment,
+go directly to the Docker section.
 
 ## Prerequisites
 
@@ -211,7 +215,7 @@ psql -h localhost -U maturity_app -d maturity-db -c \
 Then open `http://localhost:3000/filipevm/login` and sign in as the promoted
 administrator.
 
-## After first run deployment
+## Running locally after the first setup
 
 After the initial setup process, only the following commands are needed to run the project:
 
@@ -268,6 +272,162 @@ yarn typecheck
   schema baseline.
 - **Mail is not sent:** confirm `APP_MAIL_ENABLED=true`, use an app password,
   restart the backend, and inspect its log. Some networks block SMTP ports.
+
+## Online VM deployment with Docker
+
+This is a baseline for deploying on an online Linux VM using the repository's
+`docker-compose.yml`. It runs PostgreSQL, pgAdmin, the backend, and the frontend.
+Domain, HTTPS, and reverse-proxy configuration are managed separately on the VM;
+the repository does not include that configuration.
+
+### 1. Prepare the VM
+
+Install Git, Docker Engine, and the Docker Compose plugin. Ensure Docker starts
+on boot and your deployment user can run these commands:
+
+```bash
+docker --version
+docker compose version
+```
+
+Java, Maven, Node.js, and Yarn are provided by the Docker build images and do not
+need to be installed on the host. Clone the repository and run the remaining
+commands from its root:
+
+```bash
+git clone <repository-url>
+cd maturity-assessment-platform
+```
+
+### 2. Configure the environment files
+
+As with local development, copy the templates and edit the ignored copies.
+Do this once on a new VM; preserve existing values when updating a deployment.
+
+```bash
+cp .env.template .env
+cp backend/.env.template backend/.env
+```
+
+In the root `.env`, set:
+
+```dotenv
+POSTGRES_DB=maturity-db
+POSTGRES_USER=maturity_app
+POSTGRES_PASSWORD=replace-with-a-strong-database-password
+PGADMIN_DEFAULT_EMAIL=admin@example.com
+PGADMIN_DEFAULT_PASSWORD=replace-with-a-strong-pgadmin-password
+CORS_ALLOWED_ORIGINS=https://your-public-host.example
+```
+
+Use the actual browser origin for CORS (scheme and hostname, plus port if
+nonstandard), without `/filipevm` or a trailing slash. Both pgAdmin values are
+required by the current Compose file.
+
+In `backend/.env`, generate and set `JWT_SECRET` using `openssl rand -base64 48`,
+keep `SPRING_FLYWAY_ENABLED=false` for a fresh database, and set:
+
+```dotenv
+APP_FRONTEND_URL=https://your-public-host.example/filipevm
+```
+
+Configure optional SMTP and assistant settings using the same template as local
+development. Keep mail disabled until SMTP is configured. Integration endpoints
+must be reachable from the backend container: `localhost` inside it refers to
+the container itself.
+
+Compose overrides the backend database connection and CORS values with the root
+`.env` settings. It connects to PostgreSQL using the service hostname `postgres`,
+so the local `DB_*` entries in `backend/.env` are not used for this deployment.
+PostgreSQL creates the database and user on its first start with an empty data
+volume; changing the root credentials later does not update an existing database.
+
+The Docker frontend receives its `NEXT_PUBLIC_*` settings from build arguments
+in `docker-compose.yml`; `frontend/.env.local` is not required for this workflow.
+The current API URL is `/filipevm`, and the token settings are storage key names,
+not secrets. Public frontend settings are embedded during the build, so rebuild
+the frontend after changing those arguments. Keep all environment files private
+and never put secrets in `NEXT_PUBLIC_*` values.
+
+### 3. Configure public access and persistent storage
+
+Point your domain at the VM and configure an HTTPS reverse proxy to forward
+requests to the frontend on `127.0.0.1:3000`, preserving the `/filipevm` path.
+The resulting application URL is:
+
+```text
+https://your-public-host.example/filipevm
+```
+
+The frontend's existing Next.js rewrite forwards `/filipevm/api/...` to
+`http://backend:8080/api/...` over the Docker network. The public proxy can send
+both page and API requests to the frontend. Preserve the request host and
+forwarded protocol headers. Configure request-size and timeout limits to suit
+evidence uploads.
+
+The current Compose file publishes ports 3000, 8080, 5432, and 5050 on the host.
+For a public VM, bind frontend access to loopback when using a host reverse proxy,
+and remove unnecessary backend/database/admin port mappings or restrict them to
+loopback. Allow public HTTP/HTTPS and your required SSH access through the VM's
+network rules. pgAdmin currently uses the `/pgadmin-filipevm` prefix; publishing
+its UI requires separate proxy configuration.
+
+PostgreSQL uses the named `postgres_data` volume. Uploaded evidence uses the
+backend directory `/app/uploads/evidence`, which currently has **no Compose
+volume**. Before accepting real uploads, add a persistent bind mount or volume
+for that directory and ensure it is writable by the image's `spring` user.
+Without this, uploads can fail on permissions or be lost when the backend
+container is replaced. Back up both database data and uploaded files.
+
+### 4. Build, start, and verify
+
+```bash
+docker compose config --quiet
+docker compose up --build -d
+docker compose ps
+docker compose logs --tail=100 backend frontend
+```
+
+Allow the backend to finish starting, then check the public API route:
+
+```bash
+curl -i https://your-public-host.example/filipevm/api/v1/maturity-model
+```
+
+A `401` or `403` on this protected route still indicates that the API is
+reachable. Open `/filipevm/register` on your public host and register the first
+account. Connect to the container database:
+
+```bash
+docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
+Use the inspection and promotion SQL in
+[Create and promote the first user](#5-create-and-promote-the-first-user), then
+sign in at `/filipevm/login`. Verify a basic assessment and evidence upload;
+if SMTP is enabled, also check that invitation links use the public URL.
+
+### 5. Update or stop the deployment
+
+Back up the database and evidence before updates, then fetch the intended code
+revision and rebuild from the repository root:
+
+```bash
+git pull --ff-only
+docker compose up --build -d
+docker compose ps
+docker compose logs --tail=100 backend frontend
+```
+
+Review template changes and apply new settings to the VM's existing environment
+files. `docker compose up -d` applies backend environment changes by recreating
+the affected container; a simple restart does not reload Compose environment
+configuration. Frontend build-argument changes require a rebuild.
+
+Stop the stack with `docker compose down`. The database volume is retained.
+**Do not use `docker compose down -v` on a live deployment:** it removes the
+Compose-managed data volumes, including the database. The backend currently uses
+Hibernate schema updates, so review schema changes before deploying to live data.
 
 ## Related documentation
 

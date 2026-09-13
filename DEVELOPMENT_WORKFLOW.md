@@ -829,10 +829,12 @@ docker compose down -v
 
 ### VM Deployment
 
-For VM deployment, use the VM-specific compose file:
+For VM deployment, configure the environment and server as described in the
+[Getting Started guide](./GETTING_STARTED.md#online-vm-deployment-with-docker),
+then use the root Compose file:
 
 ```bash
-docker compose -f docker-compose.vm.yml up --build
+docker compose up --build -d
 ```
 
 This uses `Dockerfile.frontend` which accepts a build-time `NEXT_PUBLIC_API_URL` argument.

@@ -9,14 +9,14 @@ the workstation. Docker Compose is reserved for the online VM deployment.
 
 Follow the **[Getting Started Guide](./GETTING_STARTED.md)** for the complete
 database creation, environment-template, backend, frontend, first-admin, and
-optional campaign-email setup. The application is served locally at
+optional campaign-email setup, plus [online VM deployment with Docker](./GETTING_STARTED.md#online-vm-deployment-with-docker). The application is served locally at
 `http://localhost:3000/filipevm`.
 
 ## Documentation
 
 ### Getting Started
 
-- **[Getting Started Guide](./GETTING_STARTED.md)** - Complete setup instructions for development environment
+- **[Getting Started Guide](./GETTING_STARTED.md)** - Local development and online VM Docker deployment instructions
 - **[Project Overview](./PROJECT_OVERVIEW.md)** - High-level overview of the platform and its features
 
 ### Architecture & Design
@@ -151,13 +151,18 @@ an endpoint.
 
 ## Docker deployment
 
-Docker is used for the online VM, not as the supported local development
-workflow. Configure the VM's ignored environment files from the committed
-templates before deploying:
+Deploy the platform on an online VM using `docker-compose.yml`. Follow the
+[VM deployment guide](./GETTING_STARTED.md#online-vm-deployment-with-docker) for
+root and backend environment files, HTTPS/proxy routing, persistent storage,
+startup, and first-admin setup. After configuring the VM, run from the repository
+root:
 
 ```bash
 docker compose up --build -d
 ```
+
+The public application path is `/filipevm`. The guide also covers updates and
+storage requirements for uploaded evidence.
 
 ## Testing
 
