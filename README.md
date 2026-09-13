@@ -17,7 +17,8 @@ optional campaign-email setup, plus [online VM deployment with Docker](./GETTING
 ### Getting Started
 
 - **[Getting Started Guide](./GETTING_STARTED.md)** - Local development and online VM Docker deployment instructions
-- **[Project Overview](./PROJECT_OVERVIEW.md)** - High-level overview of the platform and its features
+- **[Project Overview](./PROJECT_OVERVIEW.md)** - Purpose, users, architecture, and project structure
+- **[Core Features](./CORE_FEATURES.md)** - Current capabilities and user workflows
 
 ### Architecture & Design
 
@@ -61,20 +62,17 @@ optional campaign-email setup, plus [online VM deployment with Docker](./GETTING
 
 ## Features
 
-- User authentication with JWT (access + refresh tokens)
-- Hierarchical role-based access control (USER, CURATOR, ADMIN)
-- Domain management for organizing maturity models
-- Custom maturity model creation (API, UI, or YAML upload)
-- Configurable dimensions, modules, practices, and questions
-- Multiple question types (boolean, likert, open answer, numeric, percentage, evidence, boolean justification)
-- Question dependencies and evidence upload support
-- Assessment creation and evaluation workflow
-- Automatic scoring and maturity level calculation
-- Results visualization per dimension with charts
-- CSV export of assessment results
-- Historical assessment tracking
-- Admin panel for user management
-- Docker-based deployment
+See [Core Features](./CORE_FEATURES.md) for the full capability guide and workflows.
+
+- Account registration, administrator approval, and role-based access
+- Domain management and versioned maturity-model authoring
+- Excel model import/export and configurable questionnaires
+- Saved assessment drafts, conditional questions, and file/link evidence
+- Automatic scoring, evaluator review, and respondent corrections
+- Invitation-based campaigns with participant progress and aggregate results
+- Assessment results and PDF/Excel reports
+- Optional contextual assistant and evaluation suggestions
+- Local development and Docker-based VM deployment
 
 ## Project Structure
 
@@ -266,6 +264,7 @@ Before starting development, ensure:
 | Document                                                         | Description                        |
 | ---------------------------------------------------------------- | ---------------------------------- |
 | [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md)                     | System overview and architecture   |
+| [CORE_FEATURES.md](./CORE_FEATURES.md)                           | Capabilities and user workflows    |
 | [GETTING_STARTED.md](./GETTING_STARTED.md)                       | Setup and installation guide       |
 | [ARCHITECTURE.md](./ARCHITECTURE.md)                             | Technical architecture details     |
 | [API documentation](./backend/docs/api/README.md)                   | Complete API reference             |
