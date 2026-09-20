@@ -60,6 +60,7 @@ class AssessmentEvidenceWorkflowServiceTest {
         user = new User();
         user.setId(1L);
 
+        org.mockito.Mockito.lenient().when(assessmentService.isQuestionVisible(any(), any())).thenCallRealMethod();
         savedAssessment = new AssessmentResponse();
         savedAssessment.setId(ASSESSMENT_ID);
         savedAssessment.setMaturityModelId(MODEL_ID);
@@ -79,7 +80,7 @@ class AssessmentEvidenceWorkflowServiceTest {
                 any(),
                 eq(true)
         )).thenReturn(List.of(evidence));
-        when(maturityModelRepository.findById(MODEL_ID))
+        org.mockito.Mockito.lenient().when(maturityModelRepository.findById(MODEL_ID))
                 .thenReturn(Optional.of(requiredEvidenceModel()));
 
         AssessmentResponse response = workflowService.submitAssessment(
@@ -109,7 +110,7 @@ class AssessmentEvidenceWorkflowServiceTest {
                 any(),
                 eq(true)
         )).thenReturn(List.of(evidence));
-        when(maturityModelRepository.findById(MODEL_ID))
+        org.mockito.Mockito.lenient().when(maturityModelRepository.findById(MODEL_ID))
                 .thenReturn(Optional.of(requiredEvidenceModel()));
 
         AssessmentResponse response = workflowService.submitAssessment(
@@ -139,7 +140,7 @@ class AssessmentEvidenceWorkflowServiceTest {
                 any(),
                 eq(true)
         )).thenReturn(List.of());
-        when(maturityModelRepository.findById(MODEL_ID))
+        org.mockito.Mockito.lenient().when(maturityModelRepository.findById(MODEL_ID))
                 .thenReturn(Optional.of(requiredEvidenceModel()));
 
         ResponseStatusException exception = assertThrows(
@@ -170,7 +171,7 @@ class AssessmentEvidenceWorkflowServiceTest {
                 any(),
                 eq(true)
         )).thenReturn(List.of());
-        when(maturityModelRepository.findById(MODEL_ID))
+        org.mockito.Mockito.lenient().when(maturityModelRepository.findById(MODEL_ID))
                 .thenReturn(Optional.of(requiredEvidenceModel()));
 
         AssessmentResponse response = workflowService.saveMultipartDraft(
@@ -199,7 +200,7 @@ class AssessmentEvidenceWorkflowServiceTest {
                 any(),
                 eq(true)
         )).thenReturn(List.of());
-        when(maturityModelRepository.findById(MODEL_ID))
+        org.mockito.Mockito.lenient().when(maturityModelRepository.findById(MODEL_ID))
                 .thenReturn(Optional.of(requiredEvidenceModel()));
 
         AssessmentResponse response = workflowService.saveMultipartDraft(
@@ -227,7 +228,7 @@ class AssessmentEvidenceWorkflowServiceTest {
     }
 
     @Test
-    void authoritativeDraftRejectsEvidenceForUnansweredQuestion() throws Exception {
+    void authoritativeDraftAllowsPracticeEvidenceBeforeAnswers() throws Exception {
         AssessmentRequest request = request(Map.of());
         when(assessmentService.saveDraft(request, user)).thenReturn(savedAssessment);
         when(evidenceService.synchronizeEvidence(
@@ -239,22 +240,12 @@ class AssessmentEvidenceWorkflowServiceTest {
                 any(),
                 eq(true)
         )).thenReturn(List.of(evidence()));
-        when(maturityModelRepository.findById(MODEL_ID))
+        org.mockito.Mockito.lenient().when(maturityModelRepository.findById(MODEL_ID))
                 .thenReturn(Optional.of(requiredEvidenceModel()));
 
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
-                () -> workflowService.saveMultipartDraft(
-                        request,
-                        user,
-                        List.of(),
-                        List.of(),
-                        List.of(),
-                        true
-                )
-        );
-
-        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        AssessmentResponse response = workflowService.saveMultipartDraft(
+                request, user, List.of(), List.of(), List.of(), true);
+        assertEquals(List.of(evidence()), response.getEvidence());
     }
 
     @Test
@@ -271,8 +262,8 @@ class AssessmentEvidenceWorkflowServiceTest {
                 any(),
                 eq(true)
         )).thenReturn(List.of(evidence));
-        when(maturityModelRepository.findById(MODEL_ID))
-                .thenReturn(Optional.of(evidenceOnlyModel(true)));
+        org.mockito.Mockito.lenient().when(maturityModelRepository.findById(MODEL_ID))
+                .thenReturn(Optional.of(practiceEvidenceModel(true)));
 
         AssessmentResponse response = workflowService.submitAssessment(
                 request,
@@ -292,7 +283,7 @@ class AssessmentEvidenceWorkflowServiceTest {
         EvidenceDTO linkEvidence = EvidenceDTO.builder()
                 .id(5L)
                 .assessmentId(ASSESSMENT_ID)
-                .questionId(QUESTION_ID)
+                .practiceId(40L)
                 .evidenceType(EvidenceType.URL)
                 .url("https://example.com/policy")
                 .build();
@@ -306,8 +297,8 @@ class AssessmentEvidenceWorkflowServiceTest {
                 any(),
                 eq(true)
         )).thenReturn(List.of(linkEvidence));
-        when(maturityModelRepository.findById(MODEL_ID))
-                .thenReturn(Optional.of(evidenceOnlyModel(true)));
+        org.mockito.Mockito.lenient().when(maturityModelRepository.findById(MODEL_ID))
+                .thenReturn(Optional.of(practiceEvidenceModel(true)));
 
         AssessmentResponse response = workflowService.submitAssessment(
                 request,
@@ -334,8 +325,8 @@ class AssessmentEvidenceWorkflowServiceTest {
                 any(),
                 eq(true)
         )).thenReturn(List.of());
-        when(maturityModelRepository.findById(MODEL_ID))
-                .thenReturn(Optional.of(evidenceOnlyModel(false)));
+        org.mockito.Mockito.lenient().when(maturityModelRepository.findById(MODEL_ID))
+                .thenReturn(Optional.of(practiceEvidenceModel(false)));
 
         AssessmentResponse response = workflowService.submitAssessment(
                 request,
@@ -362,8 +353,8 @@ class AssessmentEvidenceWorkflowServiceTest {
                 any(),
                 eq(true)
         )).thenReturn(List.of());
-        when(maturityModelRepository.findById(MODEL_ID))
-                .thenReturn(Optional.of(evidenceOnlyModel(true)));
+        org.mockito.Mockito.lenient().when(maturityModelRepository.findById(MODEL_ID))
+                .thenReturn(Optional.of(practiceEvidenceModel(true)));
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
@@ -397,11 +388,59 @@ class AssessmentEvidenceWorkflowServiceTest {
         return request;
     }
 
+    @Test
+    void practiceWithNoVisibleChildrenDoesNotRequireEvidence() throws Exception {
+        MaturityModel model = requiredEvidenceModel();
+        org.mockito.Mockito.doReturn(false).when(assessmentService).isQuestionVisible(any(), any());
+        assertEquals(List.of(), submitModel(model, List.of()).getEvidence());
+    }
+
+    @Test
+    void emptyPracticeDoesNotRequireEvidence() throws Exception {
+        MaturityModel model = requiredEvidenceModel();
+        model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst()
+                .setQuestions(List.of());
+        assertEquals(List.of(), submitModel(model, List.of()).getEvidence());
+    }
+
+    @Test
+    void onePracticeAttachmentSupportsMultipleUnansweredQuestions() throws Exception {
+        MaturityModel model = requiredEvidenceModel();
+        Practice practice = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        Question second = new Question();
+        second.setId(31L);
+        second.setPractice(practice);
+        second.setType("boolean");
+        practice.setQuestions(List.of(practice.getQuestions().getFirst(), second));
+        assertEquals(1, submitModel(model, List.of(evidence())).getEvidence().size());
+    }
+
+    @Test
+    void campaignSubmissionAlsoRequiresPracticeEvidence() throws Exception {
+        AssessmentRequest request = request(Map.of());
+        var participant = new com.master_thesis.maturity_assessment.campaigns.models.CampaignParticipant();
+        when(assessmentService.submitCampaignAssessment(request, participant)).thenReturn(savedAssessment);
+        when(evidenceService.synchronizeCampaignEvidence(eq(ASSESSMENT_ID), eq(MODEL_ID),
+                eq(participant), any(), any(), any(), eq(true))).thenReturn(List.of());
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(requiredEvidenceModel()));
+        assertThrows(ResponseStatusException.class, () -> workflowService.submitCampaignAssessment(
+                request, participant, List.of(), List.of(), List.of()));
+    }
+
+    private AssessmentResponse submitModel(MaturityModel model, List<EvidenceDTO> items) throws Exception {
+        AssessmentRequest request = request(Map.of());
+        when(assessmentService.createAssessment(request, user)).thenReturn(savedAssessment);
+        when(evidenceService.synchronizeEvidence(eq(ASSESSMENT_ID), eq(MODEL_ID), eq(user),
+                any(), any(), any(), eq(true))).thenReturn(items);
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        return workflowService.submitAssessment(request, user, List.of(), List.of(), List.of(), true);
+    }
+
     private EvidenceDTO evidence() {
         return EvidenceDTO.builder()
                 .id(5L)
                 .assessmentId(ASSESSMENT_ID)
-                .questionId(QUESTION_ID)
+                .practiceId(40L)
                 .evidenceType(EvidenceType.FILE)
                 .fileName("policy.pdf")
                 .build();
@@ -411,10 +450,10 @@ class AssessmentEvidenceWorkflowServiceTest {
         return modelWithQuestion(null);
     }
 
-    private MaturityModel evidenceOnlyModel(boolean required) {
-        MaturityModel model = modelWithQuestion("evidence");
+    private MaturityModel practiceEvidenceModel(boolean required) {
+        MaturityModel model = modelWithQuestion("boolean");
         model.getDimensions().get(0).getModules().get(0).getPractices().get(0)
-                .getQuestions().get(0).setRequired(required);
+                .setRequiresEvidence(required);
         return model;
     }
 
@@ -422,11 +461,12 @@ class AssessmentEvidenceWorkflowServiceTest {
         Question question = new Question();
         question.setId(QUESTION_ID);
         question.setType(type);
-        question.setRequiresEvidence(true);
+
         question.setRequired(true);
 
         Practice practice = new Practice();
         practice.setId(40L);
+        practice.setRequiresEvidence(true);
         practice.setQuestions(List.of(question));
         question.setPractice(practice);
 

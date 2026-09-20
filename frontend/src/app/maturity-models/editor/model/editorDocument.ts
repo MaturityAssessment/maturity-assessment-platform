@@ -75,7 +75,6 @@ export function emptyQuestion(ordinal: number): ModelEditorQuestion {
     text: "",
     type: "boolean",
     help: "",
-    requiresEvidence: false,
     required: false,
     booleanCorrectAnswer: true,
     scalePointCount: 5,
@@ -100,6 +99,7 @@ export function emptyPractice(
     weight: 1,
     aggregationRule: DEFAULT_AGGREGATION_RULE,
     gatingRules: [],
+    requiresEvidence: false,
     questions: [emptyQuestion(questionOrdinal)],
   };
 }
@@ -197,6 +197,7 @@ export function hydrateDocument(
         practices: (module.practices ?? []).map((practice) => ({
           ...practice,
           description: practice.description ?? "",
+          requiresEvidence: practice.requiresEvidence ?? false,
           clientKey: practice.clientKey || key(),
           codeLocked: false,
           weight: practice.weight ?? 1,
@@ -209,10 +210,6 @@ export function hydrateDocument(
             codeLocked: false,
             weight: question.weight ?? 1,
             help: question.help ?? "",
-            requiresEvidence:
-              question.type === "evidence"
-                ? true
-                : question.requiresEvidence ?? false,
             required: question.required ?? false,
             booleanCorrectAnswer: question.booleanCorrectAnswer ?? true,
             scalePointCount: question.scalePointCount ?? 5,

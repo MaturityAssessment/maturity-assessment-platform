@@ -6,6 +6,7 @@ import com.master_thesis.maturity_assessment.maturity_models.models.AggregationR
 
 @Data
 public class PracticeDTO {
+    private Boolean requiresEvidence = false;
     private Long id; // Optional for creation, required for updates
     private Long moduleId; // FK to parent Module
     private String code; // Stable public code within the model

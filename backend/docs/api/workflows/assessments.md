@@ -16,7 +16,8 @@
    Each save sends the complete answer map and retained/new evidence snapshot.
    Omission removes saved content; do not send just the changed question.
 5. Submit with `POST /api/v1/assessments/drafts/{draftId}/submit` using the same
-   multipart contract. Complete visible required questions and required evidence.
+   multipart contract. Complete visible required questions and attach evidence to each active practice
+   that requires it (at least one visible child makes a practice active).
 6. Inspect `status`: automatic models become `COMPLETED`; manual models become
    `PENDING_REVIEW`. Display server-returned scores and maturity levels.
 
@@ -45,7 +46,7 @@ status before retrying. A submitted row rejects duplicate submission with `409`.
 
 1. As curator/admin, load `GET /api/v1/assessments/pending`, then retrieve the
    selected assessment, its model, and evidence.
-2. Classify answered questions and questions with evidence as `ACCEPTED`,
+2. Classify answered questions, using shared practice evidence, as `ACCEPTED`,
    `ADJUSTED`, or `FLAGGED`. Use the response keys and the
    [review score rules](../reference/assessments.md#review-request).
 3. Save decisions with `PUT /api/v1/assessments/{id}/evaluation/reviews`. Partial

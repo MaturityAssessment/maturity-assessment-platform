@@ -237,6 +237,7 @@ class MaturityModelServiceTest {
         child.setScaleMaxLabel("Always");
         child.setScaleHighPointIsMaximum(false);
         var practice = new MaturityModelEditorDTO.EditorPracticeDTO();
+        practice.setRequiresEvidence(true);
         practice.setCode("P1_TEST");
         practice.setName("Practice");
         practice.setWeight(1.0);
@@ -281,6 +282,10 @@ class MaturityModelServiceTest {
         creator.setEmail("curator@example.com");
 
         MaturityModelDTO response = service.createFromEditor(editor, creator);
+        assertTrue(response.getDimensions().getFirst().getModules().getFirst()
+                .getPractices().getFirst().getRequiresEvidence());
+        assertTrue(service.prepareEditorDocument(response).getDimensions().getFirst().getModules().getFirst()
+                .getPractices().getFirst().getRequiresEvidence());
         List<QuestionDTO> questions = response.getDimensions().get(0).getModules().get(0)
                 .getPractices().get(0).getQuestions();
 
@@ -513,6 +518,16 @@ class MaturityModelServiceTest {
     }
 
     @Test
+    void createMaturityModel_rejectsEvidenceOnlyQuestions() {
+        MaturityModelDTO dto = updateDto(domain().getId(), null);
+        dto.getDimensions().getFirst().getModules().getFirst()
+                .getPractices().getFirst().getQuestions().getFirst().setType("evidence");
+        IllegalOperationException error = assertThrows(IllegalOperationException.class,
+                () -> service.createMaturityModel(dto));
+        assertEquals("INVALID_QUESTION_TYPE", error.getErrorCode());
+    }
+
+    @Test
     void createMaturityModel_persistsQuestionListOrder() {
         Domain domain = domain();
         MaturityModelDTO dto = updateDto(domain.getId(), null);
@@ -607,7 +622,6 @@ class MaturityModelServiceTest {
         parent.setType("boolean");
         parent.setWeight(1.0);
         parent.setRequired(false);
-        parent.setRequiresEvidence(false);
 
         QuestionDTO dependent = new QuestionDTO();
         dependent.setId(102L);
@@ -615,7 +629,6 @@ class MaturityModelServiceTest {
         dependent.setType("boolean");
         dependent.setWeight(1.0);
         dependent.setRequired(false);
-        dependent.setRequiresEvidence(false);
         dependent.setDependsOnQuestionId(dependentParentId);
 
         PracticeDTO practice = new PracticeDTO();

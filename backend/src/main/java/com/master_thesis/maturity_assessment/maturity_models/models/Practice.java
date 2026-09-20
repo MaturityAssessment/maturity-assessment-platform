@@ -21,6 +21,9 @@ import java.util.List;
 @EqualsAndHashCode(exclude = { "module", "questions", "gatingRules" })
 public class Practice {
 
+    @Column(name = "requires_evidence", nullable = false)
+    private Boolean requiresEvidence = false;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

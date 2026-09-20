@@ -53,7 +53,6 @@ public class MaturityModelService {
         private static final String TYPE_LIKERT = "likert";
         private static final String TYPE_NUMERIC = "numeric";
         private static final String TYPE_PERCENTAGE = "percentage";
-        private static final String TYPE_EVIDENCE = "evidence";
         private static final Set<String> ALLOWED_QUESTION_TYPES = Set.of(
                         "boolean",
                         TYPE_LIKERT,
@@ -61,8 +60,7 @@ public class MaturityModelService {
                         "multiple_selection",
                         "open_answer",
                         TYPE_NUMERIC,
-                        TYPE_PERCENTAGE,
-                        TYPE_EVIDENCE);
+                        TYPE_PERCENTAGE);
 
         private static final int MIN_MATURITY_LEVELS = 2;
         private static final int MAX_MATURITY_LEVELS = 12;
@@ -487,7 +485,6 @@ public class MaturityModelService {
                 dto.setText(question.getText());
                 dto.setType(question.getType());
                 dto.setHelp(question.getHelp());
-                dto.setRequiresEvidence(question.getRequiresEvidence() != null ? question.getRequiresEvidence() : false);
                 dto.setRequired(question.getRequired() != null ? question.getRequired() : false);
                 dto.setBooleanCorrectAnswer(
                                 question.getBooleanCorrectAnswer() != null ? question.getBooleanCorrectAnswer() : true);
@@ -532,6 +529,7 @@ public class MaturityModelService {
                 if (practice.getModule() != null) {
                         dto.setModuleId(practice.getModule().getId());
                 }
+                dto.setRequiresEvidence(Boolean.TRUE.equals(practice.getRequiresEvidence()));
                 dto.setName(practice.getName());
                 dto.setDescription(practice.getDescription());
                 dto.setWeight(practice.getWeight());
@@ -554,6 +552,7 @@ public class MaturityModelService {
                 // Don't set ID - let Hibernate generate new IDs for new entities
                 // This is important when creating new model versions
                 practice.setCode(dto.getCode());
+                practice.setRequiresEvidence(Boolean.TRUE.equals(dto.getRequiresEvidence()));
                 practice.setName(dto.getName());
                 practice.setDescription(dto.getDescription());
                 practice.setWeight(dto.getWeight() != null ? dto.getWeight() : 1.0);
@@ -632,9 +631,6 @@ public class MaturityModelService {
                 question.setText(dto.getText());
                 question.setType(dto.getType());
                 question.setHelp(dto.getHelp());
-                boolean evidenceOnly = isEvidenceOnlyType(dto.getType());
-                question.setRequiresEvidence(evidenceOnly
-                                || (dto.getRequiresEvidence() != null && dto.getRequiresEvidence()));
                 question.setRequired(dto.getRequired() != null && dto.getRequired());
                 question.setBooleanCorrectAnswer(
                                 dto.getBooleanCorrectAnswer() != null ? dto.getBooleanCorrectAnswer() : true);
@@ -720,6 +716,7 @@ public class MaturityModelService {
                                                 ? List.<PracticeDTO>of() : module.getPractices()) {
                                         var editorPractice = new MaturityModelEditorDTO.EditorPracticeDTO();
                                         editorPractice.setCode(practice.getCode());
+                                        editorPractice.setRequiresEvidence(practice.getRequiresEvidence());
                                         editorPractice.setName(practice.getName());
                                         editorPractice.setDescription(practice.getDescription());
                                         editorPractice.setWeight(practice.getWeight());
@@ -735,7 +732,6 @@ public class MaturityModelService {
                                                 editorQuestion.setType(question.getType());
                                                 editorQuestion.setHelp(question.getHelp());
                                                 editorQuestion.setDependsOnQuestionCode(question.getDependsOnQuestionCode());
-                                                editorQuestion.setRequiresEvidence(question.getRequiresEvidence());
                                                 editorQuestion.setRequired(question.getRequired());
                                                 editorQuestion.setBooleanCorrectAnswer(question.getBooleanCorrectAnswer());
                                                 editorQuestion.setChoices(question.getChoices());
@@ -801,6 +797,7 @@ public class MaturityModelService {
                                                 : editorModule.getPractices()) {
                                         PracticeDTO practice = new PracticeDTO();
                                         practice.setCode(editorPractice.getCode());
+                                        practice.setRequiresEvidence(Boolean.TRUE.equals(editorPractice.getRequiresEvidence()));
                                         practice.setName(editorPractice.getName());
                                         practice.setDescription(editorPractice.getDescription());
                                         practice.setWeight(editorPractice.getWeight());
@@ -817,7 +814,6 @@ public class MaturityModelService {
                                                 question.setType(editorQuestion.getType());
                                                 question.setHelp(editorQuestion.getHelp());
                                                 question.setDependsOnQuestionCode(editorQuestion.getDependsOnQuestionCode());
-                                                question.setRequiresEvidence(editorQuestion.getRequiresEvidence());
                                                 question.setRequired(editorQuestion.getRequired());
                                                 question.setBooleanCorrectAnswer(editorQuestion.getBooleanCorrectAnswer());
                                                 question.setChoices(editorQuestion.getChoices());
@@ -1441,17 +1437,11 @@ public class MaturityModelService {
                         throw new IllegalOperationException(
                                         "INVALID_QUESTION_TYPE",
                                         "Question '" + questionDTO.getCode()
-                                                        + "' must use one of: boolean, likert, multiple_choice, multiple_selection, open_answer, numeric, percentage, evidence.");
+                                                        + "' must use one of: boolean, likert, multiple_choice, multiple_selection, open_answer, numeric, percentage.");
                 }
                 questionDTO.setType(type);
-                if (isEvidenceOnlyType(type)) {
-                        questionDTO.setRequiresEvidence(true);
-                }
         }
 
-        private boolean isEvidenceOnlyType(String type) {
-                return TYPE_EVIDENCE.equalsIgnoreCase(type);
-        }
 
         private void validateRangeQuestion(QuestionDTO questionDTO) {
                 Integer minimum = questionDTO.getRangeMin();

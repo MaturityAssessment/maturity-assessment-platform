@@ -22,6 +22,8 @@ import { cn } from "@/lib/utils";
 import AssessmentNavigationMenu, {
   type AssessmentNavigationModule,
 } from "./AssessmentNavigationMenu";
+import EvidenceUpload from "@/components/EvidenceUpload";
+import { getPracticeEvidenceField } from "./assessmentEvidence";
 import AssessmentQuestionCard from "./AssessmentQuestionCard";
 import {
   getAssessmentPracticeRouteChangeAction,
@@ -212,6 +214,8 @@ export default function AssessmentStep({
           const previousPractice = practiceSteps[practiceIndex - 1];
           const nextPractice = practiceSteps[practiceIndex + 1];
           const isVisible = step.key === visiblePracticeKey;
+          const evidenceRequired = Boolean(step.practice.requiresEvidence) &&
+            step.practice.questions.some((question) => !isDependentQuestionDisabled(step, question, formData));
 
           return (
             <section
@@ -354,7 +358,6 @@ export default function AssessmentStep({
                           question={question}
                           fieldName={fieldName}
                           value={formData[fieldName]}
-                          evidenceItems={evidenceFiles.get(fieldName) || []}
                           modelMaxLevel={modelMaxLevel}
                           disabled={disabled}
                           evaluation={evaluation}
@@ -370,13 +373,21 @@ export default function AssessmentStep({
                           }
                           onInputChange={onInputChange}
                           onClearAnswer={onClearAnswer}
-                          onEvidenceItemsChange={onEvidenceItemsChange}
                         />
                       );
                     })
                   )}
                 </div>
 
+                {step.practice.id != null && (
+                  <div className="mt-4 rounded-xl border bg-white p-5">
+                    <h3 className="mb-3 font-semibold">Practice evidence {evidenceRequired ? "(required)" : "(optional)"}</h3>
+                    <EvidenceUpload practiceId={step.practice.id}
+                      items={evidenceFiles.get(getPracticeEvidenceField(step.practice.id)) || []}
+                      required={evidenceRequired}
+                      onItemsChange={(items) => onEvidenceItemsChange(getPracticeEvidenceField(step.practice.id), items)} />
+                  </div>
+                )}
                 <div className="mt-auto flex justify-center pb-1 pt-8 sm:pt-10">
                   <button
                     type="button"

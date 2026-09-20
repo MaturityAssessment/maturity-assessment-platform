@@ -47,6 +47,7 @@ public class MaturityModelEditorDTO {
 
     @Data
     public static class EditorPracticeDTO {
+        private Boolean requiresEvidence = false;
         private String code;
         private String name;
         private String description;
@@ -64,7 +65,6 @@ public class MaturityModelEditorDTO {
         private String type;
         private String help;
         private String dependsOnQuestionCode;
-        private Boolean requiresEvidence;
         private Boolean required;
         private Boolean booleanCorrectAnswer;
         private List<QuestionChoiceDTO> choices;

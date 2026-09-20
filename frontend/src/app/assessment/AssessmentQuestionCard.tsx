@@ -1,11 +1,10 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+
 import {
   AlertCircle,
   Check,
   Flag,
-  FileUp,
   Bot,
   LockKeyhole,
   PencilLine,
@@ -14,18 +13,16 @@ import {
 } from "lucide-react";
 import Tippy from "@tippyjs/react";
 import type {
-  AssessmentEvidenceInputItem,
   Question,
   QuestionEvaluationResponse,
 } from "@/api/types";
-import EvidenceUpload from "@/components/EvidenceUpload";
+
 import { TEXT_LIMITS } from "@/config/textLimits";
 import { cn } from "@/lib/utils";
-import { hasValidEvidenceItems } from "./assessmentEvidence";
+
 import {
   getQuestionResponseBounds,
   isAnswered,
-  isEvidenceOnlyQuestion,
   isQuestionComplete,
   isQuestionResponseValid,
 } from "./assessmentFlowUtils";
@@ -34,7 +31,6 @@ interface AssessmentQuestionCardProps {
   question: Question;
   fieldName: string;
   value: unknown;
-  evidenceItems: AssessmentEvidenceInputItem[];
   modelMaxLevel: number;
   disabled: boolean;
   evaluation?: QuestionEvaluationResponse;
@@ -48,17 +44,12 @@ interface AssessmentQuestionCardProps {
   onAskAssistant?: () => void;
   onInputChange: (field: string, value: string | number | number[] | undefined) => void;
   onClearAnswer: (field: string) => void;
-  onEvidenceItemsChange: (
-    field: string,
-    items: AssessmentEvidenceInputItem[]
-  ) => void;
 }
 
 export default function AssessmentQuestionCard({
   question,
   fieldName,
   value,
-  evidenceItems,
   modelMaxLevel,
   disabled,
   evaluation,
@@ -67,7 +58,6 @@ export default function AssessmentQuestionCard({
   onAskAssistant,
   onInputChange,
   onClearAnswer,
-  onEvidenceItemsChange,
 }: AssessmentQuestionCardProps) {
   if (!question.id) return null;
 
@@ -76,11 +66,7 @@ export default function AssessmentQuestionCard({
   const flagged = reviewStatus === "FLAGGED";
   const adjusted = reviewStatus === "ADJUSTED";
   const interactionDisabled = disabled || accepted || adjusted;
-  const evidenceOnly = isEvidenceOnlyQuestion(question);
-  const hasRequirementDetails =
-    Boolean(question.required) ||
-    Boolean(question.requiresEvidence) ||
-    evidenceOnly;
+  const hasRequirementDetails = Boolean(question.required);
   const hasVisibleRequirementDetails = hasRequirementDetails && !disabled;
   const cardTourTargets = [
     helpTourTargets?.question && "assessment-question-card",
@@ -98,20 +84,12 @@ export default function AssessmentQuestionCard({
   ]
     .filter(Boolean)
     .join(" ");
-  const hasContent = isAnswered(value) || evidenceItems.length > 0;
+  const hasContent = isAnswered(value);
   const complete =
-    isQuestionComplete(question, value, evidenceItems) &&
-    isQuestionResponseValid(question, value) &&
-    (evidenceOnly ||
-      !question.requiresEvidence ||
-      hasValidEvidenceItems(evidenceItems));
+    isQuestionComplete(value) &&
+    isQuestionResponseValid(question, value);
   const responseBounds = getQuestionResponseBounds(question);
   const responseInvalid = !isQuestionResponseValid(question, value);
-  const showAttachedEvidence =
-    !evidenceOnly &&
-    Boolean(question.requiresEvidence) &&
-    !disabled &&
-    isAnswered(value);
 
   return (
     <article
@@ -184,13 +162,6 @@ export default function AssessmentQuestionCard({
                       Required
                     </span>
                   )}
-                  {(question.requiresEvidence || evidenceOnly) && !disabled && (
-                    <span className="ml-2 normal-case tracking-normal text-indigo-600">
-                      {question.requiresEvidence
-                        ? "Evidence required"
-                        : "Evidence response"}
-                    </span>
-                  )}
                 </p>
                 <h3
                   className={cn(
@@ -218,12 +189,12 @@ export default function AssessmentQuestionCard({
                 )}
 
                 {hasContent && !interactionDisabled && (
-                  <Tippy content={evidenceOnly ? "Remove evidence" : "Clear answer"}>
+                  <Tippy content="Clear answer">
                     <button
                       type="button"
                       onClick={() => onClearAnswer(fieldName)}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-                      aria-label={evidenceOnly ? "Remove evidence" : "Clear answer"}
+                      aria-label="Clear answer"
                     >
                       <RotateCcw className="h-4 w-4" />
                     </button>
@@ -352,67 +323,12 @@ export default function AssessmentQuestionCard({
                 />
               )}
 
-              {evidenceOnly && !accepted && (
-                <EvidenceUpload
-                  questionId={question.id}
-                  items={evidenceItems}
-                  onItemsChange={(items) =>
-                    onEvidenceItemsChange(fieldName, items)
-                  }
-                  required={question.required}
-                  readOnly={accepted}
-                />
-              )}
             </fieldset>
 
-            {evidenceOnly && accepted && (
-              <div className="mt-5">
-                <EvidenceUpload
-                  questionId={question.id}
-                  items={evidenceItems}
-                  onItemsChange={() => undefined}
-                  required={question.required}
-                  readOnly
-                />
-              </div>
-            )}
           </div>
         </div>
       </div>
 
-      <AnimatePresence initial={false}>
-        {showAttachedEvidence && (
-          <motion.div
-            key="evidence-upload"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
-            className="overflow-hidden"
-          >
-            <div className="border-t border-indigo-100 bg-indigo-50/60 px-5 py-5 sm:px-6">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-sm font-semibold text-indigo-950">
-                  <FileUp className="h-4 w-4 text-indigo-600" />
-                  Supporting evidence
-                </div>
-                <span className="text-xs font-medium text-indigo-600">
-                  Required
-                </span>
-              </div>
-              <EvidenceUpload
-                questionId={question.id}
-                items={evidenceItems}
-                onItemsChange={(items) =>
-                  onEvidenceItemsChange(fieldName, items)
-                }
-                required
-                readOnly={accepted}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </article>
   );
 }
@@ -498,7 +414,7 @@ function ReviewFeedback({
       )}
       {flagged && !respondentUpdated && (
         <p className="mt-2 text-[11px] font-semibold text-orange-700">
-          Update this answer or its evidence to mark it ready for review.
+          Update this answer or the shared practice evidence to mark it ready for review.
         </p>
       )}
     </div>
@@ -556,8 +472,6 @@ function getQuestionInstruction(question: Question) {
       return "Enter a percentage";
     case "open_answer":
       return "Written response";
-    case "evidence":
-      return "Provide evidence";
   }
 }
 

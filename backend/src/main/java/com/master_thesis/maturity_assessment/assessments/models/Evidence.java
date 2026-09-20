@@ -8,7 +8,7 @@ import lombok.ToString;
 import lombok.EqualsAndHashCode;
 import com.master_thesis.maturity_assessment.auth.models.User;
 import com.master_thesis.maturity_assessment.campaigns.models.CampaignParticipant;
-import com.master_thesis.maturity_assessment.maturity_models.models.Question;
+import com.master_thesis.maturity_assessment.maturity_models.models.Practice;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
@@ -18,8 +18,8 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString(exclude = { "assessment", "question", "uploadedBy" })
-@EqualsAndHashCode(exclude = { "assessment", "question", "uploadedBy" })
+@ToString(exclude = { "assessment", "practice", "uploadedBy" })
+@EqualsAndHashCode(exclude = { "assessment", "practice", "uploadedBy" })
 public class Evidence {
 
     @Id
@@ -31,8 +31,8 @@ public class Evidence {
     private Assessment assessment;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "question_id", nullable = false)
-    private Question question;
+    @JoinColumn(name = "practice_id", nullable = false)
+    private Practice practice;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "evidence_type", length = 20)

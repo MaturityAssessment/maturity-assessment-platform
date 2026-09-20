@@ -34,7 +34,6 @@ export function buildAssessmentAssistantContext({
   lines.push(`Expected response: ${getResponseFormat(question, modelMaxLevel)}`);
   lines.push(`Required item: ${question.required ? "Yes" : "No"}`);
   lines.push(
-    `Supporting evidence required: ${question.requiresEvidence ? "Yes" : "No"}`
   );
 
   if (question.help?.trim()) {
@@ -72,8 +71,6 @@ function getResponseFormat(question: Question, modelMaxLevel: number): string {
       return formatRanges("Percentage", question);
     case "open_answer":
       return "Written response";
-    case "evidence":
-      return "Supporting evidence upload";
   }
 }
 

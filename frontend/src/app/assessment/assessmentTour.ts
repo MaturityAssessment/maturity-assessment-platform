@@ -171,7 +171,6 @@ export interface AssessmentQuestionTourCandidate {
   rendered?: boolean;
   disabled: boolean;
   required: boolean;
-  requiresEvidence: boolean;
   hasGuidance: boolean;
   canClear: boolean;
 }
@@ -206,14 +205,7 @@ export function selectAssessmentQuestionTourTargetIndexes(
     predicate: (candidate: AssessmentQuestionTourCandidate) => boolean
   ) => entries.find(({ candidate }) => predicate(candidate))?.index;
 
-  const requirements =
-    findIndex(
-      enabled,
-      (candidate) => candidate.required && candidate.requiresEvidence
-    ) ??
-    findIndex(enabled, (candidate) => candidate.required) ??
-    findIndex(enabled, (candidate) => candidate.requiresEvidence) ??
-    primary;
+  const requirements = findIndex(enabled, (candidate) => candidate.required) ?? primary;
   const actions =
     findIndex(enabled, (candidate) => candidate.canClear) ?? primary;
   const guidance =
@@ -254,7 +246,7 @@ export function buildAssessmentQuestionTourSteps({
       target: ASSESSMENT_TOUR_TARGETS.questions.requirements,
       title: "Check what the item requires",
       description:
-        "Items marked Required must be completed before review. Some items also require supporting evidence; when they do, an evidence area appears with the question.",
+        "Items marked Required must be completed before review. Practices may also require supporting evidence, collected once in the practice evidence area.",
       placement: "right",
     },
     {
@@ -262,8 +254,8 @@ export function buildAssessmentQuestionTourSteps({
       target: ASSESSMENT_TOUR_TARGETS.questions.actions,
       title: canUseAssistant ? "Clear an answer or ask for help" : "Clear an answer",
       description: canUseAssistant
-        ? "Ask the assistant when you need help understanding an item. After you add an answer or evidence, the reset control lets you clear it and start again."
-        : "After you add an answer or evidence, the reset control appears here so you can clear it and start again.",
+        ? "Ask the assistant when you need help understanding an item. After you add an answer, the reset control lets you clear it and start again."
+        : "After you add an answer, the reset control appears here so you can clear it and start again.",
       placement: "left",
     },
     {

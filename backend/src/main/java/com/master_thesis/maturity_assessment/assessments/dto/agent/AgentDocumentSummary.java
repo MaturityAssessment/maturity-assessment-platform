@@ -5,7 +5,7 @@ import lombok.Data;
 @Data
 public class AgentDocumentSummary {
     private Long evidenceId;
-    private Long questionId;
+    private Long practiceId;
     private String evidenceType;
     private String fileName;
     private String urlHost;

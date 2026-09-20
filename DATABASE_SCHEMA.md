@@ -320,6 +320,7 @@ Represents practices within modules. Practices contain questions.
 | classification_type | VARCHAR(255) |                       | Classification type              |
 | weight              | INTEGER      | NOT NULL, DEFAULT 1   | Weight for scoring               |
 | aggregation_rule    | VARCHAR(32)  | NOT NULL, DEFAULT `WEIGHTED_AVERAGE` | Questions → practice rule |
+| requires_evidence | BOOLEAN | NOT NULL, DEFAULT false | Requires evidence when any child question is visible |
 | module_id           | BIGINT       | FOREIGN KEY           | Reference to modules             |
 | created_at          | TIMESTAMP    | NOT NULL              | Creation timestamp               |
 | updated_at          | TIMESTAMP    |                       | Last update timestamp            |
@@ -344,7 +345,6 @@ Individual assessment questions within practices.
 | type                   | VARCHAR(50)  | NOT NULL              | Question type                             |
 | help                   | TEXT         |                       | Help text for the question                |
 | depends_on_question_id | VARCHAR(255) |                       | Reference to parent question for dependencies |
-| requires_evidence      | BOOLEAN      | NOT NULL, DEFAULT false | Whether evidence upload is required       |
 | required               | BOOLEAN      | NOT NULL, DEFAULT false | Whether this question must be answered    |
 | boolean_correct_answer | BOOLEAN      | NOT NULL, DEFAULT true | Boolean answer receiving normalized score 1 |
 | choice_options         | TEXT         |                       | JSON multiple-choice labels and normalized scores |
@@ -373,7 +373,6 @@ Individual assessment questions within practices.
 - `open_answer` - Free text excluded from automatic scoring; evaluator level 1–N normalizes to 0–1 before aggregation
 - `numeric` - Integer within configured inclusive bounds, normalized to 0–1
 - `percentage` - Integer within configured inclusive bounds, normalized to 0–1
-- `evidence` - Evidence file upload
 
 For `multiple_selection`, `selection_options` stores a JSON array of objects with
 `label` and `rawValue`, exposed as `choices` in the model API. Service validation
@@ -481,8 +480,9 @@ review for one assessment/question pair.
 | updated_at               | TIMESTAMP    |                                   | Last update timestamp |
 
 The table is unique by both `(assessment_id, response_key)` and
-`(assessment_id, question_id)`. `response` and review fields are nullable so an
-evidence-only question can be reviewed without a respondent answer.
+`(assessment_id, question_id)`. Response and review fields are nullable during
+correction workflows. Evidence belongs to practices and does not create question
+review obligations.
 
 For Multiple Selection, `response` contains unique zero-based indexes into the
 question's configured options. `[]` explicitly answers “none apply” and scores
@@ -517,7 +517,7 @@ Stores per-dimension results for each assessment.
 
 ### 15. evidence
 
-Stores uploaded evidence files linked to assessments and questions.
+Stores file and HTTPS-link evidence linked to assessments and practices.
 
 **Table Name:** `evidence`
 
@@ -525,7 +525,7 @@ Stores uploaded evidence files linked to assessments and questions.
 | ------------------- | ------------ | --------------------- | ------------------------------- |
 | id                  | BIGSERIAL    | PRIMARY KEY           | Auto-incrementing evidence ID   |
 | assessment_id       | BIGINT       | FOREIGN KEY, NOT NULL | Reference to assessments        |
-| question_id         | BIGINT       | FOREIGN KEY, NOT NULL | Reference to questions          |
+| practice_id         | BIGINT       | FOREIGN KEY, NOT NULL | Reference to practices          |
 | evidence_type       | VARCHAR(20)  |                       | `FILE` or `URL`                 |
 | description         | TEXT         |                       | Optional evidence description   |
 | external_url        | VARCHAR(1000)|                       | URL evidence target             |
@@ -540,10 +540,16 @@ Stores uploaded evidence files linked to assessments and questions.
 **Foreign Keys:**
 
 - `assessment_id` → `assessments(id)`
-- `question_id` → `questions(id)`
+- `practice_id` → `practices(id)` ON DELETE RESTRICT
 - `uploaded_by_user_id` → `users(id)`
 - `(assessment_id, uploaded_by_campaign_participant_id)` →
   `assessments(id, campaign_participant_id)`
+
+Indexed by `(assessment_id, practice_id)`. V38 moves every evidence row to its
+question’s parent practice and ORs child requirements into `practices.requires_evidence`.
+IDs, metadata, upload ownership, timestamps and file paths are preserved.
+Evidence-only questions without assessment references are removed; referenced
+ones abort the migration. See [V38 deployment notes](backend/docs/migrations/practice-evidence.md).
 
 Exactly one uploader source is required. A campaign-participant uploader must
 be the participant who owns the referenced assessment.

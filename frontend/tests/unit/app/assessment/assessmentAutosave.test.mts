@@ -18,7 +18,7 @@ function fileItem(
   });
   return {
     id: "client-file",
-    questionId: 100,
+    practiceId: 100,
     type: "file",
     description: "Original",
     file,
@@ -36,7 +36,7 @@ function persisted(
   return {
     id: 44,
     assessmentId: 9,
-    questionId: 100,
+    practiceId: 100,
     clientKey: "client-file",
     description: "Original",
     evidenceType: "FILE",
@@ -111,7 +111,7 @@ test("does not restore removed items or drop newly added items", () => {
   const original = fileItem();
   const newLink: AssessmentEvidenceInputItem = {
     id: "new-link",
-    questionId: 100,
+    practiceId: 100,
     type: "link",
     description: "",
     file: null,

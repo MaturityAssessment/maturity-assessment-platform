@@ -28,7 +28,6 @@ const evidenceQuestion = {
   text: "Is evidence available?",
   type: "boolean" as const,
   help: "",
-  requiresEvidence: true,
   required: true,
 };
 const dependentQuestion = {
@@ -41,6 +40,7 @@ const dependentQuestion = {
   dependsOnQuestionId: questionOne.id,
 };
 const practice = {
+  requiresEvidence: true,
   id: 10,
   code: "P1",
   name: "Control practice",
@@ -75,11 +75,11 @@ const steps: AssessmentPracticeStep[] = [
 const emptyEvidence = new Map();
 const suppliedEvidence = new Map([
   [
-    "D1_M1_10_101",
+    "practice_10_evidence",
     [
       {
         id: "evidence-link",
-        questionId: evidenceQuestion.id,
+        practiceId: evidenceQuestion.id,
         type: "link" as const,
         description: "",
         file: null,

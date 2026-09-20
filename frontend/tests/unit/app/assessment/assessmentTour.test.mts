@@ -128,13 +128,13 @@ test("selects visible enabled questions that best demonstrate each concept", () 
     candidate({
       rendered: false,
       required: true,
-      requiresEvidence: true,
+
       hasGuidance: true,
       canClear: true,
     }),
     candidate({ disabled: true, required: true, hasGuidance: true }),
     candidate(),
-    candidate({ required: true, requiresEvidence: true, canClear: true }),
+    candidate({ required: true, canClear: true }),
     candidate({ hasGuidance: true }),
   ];
 
@@ -186,7 +186,7 @@ test("does not target hidden requirement badges on disabled questions", () => {
 
 test("groups the question tour into four concise concepts", () => {
   const model = buildAssessmentQuestionTour(
-    [candidate({ required: true, requiresEvidence: true, hasGuidance: true })],
+    [candidate({ required: true, hasGuidance: true })],
     { isCampaign: false }
   );
 
@@ -374,7 +374,6 @@ function candidate(
     rendered: true,
     disabled: false,
     required: false,
-    requiresEvidence: false,
     hasGuidance: false,
     canClear: false,
     ...overrides,

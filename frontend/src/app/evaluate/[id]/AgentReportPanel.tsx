@@ -202,7 +202,7 @@ export default function AgentReportPanel({
               <ReportSection title="Evidence summaries">
                 <ul className="space-y-2">
                   {agentReport.documentSummaries.slice(0, 5).map((item, index) => (
-                    <li key={`${item.evidenceId}-${item.questionId}-${index}`}>
+                    <li key={`${item.evidenceId}-${item.practiceId}-${index}`}>
                       <span className="font-semibold">
                         {item.fileName || item.urlHost || `Evidence ${item.evidenceId}`}
                       </span>
@@ -252,7 +252,7 @@ function ReportSection({
 function sanitizeEvidenceForExport(items: Evidence[]) {
   return items.map((item) => ({
     id: item.id,
-    questionId: item.questionId,
+    practiceId: item.practiceId,
     evidenceType: item.evidenceType,
     description: item.description || "",
     fileName: item.fileName || null,

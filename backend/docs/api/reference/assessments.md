@@ -50,10 +50,10 @@ belong to the selected model.
 }
 ```
 
-Use [question-type values](maturity-models.md#question-types). For boolean parents
-of dependent questions, use numeric `1`/`0`: current evidence visibility checks
-recognize numeric/string affirmative values but do not recognize a JSON boolean
-`true`. Evidence-only questions use evidence metadata without an answer entry.
+Use [question-type values](maturity-models.md#question-types). Boolean dependency
+visibility recognizes numeric/string affirmative values and JSON `true`.
+Evidence belongs to practices and uses `practiceId` in the metadata; it never
+creates a question response.
 
 For `multiple_selection`, send an array of unique zero-based indexes into that
 question's `choices`, as for question 43 in the example. `[]` means “none apply”
@@ -144,13 +144,13 @@ Compatibility save that locates or creates a draft by user/model.
 - `application/json`: AssessmentRequest; existing evidence is preserved.
 - `multipart/form-data`: AssessmentRequest part plus optional evidence fields.
   Providing `evidenceMetadata` enables full-snapshot evidence replacement;
-  omitting it uses the compatibility append/preserve path.
+  omitting it preserves existing evidence and rejects file/key parts.
 
 **Response:** Saved draft. **Errors:** `400` invalid request, question keys,
 model or evidence data; `404` missing model in draft validation.
 This route does not provide the exact-ID guarantees of `PUT /drafts/{draftId}`.
-For the old file-only contract, `evidenceFileKey` uses the question response key;
-new clients should send explicit metadata and use exact-draft writes.
+The old file-only contract is no longer accepted. Uploads require explicit
+metadata containing `practiceId`; use exact-draft writes.
 
 ## POST /api/v1/assessments
 
@@ -261,7 +261,7 @@ Compatibility completion for an assessment with no required review content.
 
 **Access:** Curator/admin. **Request:** Numeric ID; optional JSON `evaluatorInsight`.
 **Response:** `COMPLETED` assessment.
-**Errors:** `409` unless pending; `400` if answered questions/evidence require
+**Errors:** `409` unless pending; `400` if answered questions require
 classification. This is not a shortcut around the review workflow, even if reviews
 have already been saved; use `/evaluation/finish` for reviewed content.
 
@@ -373,10 +373,10 @@ characters). Use `questionEvaluations` for new integrations:
 }
 ```
 
-Keys identify questions, including questions with evidence; they are not evidence
+Keys identify answered questions; they are not evidence
 IDs. When supplied, `questionId` must match the key. Statuses are `ACCEPTED`,
 `ADJUSTED`, `FLAGGED`; progress saves can leave classification null.
-Finalization requires all answered/evidence-bearing questions to be classified,
+Finalization requires all answered questions to be classified,
 no flags, a manual score for adjusted or answered open questions, and a note for
 adjustments. Flagged items need notes before send-back. Notes are limited to
 2,000 characters. Save the intended `evaluatorInsight` each time; omission clears it.
@@ -399,6 +399,6 @@ and `processingNotes`.
 Suggested review entries have `questionId`, `validationStatus`, `manualScore`,
 `reviewerNote`, `confidence`, and `rationale`. Warnings contain `severity`,
 `questionId`, `responseKey`, `message`, and `recommendation`. Document summaries
-contain `evidenceId`, `questionId`, `evidenceType`, `fileName`, `urlHost`, `urlPath`,
+contain `evidenceId`, `practiceId`, `evidenceType`, `fileName`, `urlHost`, `urlPath`,
 `summary`, `extractedCharacters`, `truncated`, and `warning`. Inspect suggestions
 and submit selected decisions through `/evaluation/reviews` before finishing.

@@ -844,13 +844,12 @@ class AssessmentServiceLifecycleTest {
 
         Evidence evidence = new Evidence();
         evidence.setAssessment(assessment);
-        evidence.setQuestion(
+        evidence.setPractice(
                 model.getDimensions().getFirst()
                         .getModules().getFirst()
                         .getPractices().getFirst()
-                        .getQuestions().getFirst()
         );
-        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID))
+        lenient().when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID))
                 .thenReturn(List.of(evidence));
 
         ManualEvaluationRequest request = new ManualEvaluationRequest();
@@ -1686,7 +1685,6 @@ class AssessmentServiceLifecycleTest {
         question.setText("Describe the current process.");
         question.setType("open_answer");
         question.setWeight(1.0);
-        question.setRequiresEvidence(false);
 
         Practice practice = new Practice();
         practice.setId(101L);
@@ -1779,7 +1777,6 @@ class AssessmentServiceLifecycleTest {
         question.setType("likert");
         question.setWeight(1.0);
         question.setRequired(false);
-        question.setRequiresEvidence(false);
         return question;
     }
 
@@ -1915,7 +1912,6 @@ class AssessmentServiceLifecycleTest {
         question.setText("Is evidence retained?");
         question.setType("boolean");
         question.setWeight(1.0);
-        question.setRequiresEvidence(true);
 
         Practice practice = new Practice();
         practice.setId(101L);
@@ -1945,7 +1941,6 @@ class AssessmentServiceLifecycleTest {
         question.setText("How much?");
         question.setType("numeric");
         question.setWeight(1.0);
-        question.setRequiresEvidence(false);
         question.setRangeMin(0);
         question.setRangeMax(100);
         question.setRangeHighValueIsMaximum(true);

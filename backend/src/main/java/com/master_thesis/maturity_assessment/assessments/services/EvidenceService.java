@@ -14,8 +14,8 @@ import com.master_thesis.maturity_assessment.auth.utils.RoleUtils;
 import com.master_thesis.maturity_assessment.campaigns.models.CampaignParticipant;
 import com.master_thesis.maturity_assessment.config.ResourceNotFoundException;
 import com.master_thesis.maturity_assessment.config.TextLimits;
-import com.master_thesis.maturity_assessment.maturity_models.models.Question;
-import com.master_thesis.maturity_assessment.maturity_models.repository.QuestionRepository;
+import com.master_thesis.maturity_assessment.maturity_models.models.Practice;
+import com.master_thesis.maturity_assessment.maturity_models.repository.PracticeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,46 +46,48 @@ import java.util.stream.Collectors;
 @Slf4j
 public class EvidenceService {
 
-    private static final int MAX_ITEMS_PER_QUESTION = 5;
+    private static final int MAX_ITEMS_PER_PRACTICE = 5;
 
     private final EvidenceRepository evidenceRepository;
     private final FileStorageService fileStorageService;
     private final AssessmentRepository assessmentRepository;
-    private final QuestionRepository questionRepository;
+    private final PracticeRepository practiceRepository;
 
     @Value("${app.evidence.max-request-file-size:262144000}")
     private long maxRequestFileSize;
 
     @Transactional
-    public EvidenceDTO uploadEvidence(MultipartFile file, Long assessmentId, Long questionId, User user) throws IOException {
-        return createFileEvidence(file, assessmentId, questionId, user, null);
+    public EvidenceDTO uploadEvidence(MultipartFile file, Long assessmentId, Long practiceId, User user) throws IOException {
+        return createFileEvidence(file, assessmentId, practiceId, user, null);
     }
 
     @Transactional
     public EvidenceDTO createFileEvidence(
             MultipartFile file,
             Long assessmentId,
-            Long questionId,
+            Long practiceId,
             User user,
             String description
     ) throws IOException {
         Assessment assessment = requireOwnedAssessment(assessmentId, user);
-        Question question = requireQuestionForModel(questionId, assessment.getMaturityModelId());
-        Evidence evidence = createFileEntity(file, assessment, question, user, description);
+        Practice practice = requirePracticeForModel(practiceId, assessment.getMaturityModelId());
+        requireRoomForEvidence(assessmentId, practiceId);
+        Evidence evidence = createFileEntity(file, assessment, practice, user, description);
         return toDTO(evidenceRepository.saveAndFlush(evidence));
     }
 
     @Transactional
     public EvidenceDTO createUrlEvidence(
             Long assessmentId,
-            Long questionId,
+            Long practiceId,
             User user,
             String description,
             String url
     ) {
         Assessment assessment = requireOwnedAssessment(assessmentId, user);
-        Question question = requireQuestionForModel(questionId, assessment.getMaturityModelId());
-        Evidence evidence = createUrlEntity(assessment, question, user, description, url);
+        Practice practice = requirePracticeForModel(practiceId, assessment.getMaturityModelId());
+        requireRoomForEvidence(assessmentId, practiceId);
+        Evidence evidence = createUrlEntity(assessment, practice, user, description, url);
         return toDTO(evidenceRepository.saveAndFlush(evidence));
     }
 
@@ -170,11 +172,11 @@ public class EvidenceService {
         Map<Evidence, String> clientKeysByEvidence = new IdentityHashMap<>();
 
         for (EvidenceSubmissionItemRequest item : items) {
-            if (item == null || item.getQuestionId() == null || item.getType() == null) {
-                throw badRequest("questionId and type are required for each evidence item.");
+            if (item == null || item.getPracticeId() == null || item.getType() == null) {
+                throw badRequest("practiceId and type are required for each evidence item.");
             }
 
-            Question question = requireQuestionForModel(item.getQuestionId(), maturityModelId);
+            Practice practice = requirePracticeForModel(item.getPracticeId(), maturityModelId);
             Evidence persisted = null;
             if (item.getEvidenceId() != null) {
                 persisted = existingById.get(item.getEvidenceId());
@@ -184,8 +186,8 @@ public class EvidenceService {
                 if (!retainedIds.add(item.getEvidenceId())) {
                     throw badRequest("Duplicate evidenceId: " + item.getEvidenceId());
                 }
-                if (!persisted.getQuestion().getId().equals(item.getQuestionId())) {
-                    throw badRequest("Persisted evidence cannot be moved to another question.");
+                if (!persisted.getPractice().getId().equals(item.getPracticeId())) {
+                    throw badRequest("Persisted evidence cannot be moved to another practice.");
                 }
                 EvidenceType persistedType = effectiveType(persisted);
                 if (persistedType != item.getType()) {
@@ -203,7 +205,7 @@ public class EvidenceService {
                     synchronizedItem = createFileEntity(
                             replacement,
                             assessment,
-                            question,
+                            practice,
                             user,
                             campaignParticipant,
                             item.getDescription()
@@ -213,7 +215,7 @@ public class EvidenceService {
                     synchronizedItem.setDescription(normalizeOptionalDescription(item.getDescription()));
                     if (replacement != null) {
                         String previousPath = synchronizedItem.getFilePath();
-                        String newPath = storeFileWithRollback(replacement, assessmentId, question.getId());
+                        String newPath = storeFileWithRollback(replacement, assessmentId, practice.getId());
                         synchronizedItem.setFileName(replacement.getOriginalFilename());
                         synchronizedItem.setFilePath(newPath);
                         synchronizedItem.setFileSize(replacement.getSize());
@@ -228,7 +230,7 @@ public class EvidenceService {
                 if (persisted == null) {
                     synchronizedItem = createUrlEntity(
                             assessment,
-                            question,
+                            practice,
                             user,
                             campaignParticipant,
                             item.getDescription(),
@@ -245,11 +247,7 @@ public class EvidenceService {
 
             Evidence saved = evidenceRepository.save(synchronizedItem);
             clientKeysByEvidence.put(saved, item.getClientKey());
-            if (authoritative) {
-                desired.add(saved);
-            } else {
-                desired.add(saved);
-            }
+            desired.add(saved);
         }
 
         if (!referencedFileKeys.equals(filesByKey.keySet())) {
@@ -258,7 +256,7 @@ public class EvidenceService {
             throw badRequest("Uploaded files were not referenced by evidence metadata: " + unused);
         }
 
-        validateItemCounts(desired);
+        validateItemCounts(desired, existingById.keySet());
 
         if (authoritative) {
             for (Evidence evidence : existing) {
@@ -298,9 +296,10 @@ public class EvidenceService {
     }
 
     @Transactional(readOnly = true)
-    public List<EvidenceDTO> getEvidenceByAssessmentAndQuestion(Long assessmentId, Long questionId, User user) {
-        requireViewableAssessment(assessmentId, user);
-        return evidenceRepository.findByAssessmentIdAndQuestionId(assessmentId, questionId).stream()
+    public List<EvidenceDTO> getEvidenceByAssessmentAndPractice(Long assessmentId, Long practiceId, User user) {
+        Assessment assessment = requireViewableAssessment(assessmentId, user);
+        requirePracticeForModel(practiceId, assessment.getMaturityModelId());
+        return evidenceRepository.findByAssessmentIdAndPracticeId(assessmentId, practiceId).stream()
                 .map(this::toDTO)
                 .toList();
     }
@@ -435,17 +434,17 @@ public class EvidenceService {
     private Evidence createFileEntity(
             MultipartFile file,
             Assessment assessment,
-            Question question,
+            Practice practice,
             User user,
             String description
     ) throws IOException {
-        return createFileEntity(file, assessment, question, user, null, description);
+        return createFileEntity(file, assessment, practice, user, null, description);
     }
 
     private Evidence createFileEntity(
             MultipartFile file,
             Assessment assessment,
-            Question question,
+            Practice practice,
             User user,
             CampaignParticipant campaignParticipant,
             String description
@@ -454,11 +453,11 @@ public class EvidenceService {
             throw badRequest("Evidence file is required for FILE evidence.");
         }
         fileStorageService.validateFile(file);
-        String filePath = storeFileWithRollback(file, assessment.getId(), question.getId());
+        String filePath = storeFileWithRollback(file, assessment.getId(), practice.getId());
 
         Evidence evidence = new Evidence();
         evidence.setAssessment(assessment);
-        evidence.setQuestion(question);
+        evidence.setPractice(practice);
         evidence.setEvidenceType(EvidenceType.FILE);
         evidence.setDescription(normalizeOptionalDescription(description));
         evidence.setExternalUrl(null);
@@ -473,17 +472,17 @@ public class EvidenceService {
 
     private Evidence createUrlEntity(
             Assessment assessment,
-            Question question,
+            Practice practice,
             User user,
             String description,
             String url
     ) {
-        return createUrlEntity(assessment, question, user, null, description, url);
+        return createUrlEntity(assessment, practice, user, null, description, url);
     }
 
     private Evidence createUrlEntity(
             Assessment assessment,
-            Question question,
+            Practice practice,
             User user,
             CampaignParticipant campaignParticipant,
             String description,
@@ -491,7 +490,7 @@ public class EvidenceService {
     ) {
         Evidence evidence = new Evidence();
         evidence.setAssessment(assessment);
-        evidence.setQuestion(question);
+        evidence.setPractice(practice);
         evidence.setEvidenceType(EvidenceType.URL);
         evidence.setDescription(normalizeOptionalDescription(description));
         evidence.setExternalUrl(normalizeAndValidateUrl(url));
@@ -505,13 +504,26 @@ public class EvidenceService {
         return evidence;
     }
 
-    private void validateItemCounts(List<Evidence> evidenceItems) {
+    private void requireRoomForEvidence(Long assessmentId, Long practiceId) {
+        if (evidenceRepository.findByAssessmentIdAndPracticeId(assessmentId, practiceId).size()
+                >= MAX_ITEMS_PER_PRACTICE) {
+            throw badRequest("A practice can contain at most five evidence items.");
+        }
+    }
+
+    private void validateItemCounts(List<Evidence> evidenceItems, Set<Long> existingIds) {
         Map<Long, Integer> counts = new HashMap<>();
+        Set<Long> practicesWithNewItems = new HashSet<>();
         for (Evidence evidence : evidenceItems) {
-            Long questionId = evidence.getQuestion().getId();
-            int count = counts.merge(questionId, 1, Integer::sum);
-            if (count > MAX_ITEMS_PER_QUESTION) {
-                throw badRequest("A question can contain at most five evidence items.");
+            Long practiceId = evidence.getPractice().getId();
+            counts.merge(practiceId, 1, Integer::sum);
+            if (!existingIds.contains(evidence.getId())) {
+                practicesWithNewItems.add(practiceId);
+            }
+        }
+        for (Long practiceId : practicesWithNewItems) {
+            if (counts.get(practiceId) > MAX_ITEMS_PER_PRACTICE) {
+                throw badRequest("A practice can contain at most five evidence items.");
             }
         }
     }
@@ -555,19 +567,19 @@ public class EvidenceService {
         return assessment;
     }
 
-    private Question requireQuestionForModel(Long questionId, Long maturityModelId) {
-        Question question = questionRepository.findById(questionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Question not found"));
-        Long questionModelId = question.getPractice() != null
-                && question.getPractice().getModule() != null
-                && question.getPractice().getModule().getDimension() != null
-                && question.getPractice().getModule().getDimension().getMaturityModel() != null
-                ? question.getPractice().getModule().getDimension().getMaturityModel().getId()
+    private Practice requirePracticeForModel(Long practiceId, Long maturityModelId) {
+        Practice practice = practiceRepository.findById(practiceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Practice not found"));
+        Long practiceModelId = practice != null
+                && practice.getModule() != null
+                && practice.getModule().getDimension() != null
+                && practice.getModule().getDimension().getMaturityModel() != null
+                ? practice.getModule().getDimension().getMaturityModel().getId()
                 : null;
-        if (maturityModelId == null || !maturityModelId.equals(questionModelId)) {
-            throw badRequest("Evidence question does not belong to the assessment maturity model.");
+        if (maturityModelId == null || !maturityModelId.equals(practiceModelId)) {
+            throw badRequest("Evidence practice does not belong to the assessment maturity model.");
         }
-        return question;
+        return practice;
     }
 
     private EvidenceType effectiveType(Evidence evidence) {
@@ -584,7 +596,7 @@ public class EvidenceService {
                 .id(evidence.getId())
                 .clientKey(clientKey)
                 .assessmentId(evidence.getAssessment().getId())
-                .questionId(evidence.getQuestion().getId())
+                .practiceId(evidence.getPractice().getId())
                 .description(evidence.getDescription() == null ? "" : evidence.getDescription())
                 .evidenceType(evidenceType)
                 .fileName(evidence.getFileName())
@@ -626,8 +638,8 @@ public class EvidenceService {
         return trimmed;
     }
 
-    private String storeFileWithRollback(MultipartFile file, Long assessmentId, Long questionId) throws IOException {
-        String path = fileStorageService.storeFile(file, assessmentId, questionId);
+    private String storeFileWithRollback(MultipartFile file, Long assessmentId, Long practiceId) throws IOException {
+        String path = fileStorageService.storeFile(file, assessmentId, practiceId);
         registerRollbackDeletion(path);
         return path;
     }

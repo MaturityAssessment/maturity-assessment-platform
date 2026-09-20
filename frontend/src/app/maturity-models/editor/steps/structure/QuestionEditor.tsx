@@ -40,7 +40,6 @@ export default function QuestionEditor({
   onDelete: () => void;
 }) {
   const [expanded, setExpanded] = useState(true);
-  const evidenceOnly = question.type === "evidence";
   const dependencyCandidates = practice.questions.filter(
     (candidate) =>
       candidate.clientKey !== question.clientKey &&
@@ -115,7 +114,7 @@ export default function QuestionEditor({
         >
           <div className="grid gap-4 border-t border-gray-200 bg-white p-4 md:grid-cols-2">
             <label className={`${labelClass} md:col-span-2`}>
-              {evidenceOnly ? "Evidence request" : "Question text"} *
+              Question text *
               <textarea
                 id={`question-${question.clientKey}-text`}
                 rows={2}
@@ -170,20 +169,8 @@ export default function QuestionEditor({
                 <option value="numeric">Numeric</option>
                 <option value="percentage">Percentage</option>
                 <option value="open_answer">Open answer</option>
-                <option value="evidence">Require evidence</option>
               </select>
             </label>
-            {evidenceOnly ? (
-              <div
-                className={`${labelClass} rounded-md border border-indigo-100 bg-indigo-50 p-3`}
-              >
-                Evidence-only item
-                <span className="font-normal leading-5 text-indigo-700">
-                  The respondent can provide files or secure links. This item
-                  does not affect the maturity score.
-                </span>
-              </div>
-            ) : (
               <label className={labelClass}>
                 Weight
                 <input
@@ -200,7 +187,7 @@ export default function QuestionEditor({
                   }
                 />
               </label>
-            )}
+
             <label className={labelClass}>
               Depends on
               <select
@@ -243,7 +230,6 @@ export default function QuestionEditor({
               maxLevel={maxLevel}
               onChange={onChange}
             />
-            {!evidenceOnly && (
               <div className="flex flex-wrap gap-5 md:col-span-2">
                 <label className="flex items-center gap-2 text-sm text-gray-700">
                   <input
@@ -256,35 +242,7 @@ export default function QuestionEditor({
                   />
                   Required answer
                 </label>
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={question.requiresEvidence}
-                    onChange={(event) =>
-                      onChange({
-                        ...question,
-                        requiresEvidence: event.target.checked,
-                      })
-                    }
-                    className="rounded border-gray-300 text-blue-600"
-                  />
-                  Requires evidence
-                </label>
               </div>
-            )}
-            {evidenceOnly && (
-              <label className="flex items-center gap-2 text-sm text-gray-700 md:col-span-2">
-                <input
-                  type="checkbox"
-                  checked={question.required}
-                  onChange={(event) =>
-                    onChange({ ...question, required: event.target.checked })
-                  }
-                  className="rounded border-gray-300 text-blue-600"
-                />
-                Evidence is required
-              </label>
-            )}
           </div>
         </div>
       </div>

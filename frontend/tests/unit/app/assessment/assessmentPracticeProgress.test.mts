@@ -163,9 +163,9 @@ test("required evidence affects completion without changing answered progress", 
     type: "boolean",
     help: "",
     required: true,
-    requiresEvidence: true,
   };
   const step = buildStep([question]);
+  step.practice.requiresEvidence = true;
   const questionField = field(step, question);
   const formData: AssessmentData = {
     [questionField]: 1,
@@ -181,11 +181,11 @@ test("required evidence affects completion without changing answered progress", 
     formData,
     new Map([
       [
-        questionField,
+        `practice_${step.practice.id}_evidence`,
         [
           {
             id: "evidence-link",
-            questionId: question.id!,
+            practiceId: step.practice.id!,
             type: "link",
             description: "",
             file: null,
@@ -202,17 +202,17 @@ test("required evidence affects completion without changing answered progress", 
   assert.equal(withEvidence.isRequiredComplete, true);
 });
 
-test("standalone evidence requests accept either files or links without a response value", () => {
+test("practice evidence accepts files or links before optional questions are answered", () => {
   const question: Question = {
     id: 1,
     weight: 1,
     text: "Provide maintenance regulatory files",
-    type: "evidence",
+    type: "boolean",
     help: "",
-    required: true,
-    requiresEvidence: true,
+    required: false,
   };
   const step = buildStep([question]);
+  step.practice.requiresEvidence = true;
   const questionField = field(step, question);
   const formData: AssessmentData = {};
 
@@ -222,11 +222,11 @@ test("standalone evidence requests accept either files or links without a respon
     formData,
     new Map([
       [
-        questionField,
+        `practice_${step.practice.id}_evidence`,
         [
           {
             id: "evidence-link",
-            questionId: question.id!,
+            practiceId: step.practice.id!,
             type: "link",
             description: "",
             file: null,
@@ -244,11 +244,11 @@ test("standalone evidence requests accept either files or links without a respon
     formData,
     new Map([
       [
-        questionField,
+        `practice_${step.practice.id}_evidence`,
         [
           {
             id: "matching-file",
-            questionId: question.id!,
+            practiceId: step.practice.id!,
             type: "file",
             description: "",
             file,
@@ -262,24 +262,24 @@ test("standalone evidence requests accept either files or links without a respon
 
   assert.equal(missing.answeredCount, 0);
   assert.equal(missing.isRequiredComplete, false);
-  assert.equal(withLink.answeredCount, 1);
+  assert.equal(withLink.answeredCount, 0);
   assert.equal(withLink.isRequiredComplete, true);
-  assert.equal(complete.answeredCount, 1);
+  assert.equal(complete.answeredCount, 0);
   assert.equal(complete.isRequiredComplete, true);
-  assert.equal(complete.isFullyAnswered, true);
+  assert.equal(complete.isFullyAnswered, false);
 });
 
-test("optional standalone evidence does not block required completion", () => {
+test("optional practice evidence does not block required completion", () => {
   const question: Question = {
     id: 1,
     weight: 1,
     text: "Provide optional supporting evidence",
-    type: "evidence",
+    type: "boolean",
     help: "",
     required: false,
-    requiresEvidence: true,
   };
   const step = buildStep([question]);
+  step.practice.requiresEvidence = false;
 
   const progress = getAssessmentPracticeProgress(step, {}, new Map());
 
@@ -350,4 +350,15 @@ test("stale internal route acknowledgements wait for the latest practice target"
     ),
     "scroll-from-route"
   );
+});
+
+test("empty practices need no evidence and dependency cycles are inactive", () => {
+  const empty = buildStep([]);
+  empty.practice.requiresEvidence = true;
+  assert.equal(getAssessmentPracticeProgress(empty, {}, new Map()).isRequiredComplete, true);
+  const parent: Question = { id: 1, text: "Parent", type: "boolean", weight: 1, help: "", dependsOnQuestionId: 2 };
+  const child: Question = { ...parent, id: 2, dependsOnQuestionId: 1 };
+  const hidden = buildStep([parent, child]);
+  hidden.practice.requiresEvidence = true;
+  assert.equal(getAssessmentPracticeProgress(hidden, {}, new Map()).isRequiredComplete, true);
 });

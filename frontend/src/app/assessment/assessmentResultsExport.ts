@@ -64,7 +64,7 @@ export function buildAssessmentResultsExportData(
   const evaluationByQuestionId = new Map(
     evaluations.map((evaluation) => [evaluation.questionId, evaluation])
   );
-  const evidenceByQuestionId = groupEvidenceByQuestionId(
+  const evidenceByPracticeId = groupEvidenceByPracticeId(
     assessment.evidence || []
   );
 
@@ -77,7 +77,7 @@ export function buildAssessmentResultsExportData(
           ? undefined
           : evaluationByQuestionId.get(question.id));
       const evidence =
-        question.id == null ? [] : evidenceByQuestionId.get(question.id) || [];
+        question.id == null ? [] : evidenceByPracticeId.get(step.practice.id!) || [];
 
       return {
         responseKey,
@@ -132,12 +132,12 @@ export function getAssessmentExportFileName(
   return `${baseName}-assessment-${data.assessmentId}-results.${extension}`;
 }
 
-function groupEvidenceByQuestionId(evidenceItems: Evidence[]) {
+function groupEvidenceByPracticeId(evidenceItems: Evidence[]) {
   const grouped = new Map<number, Evidence[]>();
   evidenceItems.forEach((evidence) => {
-    const current = grouped.get(evidence.questionId) || [];
+    const current = grouped.get(evidence.practiceId) || [];
     current.push(evidence);
-    grouped.set(evidence.questionId, current);
+    grouped.set(evidence.practiceId, current);
   });
   return grouped;
 }
@@ -149,7 +149,7 @@ function formatQuestionAnswer(
 ) {
   const value = evaluation?.response;
   if (value === undefined || value === null || value === "") {
-    return evidence.length > 0 ? "Evidence submitted" : "Not answered";
+    return "Not answered";
   }
 
   if (question.type === "boolean") {

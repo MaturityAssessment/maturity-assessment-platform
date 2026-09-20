@@ -65,12 +65,10 @@ export interface Question {
     | "multiple_selection"
     | "numeric"
     | "percentage"
-    | "open_answer"
-    | "evidence";
+    | "open_answer";
   help: string;
   dependsOnQuestionId?: number; // Reference to parent question ID (numeric) within same practice
   dependsOnQuestionCode?: string;
-  requiresEvidence?: boolean; // Whether this question requires evidence upload
   required?: boolean; // Whether this question must be answered
   /** Boolean answer that receives normalized score 1; the other receives 0. */
   booleanCorrectAnswer?: boolean;
@@ -92,7 +90,7 @@ export interface Question {
 export interface Evidence {
   id: number;
   assessmentId: number;
-  questionId: number;
+  practiceId: number;
   /** Ephemeral client identity echoed by draft saves for safe reconciliation. */
   clientKey?: string | null;
   description: string;
@@ -108,7 +106,7 @@ export interface Evidence {
 export interface AssessmentEvidenceInputItem {
   id: string;
   evidenceId?: number;
-  questionId: number;
+  practiceId: number;
   type: "file" | "link";
   description: string;
   file: File | null;
@@ -123,13 +121,14 @@ export interface AssessmentEvidenceMetadataItem {
   evidenceId?: number;
   itemKey?: string;
   clientKey?: string;
-  questionId: number;
+  practiceId: number;
   type: "FILE" | "URL";
   description: string;
   url?: string;
 }
 
 export interface Practice {
+  requiresEvidence?: boolean;
   id?: number; // Numeric database ID (unique identifier)
   moduleId?: number; // FK to parent Module
   code?: string;
@@ -248,7 +247,7 @@ export interface ManualEvaluationRequest {
 
 export interface AgentDocumentSummary {
   evidenceId?: number | null;
-  questionId?: number | null;
+  practiceId?: number | null;
   evidenceType?: string | null;
   fileName?: string | null;
   urlHost?: string | null;
@@ -443,6 +442,7 @@ export interface CampaignAssessmentSession {
 }
 
 export interface PracticeForm {
+  requiresEvidence?: boolean;
   id?: number; // Numeric database ID (unique identifier)
   moduleId?: number; // FK to parent Module
   code?: string;
@@ -498,7 +498,6 @@ export interface ModelEditorQuestion {
   type: ModelEditorQuestionType;
   help: string;
   dependsOnQuestionCode?: string;
-  requiresEvidence: boolean;
   required: boolean;
   booleanCorrectAnswer: boolean;
   choices?: QuestionChoice[];
@@ -512,6 +511,7 @@ export interface ModelEditorQuestion {
 }
 
 export interface ModelEditorPractice {
+  requiresEvidence?: boolean;
   clientKey: string;
   code: string;
   codeLocked?: boolean;

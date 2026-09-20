@@ -92,6 +92,11 @@ export default function PracticeEditor({
           commands.deletePractice(module.clientKey, practice.clientKey);
         }}
       />
+      <label className="my-4 flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={practice.requiresEvidence ?? false}
+          onChange={(event) => update({ ...practice, requiresEvidence: event.target.checked })} />
+        Requires practice evidence
+      </label>
       <div className="grid gap-5 md:grid-cols-2">
         <label className={labelClass}>
           Name *

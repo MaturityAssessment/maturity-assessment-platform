@@ -37,7 +37,7 @@ public class FileStorageService {
         return path;
     }
 
-    public String storeFile(MultipartFile file, Long assessmentId, Long questionId) throws IOException {
+    public String storeFile(MultipartFile file, Long assessmentId, Long practiceId) throws IOException {
         validateFile(file);
 
         // Generate unique filename
@@ -54,17 +54,17 @@ public class FileStorageService {
         // Create unique filename: UUID + sanitized name + extension
         String uniqueFilename = UUID.randomUUID().toString() + "_" + sanitizedFilename + extension;
 
-        // Create directory structure: uploads/evidence/assessmentId/questionId/
+        // Create directory structure: uploads/evidence/assessmentId/practiceId/
         Path assessmentDir = getUploadPath().resolve(String.valueOf(assessmentId));
-        Path questionDir = assessmentDir.resolve(String.valueOf(questionId));
-        Files.createDirectories(questionDir);
+        Path practiceDir = assessmentDir.resolve(String.valueOf(practiceId));
+        Files.createDirectories(practiceDir);
 
         // Store file
-        Path targetLocation = questionDir.resolve(uniqueFilename);
+        Path targetLocation = practiceDir.resolve(uniqueFilename);
         Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
         // Return relative path from upload directory
-        return assessmentId + "/" + questionId + "/" + uniqueFilename;
+        return assessmentId + "/" + practiceId + "/" + uniqueFilename;
     }
 
     public void validateFile(MultipartFile file) {

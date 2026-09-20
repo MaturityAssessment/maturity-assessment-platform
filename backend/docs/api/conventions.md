@@ -81,7 +81,7 @@ See [assessment requests](reference/assessments.md#assessment-request) and
 [evidence metadata](reference/evidence.md#upload-and-retain-evidence).
 
 The current application limits are 50 MiB per evidence file, 250 MiB of uploaded
-file bytes per request, and five evidence items per question. The servlet request
+file bytes per request, and five evidence items per practice. The servlet request
 limit is 251 MiB to allow multipart metadata overhead. Deployments may override
 these values. Files and HTTPS URL evidence are supported.
 

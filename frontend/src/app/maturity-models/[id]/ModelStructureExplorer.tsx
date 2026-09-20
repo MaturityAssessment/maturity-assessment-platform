@@ -61,7 +61,6 @@ export function formatQuestionType(type: Question["type"]): string {
     numeric: "Number",
     percentage: "Percentage",
     open_answer: "Open answer",
-    evidence: "Evidence",
   };
   return labels[type];
 }
@@ -229,11 +228,6 @@ function QuestionRow({
                 Required
               </span>
             )}
-            {question.requiresEvidence && (
-              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                Evidence
-              </span>
-            )}
             {hasCustomWeight(question.weight) && (
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
                 Weight {question.weight}
@@ -299,6 +293,7 @@ function PracticeDisclosure({
               {practice.name}
             </span>
             <span className="flex shrink-0 items-center gap-2 text-xs text-slate-400">
+              {practice.requiresEvidence && <span>Practice evidence required</span>}
               {hasCustomWeight(practice.weight) && (
                 <span>Weight {practice.weight}</span>
               )}

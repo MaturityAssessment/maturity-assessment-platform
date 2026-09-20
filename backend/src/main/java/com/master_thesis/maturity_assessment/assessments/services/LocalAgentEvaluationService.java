@@ -182,7 +182,7 @@ public class LocalAgentEvaluationService {
                     summary.setWarning(mergeWarnings(summary.getWarning(), limitText(limitationText, TextLimits.SHORT_GUIDANCE)));
                 }
             }
-            contexts.add(new EvidenceContext(summary.getQuestionId(), summary, extracted.extractedText()));
+            contexts.add(new EvidenceContext(summary.getPracticeId(), summary, extracted.extractedText()));
         }
         return contexts;
     }
@@ -369,9 +369,9 @@ public class LocalAgentEvaluationService {
             List<Evidence> evidenceItems,
             int maxLevel
     ) {
-        Map<Long, List<Evidence>> evidenceByQuestion = evidenceItems.stream()
-                .filter(item -> item.getQuestion() != null && item.getQuestion().getId() != null)
-                .collect(Collectors.groupingBy(item -> item.getQuestion().getId()));
+        Map<Long, List<Evidence>> evidenceByPractice = evidenceItems.stream()
+                .filter(item -> item.getPractice() != null && item.getPractice().getId() != null)
+                .collect(Collectors.groupingBy(item -> item.getPractice().getId()));
         List<ReviewQuestion> questions = new ArrayList<>();
 
         for (Dimension dimension : safeList(model.getDimensions())) {
@@ -386,8 +386,8 @@ public class LocalAgentEvaluationService {
                         }
                         String responseKey = buildResponseKey(dimension, module, practiceId, question);
                         Object answer = responses.get(responseKey);
-                        List<Evidence> questionEvidence = evidenceByQuestion.getOrDefault(question.getId(), List.of());
-                        boolean reviewable = isAnswered(answer) || !questionEvidence.isEmpty();
+                        List<Evidence> questionEvidence = evidenceByPractice.getOrDefault(practice.getId(), List.of());
+                        boolean reviewable = isAnswered(answer);
                         if (!reviewable) {
                             continue;
                         }
@@ -406,7 +406,7 @@ public class LocalAgentEvaluationService {
                                 question.getRangeMax() == null ? 100 : question.getRangeMax(),
                                 question.getRangeHighValueIsMaximum() == null
                                         || question.getRangeHighValueIsMaximum(),
-                                Boolean.TRUE.equals(question.getRequiresEvidence()),
+                                Boolean.TRUE.equals(practice.getRequiresEvidence()),
                                 "open_answer".equalsIgnoreCase(question.getType()) && isAnswered(answer),
                                 dimension.getDimensionId(),
                                 dimension.getName(),
@@ -487,7 +487,7 @@ public class LocalAgentEvaluationService {
     private Map<String, Object> evidenceSummaryPayload(AgentDocumentSummary summary, String extractedText) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("evidenceId", summary.getEvidenceId());
-        payload.put("questionId", summary.getQuestionId());
+        payload.put("practiceId", summary.getPracticeId());
         payload.put("fileName", summary.getFileName());
         payload.put("extractedText", extractedText);
         return payload;
@@ -519,7 +519,7 @@ public class LocalAgentEvaluationService {
             List<EvidenceContext> evidenceContexts
     ) {
         List<AgentDocumentSummary> summaries = evidenceContexts.stream()
-                .filter(context -> question.questionId().equals(context.questionId()))
+                .filter(context -> question.practiceId().equals(context.practiceId()))
                 .map(EvidenceContext::summary)
                 .toList();
         Map<String, Object> payload = new LinkedHashMap<>();
@@ -543,7 +543,8 @@ public class LocalAgentEvaluationService {
             payload.put("rangeMax", question.rangeMax());
             payload.put("highValueIsMaximum", question.rangeHighValueIsMaximum());
         }
-        payload.put("requiresEvidence", question.requiresEvidence());
+        payload.put("practiceRequiresEvidence", question.requiresEvidence());
+        payload.put("practiceId", question.practiceId());
         payload.put("requiresManualScore", question.requiresManualScore());
         payload.put("answer", question.answer());
         payload.put("choices", question.choices());
@@ -793,7 +794,7 @@ public class LocalAgentEvaluationService {
     }
 
     private record EvidenceContext(
-            Long questionId,
+            Long practiceId,
             AgentDocumentSummary summary,
             String extractedText
     ) {

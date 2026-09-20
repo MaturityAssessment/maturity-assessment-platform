@@ -19,11 +19,11 @@ import {
   createEvidenceClientId,
   isValidEvidenceItem,
   MAX_EVIDENCE_FILE_SIZE,
-  MAX_EVIDENCE_ITEMS_PER_QUESTION,
+  MAX_EVIDENCE_ITEMS_PER_PRACTICE,
 } from "@/app/assessment/assessmentEvidence";
 
 interface EvidenceUploadProps {
-  questionId: number;
+  practiceId: number;
   items: AssessmentEvidenceInputItem[];
   onItemsChange: (items: AssessmentEvidenceInputItem[]) => void;
   required?: boolean;
@@ -32,7 +32,7 @@ interface EvidenceUploadProps {
 }
 
 export default function EvidenceUpload({
-  questionId,
+  practiceId,
   items,
   onItemsChange,
   required = false,
@@ -41,7 +41,7 @@ export default function EvidenceUpload({
 }: EvidenceUploadProps) {
   const addFilesRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
-  const remainingSlots = MAX_EVIDENCE_ITEMS_PER_QUESTION - items.length;
+  const remainingSlots = MAX_EVIDENCE_ITEMS_PER_PRACTICE - items.length;
   const hasRequiredEvidence = items.some(
     (item) =>
       (allowedType === "both" || item.type === allowedType) &&
@@ -78,7 +78,7 @@ export default function EvidenceUpload({
       ...items,
       ...selected.map((file) => ({
         id: createEvidenceClientId(),
-        questionId,
+        practiceId,
         type: "file" as const,
         description: "",
         file,
@@ -97,7 +97,7 @@ export default function EvidenceUpload({
       ...items,
       {
         id: createEvidenceClientId(),
-        questionId,
+        practiceId,
         type: "link",
         description: "",
         file: null,
@@ -350,7 +350,7 @@ export default function EvidenceUpload({
           </Button>
         )}
         <span className="text-xs text-gray-500">
-          {items.length}/{MAX_EVIDENCE_ITEMS_PER_QUESTION} items
+          {items.length}/{MAX_EVIDENCE_ITEMS_PER_PRACTICE} items
         </span>
         </div>
       )}

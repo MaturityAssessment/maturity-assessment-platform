@@ -24,6 +24,7 @@ public class CsvMaturityModelRow {
     private String practiceName;
     private String practiceDescription;
     private String practiceWeight;
+    private String practiceRequiresEvidence;
 
     private String questionWeight;
     private String questionCode;
@@ -31,7 +32,7 @@ public class CsvMaturityModelRow {
     private String questionText;
     private String questionType;
     private String questionHelp;
-    private String questionRequiresEvidence;
+
     private String questionRequired;
     /** JSON array of {"label","score"} when questionType is multiple_choice. */
     private String questionChoices;

@@ -4,6 +4,7 @@ import type { AssessmentData, Question } from "@/api/types";
 import type { AssessmentPracticeStep } from "./AssessmentStep";
 import {
   hasValidEvidenceItems,
+  getPracticeEvidenceField,
 } from "./assessmentEvidence.ts";
 import type { AssessmentEvidenceByField } from "./assessmentEvidence.ts";
 
@@ -14,21 +15,10 @@ export function getFieldName(step: AssessmentPracticeStep, question: Question) {
 }
 
 export function isAnswered(value: unknown) {
-  return value !== undefined && value !== null && value !== "";
+  return value !== undefined && value !== null && (typeof value !== "string" || value.trim() !== "");
 }
 
-export function isEvidenceOnlyQuestion(question: Question) {
-  return question.type === "evidence";
-}
-
-export function isQuestionComplete(
-  question: Question,
-  value: unknown,
-  evidenceItems: Parameters<typeof hasValidEvidenceItems>[0]
-) {
-  if (question.type === "evidence") {
-    return hasValidEvidenceItems(evidenceItems);
-  }
+export function isQuestionComplete(value: unknown) {
   return isAnswered(value);
 }
 
@@ -70,8 +60,11 @@ export function isQuestionResponseValid(question: Question, value: unknown) {
 export function isDependentQuestionDisabled(
   step: AssessmentPracticeStep,
   question: Question,
-  formData: AssessmentData
+  formData: AssessmentData,
+  visiting = new Set<Question>()
 ) {
+  if (visiting.has(question)) return true;
+  visiting.add(question);
   const hasDependency =
     question.dependsOnQuestionId != null ||
     Boolean(question.dependsOnQuestionCode?.trim());
@@ -90,7 +83,7 @@ export function isDependentQuestionDisabled(
         candidate.code?.toLowerCase() ===
         question.dependsOnQuestionCode?.toLowerCase()
     );
-  if (!parentQuestion) return true;
+  if (!parentQuestion || isDependentQuestionDisabled(step, parentQuestion, formData, visiting)) return true;
 
   const parentFieldName = getFieldName(step, parentQuestion);
   return Number(formData[parentFieldName]) !== 1;
@@ -103,13 +96,11 @@ export function isPracticeRequiredComplete(
 ) {
   const enabledQuestions = getEnabledQuestions(step, formData);
 
+  if (enabledQuestions.length > 0 && step.practice.requiresEvidence &&
+      !hasValidEvidenceItems(evidenceFiles.get(getPracticeEvidenceField(step.practice.id)))) return false;
   return enabledQuestions.every((question) => {
     const fieldName = getFieldName(step, question);
-    const complete = isQuestionComplete(
-      question,
-      formData[fieldName],
-      evidenceFiles.get(fieldName)
-    );
+    const complete = isQuestionComplete(formData[fieldName]);
     if (question.required && !complete) {
       return false;
     }
@@ -118,14 +109,6 @@ export function isPracticeRequiredComplete(
       return false;
     }
 
-    if (
-      !isEvidenceOnlyQuestion(question) &&
-      isAnswered(formData[fieldName]) &&
-      question.requiresEvidence &&
-      !hasValidEvidenceItems(evidenceFiles.get(fieldName))
-    ) {
-      return false;
-    }
 
     return true;
   });
@@ -140,15 +123,12 @@ export function isPracticeFullyAnswered(
 
   return (
     enabledQuestions.length > 0 &&
+    isPracticeRequiredComplete(step, formData, evidenceFiles) &&
     enabledQuestions.every((question) => {
       const fieldName = getFieldName(step, question);
 
       if (
-        !isQuestionComplete(
-          question,
-          formData[fieldName],
-          evidenceFiles.get(fieldName)
-        )
+        !isQuestionComplete(formData[fieldName])
       ) {
         return false;
       }
@@ -157,12 +137,6 @@ export function isPracticeFullyAnswered(
         return false;
       }
 
-      if (
-        question.requiresEvidence &&
-        !hasValidEvidenceItems(evidenceFiles.get(fieldName))
-      ) {
-        return false;
-      }
 
       return true;
     })
@@ -188,11 +162,7 @@ export function getAssessmentPracticeProgress(
       const fieldName = getFieldName(step, question);
       return (
         count +
-        (isQuestionComplete(
-          question,
-          formData[fieldName],
-          evidenceFiles.get(fieldName)
-        )
+        (isQuestionComplete(formData[fieldName])
           ? 1
           : 0)
       );
@@ -254,22 +224,6 @@ export function getAssessmentPracticeRouteChangeAction(
     return "await-internal-route";
   }
   return "scroll-from-route";
-}
-
-export function isEnabledEvidenceField(
-  fieldName: string,
-  practiceSteps: AssessmentPracticeStep[],
-  formData: AssessmentData
-) {
-  return practiceSteps.some((step) =>
-    step.practice.questions.some(
-      (question) =>
-        question.id &&
-        (question.requiresEvidence || isEvidenceOnlyQuestion(question)) &&
-        getFieldName(step, question) === fieldName &&
-        !isDependentQuestionDisabled(step, question, formData)
-    )
-  );
 }
 
 export function pruneDisabledQuestionData(

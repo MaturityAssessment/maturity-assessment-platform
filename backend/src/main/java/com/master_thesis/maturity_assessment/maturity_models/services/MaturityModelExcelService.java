@@ -74,10 +74,10 @@ public class MaturityModelExcelService {
             "dimensionId", "moduleCode", "practiceName", "practiceDescription"
     );
     private static final List<String> PRACTICE_OPTIONAL_HEADERS = List.of(
-            "practiceCode", "practiceId", "dimensionName", "moduleName", "practiceWeight"
+            "practiceCode", "practiceId", "dimensionName", "moduleName", "practiceWeight", "practiceRequiresEvidence"
     );
     private static final List<String> PRACTICE_EXPORT_HEADERS = List.of(
-            "dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription"
+            "dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence"
     );
 
     private static final List<String> QUESTION_HEADERS = List.of(
@@ -88,7 +88,7 @@ public class MaturityModelExcelService {
     private static final List<String> QUESTION_OPTIONAL_HEADERS = List.of(
             "practiceCode", "practiceId", "questionCode", "dependsOnQuestionCode",
             "dimensionName", "moduleName", "practiceName",
-            "questionHelp", "questionRequiresEvidence", "questionRequired", "questionRanges",
+            "questionHelp", "questionRequired", "questionRanges",
             "questionLikertScaleMax", "questionScalePointCount", "questionScaleMinLabel",
             "questionScaleMaxLabel", "questionScaleHighPointIsMaximum",
             "questionRangeMin", "questionRangeMax", "questionRangeHighValueIsMaximum"
@@ -101,7 +101,7 @@ public class MaturityModelExcelService {
             Stream.concat(
                     QUESTION_HEADERS.stream().skip(2),
                     Stream.of("questionScalePointCount", "questionScaleMinLabel", "questionScaleMaxLabel",
-                            "questionScaleHighPointIsMaximum", "questionHelp", "questionRequiresEvidence",
+                            "questionScaleHighPointIsMaximum", "questionHelp",
                             "questionRequired", "questionRangeMin", "questionRangeMax",
                             "questionRangeHighValueIsMaximum", "questionRanges"))
     ).toList();
@@ -242,7 +242,7 @@ public class MaturityModelExcelService {
                 m.setQuestionText(q.get("questionText"));
                 m.setQuestionType(q.get("questionType"));
                 m.setQuestionHelp(q.get("questionHelp"));
-                m.setQuestionRequiresEvidence(q.get("questionRequiresEvidence"));
+                m.setPracticeRequiresEvidence(pr.get("practiceRequiresEvidence"));
                 m.setQuestionRequired(q.get("questionRequired"));
                 m.setQuestionChoices(q.get("questionChoices"));
                 m.setQuestionLikertScaleMax(q.get("questionLikertScaleMax"));
@@ -683,6 +683,7 @@ public class MaturityModelExcelService {
                     row.createCell(2).setCellValue(resolvePracticeCode(pr));
                     row.createCell(3).setCellValue(nullToEmpty(pr.getName()));
                     row.createCell(4).setCellValue(nullToEmpty(pr.getDescription()));
+                    row.createCell(5).setCellValue(Boolean.TRUE.equals(pr.getRequiresEvidence()));
                 }
             }
         }
@@ -742,22 +743,21 @@ public class MaturityModelExcelService {
                             row.createCell(12).setCellValue("");
                         }
                         row.createCell(13).setCellValue(nullToEmpty(q.getHelp()));
-                        row.createCell(14).setCellValue(Boolean.TRUE.equals(q.getRequiresEvidence()));
-                        row.createCell(15).setCellValue(Boolean.TRUE.equals(q.getRequired()));
+                        row.createCell(14).setCellValue(Boolean.TRUE.equals(q.getRequired()));
                         boolean rangeQuestion = q.getType() != null
                                 && ("numeric".equalsIgnoreCase(q.getType())
                                 || "percentage".equalsIgnoreCase(q.getType()));
                         if (rangeQuestion) {
-                            row.createCell(16).setCellValue(q.getRangeMin() != null ? q.getRangeMin() : 0);
-                            row.createCell(17).setCellValue(q.getRangeMax() != null ? q.getRangeMax() : 100);
-                            row.createCell(18).setCellValue(q.getRangeHighValueIsMaximum() == null
+                            row.createCell(15).setCellValue(q.getRangeMin() != null ? q.getRangeMin() : 0);
+                            row.createCell(16).setCellValue(q.getRangeMax() != null ? q.getRangeMax() : 100);
+                            row.createCell(17).setCellValue(q.getRangeHighValueIsMaximum() == null
                                     || q.getRangeHighValueIsMaximum());
                         } else {
+                            row.createCell(15).setCellValue("");
                             row.createCell(16).setCellValue("");
                             row.createCell(17).setCellValue("");
-                            row.createCell(18).setCellValue("");
                         }
-                        row.createCell(19).setCellValue("");
+                        row.createCell(18).setCellValue("");
                     }
                 }
             }

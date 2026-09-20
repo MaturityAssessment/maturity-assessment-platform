@@ -205,7 +205,7 @@ test("builds a results export with readable answers and review context", () => {
         {
           id: 8,
           assessmentId: 44,
-          questionId: 101,
+          practiceId: 101,
           description: "Control policy",
           evidenceType: "FILE",
           fileName: "policy.pdf",

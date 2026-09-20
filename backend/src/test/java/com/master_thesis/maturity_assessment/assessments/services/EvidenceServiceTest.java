@@ -15,8 +15,7 @@ import com.master_thesis.maturity_assessment.maturity_models.models.Dimension;
 import com.master_thesis.maturity_assessment.maturity_models.models.MaturityModel;
 import com.master_thesis.maturity_assessment.maturity_models.models.Module;
 import com.master_thesis.maturity_assessment.maturity_models.models.Practice;
-import com.master_thesis.maturity_assessment.maturity_models.models.Question;
-import com.master_thesis.maturity_assessment.maturity_models.repository.QuestionRepository;
+import com.master_thesis.maturity_assessment.maturity_models.repository.PracticeRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,7 +49,7 @@ class EvidenceServiceTest {
 
     private static final long ASSESSMENT_ID = 10L;
     private static final long MODEL_ID = 20L;
-    private static final long QUESTION_ID = 30L;
+    private static final long PRACTICE_ID = 30L;
 
     @Mock
     private EvidenceRepository evidenceRepository;
@@ -59,12 +58,12 @@ class EvidenceServiceTest {
     @Mock
     private AssessmentRepository assessmentRepository;
     @Mock
-    private QuestionRepository questionRepository;
+    private PracticeRepository practiceRepository;
 
     private EvidenceService evidenceService;
     private User owner;
     private Assessment assessment;
-    private Question question;
+    private Practice practice;
 
     @BeforeEach
     void setUp() {
@@ -72,7 +71,7 @@ class EvidenceServiceTest {
                 evidenceRepository,
                 fileStorageService,
                 assessmentRepository,
-                questionRepository
+                practiceRepository
         );
         ReflectionTestUtils.setField(evidenceService, "maxRequestFileSize", 250L * 1024 * 1024);
 
@@ -86,10 +85,10 @@ class EvidenceServiceTest {
         assessment.setMaturityModelId(MODEL_ID);
         assessment.setStatus(AssessmentStatus.DRAFT);
 
-        question = questionForModel();
+        practice = practiceForModel();
 
         when(assessmentRepository.findById(ASSESSMENT_ID)).thenReturn(Optional.of(assessment));
-        lenient().when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
+        lenient().when(practiceRepository.findById(PRACTICE_ID)).thenReturn(Optional.of(practice));
 
         AtomicLong ids = new AtomicLong(100);
         lenient().when(evidenceRepository.save(any(Evidence.class))).thenAnswer(invocation -> {
@@ -149,7 +148,7 @@ class EvidenceServiceTest {
     }
 
     @Test
-    void rejectsSixEvidenceItemsForOneQuestion() {
+    void rejectsSixEvidenceItemsForOnePractice() {
         when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID))
                 .thenReturn(List.of());
         List<EvidenceSubmissionItemRequest> items = java.util.stream.IntStream.range(0, 6)
@@ -271,11 +270,11 @@ class EvidenceServiceTest {
         );
         when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID))
                 .thenReturn(List.of());
-        when(fileStorageService.storeFile(file, ASSESSMENT_ID, QUESTION_ID))
+        when(fileStorageService.storeFile(file, ASSESSMENT_ID, PRACTICE_ID))
                 .thenReturn("10/30/generated_policy.txt");
 
         EvidenceSubmissionItemRequest item = new EvidenceSubmissionItemRequest();
-        item.setQuestionId(QUESTION_ID);
+        item.setPracticeId(PRACTICE_ID);
         item.setType(EvidenceType.FILE);
         item.setItemKey("new-file");
 
@@ -300,7 +299,7 @@ class EvidenceServiceTest {
         Evidence fileEvidence = new Evidence();
         fileEvidence.setId(1L);
         fileEvidence.setAssessment(assessment);
-        fileEvidence.setQuestion(question);
+        fileEvidence.setPractice(practice);
         fileEvidence.setEvidenceType(EvidenceType.FILE);
         fileEvidence.setFilePath("10/30/policy.pdf");
         fileEvidence.setUploadedBy(owner);
@@ -330,10 +329,45 @@ class EvidenceServiceTest {
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
     }
 
+    @Test
+    void preservesMergedLegacyItemsOverTheLimitButRejectsNewItems() throws Exception {
+        List<Evidence> existing = java.util.stream.LongStream.rangeClosed(1, 6)
+                .mapToObj(id -> urlEvidence(id, "https://example.com/" + id)).toList();
+        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(existing);
+        List<EvidenceSubmissionItemRequest> retained = existing.stream()
+                .map(item -> urlItem(item.getId(), "Updated description", item.getExternalUrl())).toList();
+        assertEquals(6, evidenceService.synchronizeEvidence(
+                ASSESSMENT_ID, MODEL_ID, owner, retained, List.of(), List.of(), true).size());
+        var withNew = new java.util.ArrayList<>(retained);
+        withNew.add(urlItem(null, "", "https://example.com/new"));
+        assertThrows(ResponseStatusException.class, () -> evidenceService.synchronizeEvidence(
+                ASSESSMENT_ID, MODEL_ID, owner, withNew, List.of(), List.of(), true));
+    }
+
+    @Test
+    void rejectsPracticeFromAnotherModelVersion() {
+        practice.getModule().getDimension().getMaturityModel().setId(999L);
+        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of());
+        ResponseStatusException error = assertThrows(ResponseStatusException.class,
+                () -> evidenceService.synchronizeEvidence(ASSESSMENT_ID, MODEL_ID, owner,
+                        List.of(urlItem(null, "", "https://example.com")), List.of(), List.of(), true));
+        assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
+        assertEquals("Evidence practice does not belong to the assessment maturity model.", error.getReason());
+    }
+
+    @Test
+    void rejectsLegacyMetadataWithoutPracticeId() {
+        EvidenceSubmissionItemRequest legacy = urlItem(null, "", "https://example.com");
+        legacy.setPracticeId(null);
+        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of());
+        assertThrows(ResponseStatusException.class, () -> evidenceService.synchronizeEvidence(
+                ASSESSMENT_ID, MODEL_ID, owner, List.of(legacy), List.of(), List.of(), true));
+    }
+
     private EvidenceSubmissionItemRequest urlItem(Long evidenceId, String description, String url) {
         EvidenceSubmissionItemRequest item = new EvidenceSubmissionItemRequest();
         item.setEvidenceId(evidenceId);
-        item.setQuestionId(QUESTION_ID);
+        item.setPracticeId(PRACTICE_ID);
         item.setType(EvidenceType.URL);
         item.setDescription(description);
         item.setUrl(url);
@@ -344,7 +378,7 @@ class EvidenceServiceTest {
         Evidence evidence = new Evidence();
         evidence.setId(id);
         evidence.setAssessment(assessment);
-        evidence.setQuestion(question);
+        evidence.setPractice(practice);
         evidence.setEvidenceType(EvidenceType.URL);
         evidence.setExternalUrl(url);
         evidence.setFileName("external-url");
@@ -353,7 +387,7 @@ class EvidenceServiceTest {
         return evidence;
     }
 
-    private Question questionForModel() {
+    private Practice practiceForModel() {
         MaturityModel model = new MaturityModel();
         model.setId(MODEL_ID);
 
@@ -364,11 +398,8 @@ class EvidenceServiceTest {
         module.setDimension(dimension);
 
         Practice practice = new Practice();
+        practice.setId(PRACTICE_ID);
         practice.setModule(module);
-
-        Question modelQuestion = new Question();
-        modelQuestion.setId(QUESTION_ID);
-        modelQuestion.setPractice(practice);
-        return modelQuestion;
+        return practice;
     }
 }

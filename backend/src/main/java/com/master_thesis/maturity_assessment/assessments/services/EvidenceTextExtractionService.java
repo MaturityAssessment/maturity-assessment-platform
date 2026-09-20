@@ -108,8 +108,8 @@ public class EvidenceTextExtractionService {
         AgentDocumentSummary summary = new AgentDocumentSummary();
         if (evidence != null) {
             summary.setEvidenceId(evidence.getId());
-            summary.setQuestionId(
-                    evidence.getQuestion() != null ? evidence.getQuestion().getId() : null
+            summary.setPracticeId(
+                    evidence.getPractice() != null ? evidence.getPractice().getId() : null
             );
             summary.setEvidenceType(
                     evidence.getEvidenceType() != null ? evidence.getEvidenceType().name() : EvidenceType.FILE.name()

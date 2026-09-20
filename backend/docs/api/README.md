@@ -136,7 +136,7 @@ these are one method/path with two controller mappings.
 | Method | Path and reference |
 |---|---|
 | `GET` | [`/api/v1/evidence/assessment/{assessmentId}`](reference/evidence.md#get-apiv1evidenceassessmentassessmentid) |
-| `GET` | [`/api/v1/evidence/assessment/{assessmentId}/question/{questionId}`](reference/evidence.md#get-apiv1evidenceassessmentassessmentidquestionquestionid) |
+| `GET` | [`/api/v1/evidence/assessment/{assessmentId}/practice/{practiceId}`](reference/evidence.md#get-apiv1evidenceassessmentassessmentidpracticepracticeid) |
 | `GET` | [`/api/v1/evidence/{evidenceId}/download`](reference/evidence.md#get-apiv1evidenceevidenceiddownload) |
 | `DELETE` | [`/api/v1/evidence/{evidenceId}`](reference/evidence.md#delete-apiv1evidenceevidenceid) |
 
@@ -145,4 +145,3 @@ these are one method/path with two controller mappings.
 | Method | Path and reference |
 |---|---|
 | `POST` | [`/api/v1/assistant/chat`](reference/assistant.md#post-apiv1assistantchat) |
-

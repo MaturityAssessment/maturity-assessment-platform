@@ -49,11 +49,12 @@ export interface EvaluationQuestion {
   practiceName: string;
   responseValue: unknown;
   initialScore: number | null;
-  evidence: Evidence[];
   requiresManualScore: boolean;
 }
 
 export interface EvaluationPracticeGroup {
+  practiceId?: number;
+  evidence: Evidence[];
   moduleName: string;
   practiceName: string;
   questions: EvaluationQuestion[];

@@ -8,7 +8,6 @@ import {
   getFieldName,
   isAnswered,
   isDependentQuestionDisabled,
-  isEvidenceOnlyQuestion,
 } from "./assessmentFlowUtils.ts";
 
 export function collectQuestionResponses(
@@ -28,7 +27,7 @@ export function collectQuestionResponses(
 
       const fieldName = getFieldName(step, question);
       const value = formData[fieldName];
-      if (isAnswered(value) && !isEvidenceOnlyQuestion(question)) {
+      if (isAnswered(value)) {
         const justification = formData[`${fieldName}_justification`];
         responses[fieldName] = {
           questionId: question.id,

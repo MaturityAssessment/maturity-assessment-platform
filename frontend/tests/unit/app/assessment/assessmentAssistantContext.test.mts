@@ -10,7 +10,6 @@ const question: Question = {
   type: "multiple_choice",
   help: "Consider the documented retention schedule.",
   required: true,
-  requiresEvidence: true,
   choices: [
     { label: "Ad hoc", score: 0 },
     { label: "Documented", score: 1 },

@@ -15,6 +15,8 @@ import type {
 } from "@/api/types";
 import { cn } from "@/lib/utils";
 import type { AssessmentPracticeStep } from "./AssessmentStep";
+import EvidenceUpload from "@/components/EvidenceUpload";
+import { getPracticeEvidenceField } from "./assessmentEvidence";
 import AssessmentQuestionCard from "./AssessmentQuestionCard";
 import type { AssessmentEvidenceByField } from "./assessmentEvidence";
 import {
@@ -210,7 +212,6 @@ export default function AssessmentFeedbackReviewTab({
                 question={item.question}
                 fieldName={item.fieldName}
                 value={formData[item.fieldName]}
-                evidenceItems={evidenceFiles.get(item.fieldName) || []}
                 modelMaxLevel={modelMaxLevel}
                 disabled={isDependentQuestionDisabled(
                   item.step,
@@ -221,8 +222,16 @@ export default function AssessmentFeedbackReviewTab({
                 respondentUpdated={respondentUpdated}
                 onInputChange={onInputChange}
                 onClearAnswer={onClearAnswer}
-                onEvidenceItemsChange={onEvidenceItemsChange}
               />
+              {item.step.practice.id != null && (
+                <div className="mt-3 rounded-lg border bg-white p-4">
+                  <h3 className="mb-2 text-sm font-semibold">Shared practice evidence</h3>
+                  <EvidenceUpload practiceId={item.step.practice.id}
+                    items={evidenceFiles.get(getPracticeEvidenceField(item.step.practice.id)) || []}
+                    onItemsChange={(evidence) => onEvidenceItemsChange(
+                      getPracticeEvidenceField(item.step.practice.id), evidence)} />
+                </div>
+              )}
             </section>
           );
         })}

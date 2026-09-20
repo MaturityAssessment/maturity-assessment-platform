@@ -496,18 +496,11 @@ export function changeQuestionType(
   type: ModelEditorQuestion["type"],
   _maxLevel: number
 ): ModelEditorQuestion {
-  const evidenceOnly = type === "evidence";
-  const wasEvidenceOnly = question.type === "evidence";
   return {
     ...question,
     type,
-    weight: evidenceOnly ? 1 : question.weight || 1,
-    requiresEvidence: evidenceOnly
-      ? true
-      : wasEvidenceOnly
-        ? false
-        : question.requiresEvidence,
-    required: wasEvidenceOnly && !evidenceOnly ? false : question.required,
+    weight: question.weight || 1,
+    required: question.required,
     booleanCorrectAnswer: question.booleanCorrectAnswer ?? true,
     scalePointCount: question.scalePointCount ?? 5,
     scaleMinLabel: question.scaleMinLabel ?? "",

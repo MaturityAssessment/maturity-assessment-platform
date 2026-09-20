@@ -97,11 +97,11 @@ export function buildEvaluationModel(
   maturityModel: MaturityModel | null,
   evidence: Evidence[]
 ): EvaluationModel {
-  const evidenceByQuestion = evidence.reduce<Map<number, Evidence[]>>(
+  const evidenceByPractice = evidence.reduce<Map<number, Evidence[]>>(
     (acc, item) => {
-      const list = acc.get(item.questionId) || [];
+      const list = acc.get(item.practiceId) || [];
       list.push(item);
-      acc.set(item.questionId, list);
+      acc.set(item.practiceId, list);
       return acc;
     },
     new Map<number, Evidence[]>()
@@ -134,10 +134,8 @@ export function buildEvaluationModel(
 
           const savedEvaluation = evaluations[responseKey];
           const responseValue = savedEvaluation?.response;
-          const evidenceItems = evidenceByQuestion.get(question.id) || [];
           const reviewable =
-            isAnswered(responseValue) ||
-            evidenceItems.length > 0;
+            isAnswered(responseValue);
 
           if (!reviewable) continue;
 
@@ -151,7 +149,6 @@ export function buildEvaluationModel(
             practiceName: practice.name || "Practice",
             responseValue,
             initialScore: savedEvaluation?.initialScore ?? null,
-            evidence: evidenceItems,
             requiresManualScore:
               isAnswered(responseValue) && question.type === "open_answer",
           };
@@ -159,8 +156,10 @@ export function buildEvaluationModel(
           questions.push(row);
         }
 
-        if (groupQuestions.length > 0) {
+        if (groupQuestions.length > 0 || (evidenceByPractice.get(practice.id!)?.length ?? 0) > 0) {
           groups.push({
+            practiceId: practice.id,
+            evidence: evidenceByPractice.get(practice.id!) || [],
             moduleName: maturityModule.name || moduleCode || "Module",
             practiceName: practice.name || "Practice",
             questions: groupQuestions,

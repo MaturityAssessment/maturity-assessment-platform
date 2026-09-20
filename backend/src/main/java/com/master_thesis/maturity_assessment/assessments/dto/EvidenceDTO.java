@@ -11,7 +11,7 @@ public class EvidenceDTO {
     private Long id;
     private String clientKey;
     private Long assessmentId;
-    private Long questionId;
+    private Long practiceId;
     private String description;
     private EvidenceType evidenceType;
     private String fileName;

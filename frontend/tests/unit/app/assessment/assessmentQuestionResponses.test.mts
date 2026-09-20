@@ -127,8 +127,8 @@ test("multiple selection validates indexes and formats selected labels", async (
   for (const invalid of [0.5, [0, 0], [-1], [2], [0.5], ["0"]]) {
     assert.equal(isQuestionResponseValid(question, invalid), false);
   }
-  assert.equal(isQuestionComplete(question, [], []), true);
-  assert.equal(isQuestionComplete(question, undefined, []), false);
+  assert.equal(isQuestionComplete([]), true);
+  assert.equal(isQuestionComplete(undefined), false);
   assert.equal(formatQuestionResponseValue(question, [0, 1], []), "Policy; Training");
   assert.equal(formatQuestionResponseValue(question, [], []), "None of the above");
 });

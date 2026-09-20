@@ -7,6 +7,7 @@ import type {
   QuestionEvaluationResponse,
 } from "../../api/types";
 import type { AssessmentPracticeStep } from "./AssessmentStep";
+import { isPracticeRequiredComplete, isDependentQuestionDisabled } from "./assessmentFlowUtils.ts";
 import { isReviewedItemUpdated } from "./assessmentReviewFeedback.ts";
 
 export type DashboardQuestionStatus =
@@ -86,13 +87,8 @@ export function buildAssessmentDashboardSummary(
     const optionalUnansweredCount = questions.filter(
       ({ required, status }) => !required && status === "not-started"
     ).length;
-    const requiredComplete =
-      totalCount > 0 &&
-      questions.every(
-        ({ required, status }) =>
-          status === "completed" ||
-          (!required && status === "not-started")
-      );
+    const requiredComplete = totalCount > 0 && dimensionSteps.every((step) =>
+      isPracticeRequiredComplete(step, formData, evidenceByField));
     const dimensionQuestionIds = new Set(
       dimensionSteps.flatMap((step) =>
         step.practice.questions.flatMap((question) =>
@@ -198,6 +194,7 @@ export function findDimensionEntryPractice(
     );
 
     return (
+      !isPracticeRequiredComplete(step, formData, evidenceByField) ||
       enabledQuestions.length === 0 ||
       enabledQuestions.some(
         (question) =>
@@ -233,42 +230,14 @@ function getDashboardQuestionStatus(
     return "in-progress";
   }
 
-  if (
-    question.requiresEvidence &&
-    !hasValidDashboardEvidence(evidenceByField.get(fieldName))
-  ) {
-    return "in-progress";
-  }
 
   return "completed";
 }
 
 function isDashboardQuestionDisabled(
-  step: AssessmentPracticeStep,
-  question: Question,
-  formData: AssessmentData
+  step: AssessmentPracticeStep, question: Question, formData: AssessmentData
 ) {
-  const hasDependency =
-    question.dependsOnQuestionId != null ||
-    Boolean(question.dependsOnQuestionCode?.trim());
-  if (!hasDependency) return false;
-
-  const parentQuestion =
-    (question.dependsOnQuestionId == null
-      ? undefined
-      : step.practice.questions.find(
-          (candidate) => candidate.id === question.dependsOnQuestionId
-        )) ??
-    step.practice.questions.find(
-      (candidate) =>
-        candidate.code?.toLocaleLowerCase() ===
-        question.dependsOnQuestionCode?.toLocaleLowerCase()
-    );
-
-  if (!parentQuestion) return true;
-
-  const parentFieldName = getDashboardFieldName(step, parentQuestion);
-  return Number(formData[parentFieldName]) !== 1;
+  return isDependentQuestionDisabled(step, question, formData);
 }
 
 function getDashboardFieldName(
@@ -299,24 +268,6 @@ function isDashboardResponseValid(question: Question, value: unknown) {
   );
 }
 
-function hasValidDashboardEvidence(
-  items: AssessmentEvidenceInputItem[] | undefined
-) {
-  return Boolean(
-    items?.some((item) => {
-      if (item.type === "file") {
-        return Boolean(item.file || (item.evidenceId && item.fileName));
-      }
-
-      try {
-        const url = new URL(item.url.trim());
-        return url.protocol === "https:" && Boolean(url.hostname);
-      } catch {
-        return false;
-      }
-    })
-  );
-}
 
 function isPopulated(value: unknown) {
   return value !== undefined && value !== null && value !== "";

@@ -59,9 +59,8 @@ Models use **Dimensions → Modules → Practices → Questions** to organize as
 | Numeric | An integer within configured bounds. |
 | Percentage | An integer percentage within configured bounds. |
 | Open answer | Free text for evaluator review. |
-| Evidence | Supporting evidence for evaluator review. |
 
-Curators configure required answers, evidence requirements, and applicable scoring settings, including answer direction, bounds, option scores, and weights. Questions can depend on a boolean parent in the same practice; dependent questions become applicable when the parent answer is Yes. Validation checks dependencies and public codes.
+Curators configure required question answers, practice evidence requirements, and applicable scoring settings, including answer direction, bounds, option scores, and weights. Questions can depend on a boolean parent in the same practice; dependent questions become applicable when the parent answer is Yes. Validation checks dependencies and public codes.
 
 For Multiple Selection, curators assign non-negative raw values to options, with at least one positive value. Selected values are added and divided by the total available value for normalized scoring. Respondents see the option labels.
 
@@ -91,9 +90,11 @@ See the [assessment workflow](./backend/docs/api/workflows/assessments.md).
 
 Respondents can attach files or HTTPS links to questions and add descriptions. Evidence is saved with the assessment so it can be restored when resuming a draft and inspected during review.
 
-- Up to five evidence items per question.
+- Up to five evidence items per practice.
 - File uploads are limited to 50 MB per file and 250 MB of new uploads per request.
-- Required evidence is checked for applicable answered questions during submission.
+- Required evidence is checked once per active practice during submission, even
+  before any optional question is answered. A practice is active if at least one
+  child question is visible.
 - File contents use configured filesystem storage; assessment data stores their metadata.
 - Campaign respondents access files through invitation-scoped download endpoints.
 

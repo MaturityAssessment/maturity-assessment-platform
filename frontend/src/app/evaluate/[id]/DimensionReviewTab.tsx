@@ -1,5 +1,6 @@
 "use client";
 
+import EvidenceReviewList from "./EvidenceReviewList";
 import QuestionReviewCard from "./QuestionReviewCard";
 import type { MaturityLevel } from "@/api/types";
 import type {
@@ -51,6 +52,10 @@ export default function DimensionReviewTab({
             </h3>
           </div>
 
+          <div className="rounded-lg border bg-white p-4">
+            <h4 className="mb-2 text-sm font-semibold">Practice evidence</h4>
+            <EvidenceReviewList evidence={group.evidence} onDownload={onDownloadEvidence} />
+          </div>
           {group.questions.map((question) => (
             <QuestionReviewCard
               key={question.responseKey}
@@ -63,7 +68,6 @@ export default function DimensionReviewTab({
               maturityLevels={maturityLevels}
               scoreOptions={scoreOptions}
               onChange={onReviewChange}
-              onDownloadEvidence={onDownloadEvidence}
             />
           ))}
         </section>

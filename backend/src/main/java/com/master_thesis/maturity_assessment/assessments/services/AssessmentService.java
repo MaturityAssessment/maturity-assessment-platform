@@ -94,7 +94,6 @@ public class AssessmentService {
         private final List<GatingRule> practiceGatingRules;
         private final List<GatingRule> moduleGatingRules;
         private final List<GatingRule> dimensionGatingRules;
-        private final Boolean requiresEvidence;
         private final Boolean booleanCorrectAnswer;
         /** Non-null for multiple_choice: valid normalized response scores. */
         private final Set<Double> multipleChoiceAllowedScores;
@@ -123,7 +122,6 @@ public class AssessmentService {
                 List<GatingRule> practiceGatingRules,
                 List<GatingRule> moduleGatingRules,
                 List<GatingRule> dimensionGatingRules,
-                Boolean requiresEvidence,
                 Boolean booleanCorrectAnswer,
                 Set<Double> multipleChoiceAllowedScores,
                 int maxLevelNumber,
@@ -150,7 +148,6 @@ public class AssessmentService {
             this.practiceGatingRules = practiceGatingRules;
             this.moduleGatingRules = moduleGatingRules;
             this.dimensionGatingRules = dimensionGatingRules;
-            this.requiresEvidence = requiresEvidence;
             this.booleanCorrectAnswer = booleanCorrectAnswer;
             this.multipleChoiceAllowedScores = multipleChoiceAllowedScores;
             this.maxLevelNumber = maxLevelNumber;
@@ -238,9 +235,6 @@ public class AssessmentService {
             return practiceId;
         }
 
-        public Boolean getRequiresEvidence() {
-            return requiresEvidence;
-        }
 
         public boolean getBooleanCorrectAnswer() {
             return booleanCorrectAnswer == null || booleanCorrectAnswer;
@@ -338,7 +332,6 @@ public class AssessmentService {
                                                 practice.getGatingRules(),
                                                 module.getGatingRules(),
                                                 dimension.getGatingRules(),
-                                                question.getRequiresEvidence(),
                                                 question.getBooleanCorrectAnswer(),
                                                 mcqScores,
                                                 maxLevelNumber,
@@ -1380,7 +1373,7 @@ public class AssessmentService {
             if (!requiredReviewKeys.isEmpty()) {
                 throw new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
-                        "All answered questions and evidence items must be classified before finishing the assessment."
+                        "All answered questions must be classified before finishing the assessment."
                 );
             }
         }
@@ -1608,14 +1601,14 @@ public class AssessmentService {
         if (flaggedRows.isEmpty()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "At least one flagged question or evidence item with a reviewer note is required."
+                    "At least one flagged question with a reviewer note is required."
             );
         }
         if (flaggedRows.stream().anyMatch(row -> row.getReviewerNote() == null
                 || row.getReviewerNote().isBlank())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Every flagged question or evidence item requires a reviewer note before sending it back."
+                    "Every flagged question requires a reviewer note before sending it back."
             );
         }
         flaggedRows.forEach(row -> row.setRespondentUpdated(false));
@@ -1809,7 +1802,7 @@ public class AssessmentService {
             if (requireComplete && status == QuestionEvaluationStatus.FLAGGED) {
                 throw new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
-                        "Flagged questions or evidence items must be resolved or sent back before finishing: "
+                        "Flagged questions must be resolved or sent back before finishing: "
                                 + responseKey
                 );
             }
@@ -1871,27 +1864,23 @@ public class AssessmentService {
             Map<String, Object> responses
     ) {
         Set<String> requiredKeys = new LinkedHashSet<>();
-        Map<Long, String> responseKeyByQuestionId = new HashMap<>();
-        questionMetadata.forEach((responseKey, questionInfo) -> {
-            if (questionInfo.getQuestionId() != null) {
-                responseKeyByQuestionId.put(questionInfo.getQuestionId(), responseKey);
-            }
-        });
 
         responses.forEach((responseKey, value) -> {
             if (questionMetadata.containsKey(responseKey) && isAnswered(value)) {
                 requiredKeys.add(responseKey);
             }
         });
-        for (Evidence item : evidenceRepository.findByAssessmentIdOrderByIdAsc(assessmentId)) {
-            if (item.getQuestion() != null && item.getQuestion().getId() != null) {
-                String responseKey = responseKeyByQuestionId.get(item.getQuestion().getId());
-                if (responseKey != null) {
-                    requiredKeys.add(responseKey);
-                }
+
+        // Historical response keys may differ; the persisted question ID is canonical.
+        Map<Long, String> canonicalKeys = new HashMap<>();
+        questionMetadata.forEach((key, info) -> canonicalKeys.put(info.getQuestionId(), key));
+        for (QuestionEvaluation row : questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(assessmentId)) {
+            String key = canonicalKeys.get(row.getQuestionId());
+            if (key != null && row.getResponse() != null
+                    && isAnswered(objectMapper.convertValue(row.getResponse(), Object.class))) {
+                requiredKeys.add(key);
             }
         }
-
         return requiredKeys;
     }
 
@@ -2375,7 +2364,7 @@ public class AssessmentService {
         if (!isAnswered(responseValue)) {
             return false;
         }
-        return "open_answer".equals(questionInfo.getType()) || Boolean.TRUE.equals(questionInfo.getRequiresEvidence());
+        return "open_answer".equals(questionInfo.getType());
     }
 
     private boolean isAnswered(Object value) {
@@ -2558,7 +2547,6 @@ public class AssessmentService {
                     for (Question question : Optional.ofNullable(practice.getQuestions()).orElse(List.of())) {
                         if (question.getId() == null
                                 || !Boolean.TRUE.equals(question.getRequired())
-                                || isEvidenceOnlyQuestion(question)
                                 || !isQuestionVisible(question, responses)) {
                             continue;
                         }
@@ -2578,16 +2566,10 @@ public class AssessmentService {
         }
     }
 
-    private boolean isQuestionVisible(Question question, Map<String, Object> responses) {
+    boolean isQuestionVisible(Question question, Map<String, Object> responses) {
         return isQuestionVisible(question, responses, new HashSet<>());
     }
 
-    private boolean isEvidenceOnlyQuestion(Question question) {
-        if (question == null || question.getType() == null) {
-            return false;
-        }
-        return "evidence".equalsIgnoreCase(question.getType());
-    }
 
     private boolean isQuestionVisible(
             Question question,

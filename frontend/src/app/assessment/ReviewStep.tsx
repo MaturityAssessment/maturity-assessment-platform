@@ -24,8 +24,9 @@ import {
   getFieldName,
   isAnswered,
   isDependentQuestionDisabled,
-  isEvidenceOnlyQuestion,
 } from "./assessmentFlowUtils";
+import EvidenceUpload from "@/components/EvidenceUpload";
+import { getPracticeEvidenceField } from "./assessmentEvidence";
 import type { AssessmentEvidenceByField } from "./assessmentEvidence";
 
 interface ReviewStepProps {
@@ -126,6 +127,14 @@ export default function ReviewStep({
                             </p>
                           </div>
 
+                          {step.practice.id != null && (
+                            <div className="p-4">
+                              <p className="mb-2 text-sm font-semibold">Practice evidence</p>
+                              <EvidenceUpload practiceId={step.practice.id} readOnly
+                                items={evidenceFiles.get(getPracticeEvidenceField(step.practice.id)) || []}
+                                onItemsChange={() => undefined} />
+                            </div>
+                          )}
                           <div className="divide-y divide-gray-200">
                             {step.practice.questions.length === 0 ? (
                               <p className="px-4 py-3 text-sm text-gray-500">
@@ -213,11 +222,7 @@ function QuestionReviewRow({
   );
   const answer = disabled
     ? "Not applicable"
-    : isEvidenceOnlyQuestion(question)
-      ? evidenceItems.length > 0
-        ? `${evidenceItems.length} evidence item${evidenceItems.length === 1 ? "" : "s"} provided`
-        : "No evidence provided"
-      : formatAnswer(question, formData[fieldName]);
+    : formatAnswer(question, formData[fieldName]);
 
   return (
     <div

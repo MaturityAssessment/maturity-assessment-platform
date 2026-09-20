@@ -6,10 +6,8 @@ import {
   Edit3,
   Flag,
   MessageSquarePlus,
-  Paperclip,
 } from "lucide-react";
 import Tippy from "@tippyjs/react";
-import { Modal } from "@/components";
 import type { MaturityLevel, QuestionEvaluationStatus } from "@/api/types";
 import { TEXT_LIMITS } from "@/config/textLimits";
 import { cn } from "@/lib/utils";
@@ -17,7 +15,6 @@ import {
   formatQuestionResponseValue,
   questionTypeLabel,
 } from "./evaluationModel";
-import EvidenceReviewList from "./EvidenceReviewList";
 import type { EvaluationQuestion, QuestionReviewDraft } from "./types";
 
 interface QuestionReviewCardProps {
@@ -26,7 +23,6 @@ interface QuestionReviewCardProps {
   maturityLevels: MaturityLevel[];
   scoreOptions: Array<{ value: number; label: string }>;
   onChange: (responseKey: string, review: QuestionReviewDraft) => void;
-  onDownloadEvidence: (evidenceId: number, fileName?: string | null) => void;
 }
 
 export default function QuestionReviewCard({
@@ -35,9 +31,7 @@ export default function QuestionReviewCard({
   maturityLevels,
   scoreOptions,
   onChange,
-  onDownloadEvidence,
 }: QuestionReviewCardProps) {
-  const [attachmentsOpen, setAttachmentsOpen] = useState(false);
   const [noteExpanded, setNoteExpanded] = useState(
     Boolean(review.reviewerNote)
   );
@@ -106,17 +100,6 @@ export default function QuestionReviewCard({
 
   return (
     <article className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <Modal
-        isOpen={attachmentsOpen}
-        onClose={() => setAttachmentsOpen(false)}
-        title="Question attachments"
-        maxWidth="2xl"
-      >
-        <EvidenceReviewList
-          evidence={question.evidence}
-          onDownload={onDownloadEvidence}
-        />
-      </Modal>
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
@@ -129,7 +112,6 @@ export default function QuestionReviewCard({
           <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
             <span>{questionLabel}</span>
             <span>{questionTypeLabel(question.question)}</span>
-            {question.question.requiresEvidence && <span>Evidence required</span>}
           </div>
         </div>
 
@@ -160,7 +142,7 @@ export default function QuestionReviewCard({
             <Edit3 className="h-3.5 w-3.5" />
             Adjusted
           </button>
-          <Tippy content="Flag this answer or its evidence for follow-up. A reviewer note is required.">
+          <Tippy content="Flag this answer using the shared practice evidence for follow-up. A reviewer note is required.">
             <button
               type="button"
               onClick={() => toggleStatus("FLAGGED")}
@@ -207,26 +189,6 @@ export default function QuestionReviewCard({
       </section>
 
       <div className="mt-4 flex flex-col gap-3 border-t border-gray-100 pt-4">
-        <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-2 text-gray-600">
-            <Paperclip className="h-4 w-4 shrink-0 text-gray-400" />
-            {question.evidence.length > 0 ? (
-              <span>{question.evidence.length} attachment{question.evidence.length === 1 ? "" : "s"} provided</span>
-            ) : (
-              <span>No attachments provided</span>
-            )}
-          </div>
-          {question.evidence.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setAttachmentsOpen(true)}
-              className="inline-flex h-8 items-center justify-center rounded-md border border-gray-300 bg-white px-3 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              Show attachments
-            </button>
-          )}
-        </div>
-
         <div className="grid gap-4 lg:grid-cols-[minmax(220px,320px)_1fr]">
           {needsScore && (
           <section>

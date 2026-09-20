@@ -3,7 +3,7 @@ package com.master_thesis.maturity_assessment.assessments.services;
 import com.master_thesis.maturity_assessment.assessments.models.Assessment;
 import com.master_thesis.maturity_assessment.assessments.models.Evidence;
 import com.master_thesis.maturity_assessment.assessments.models.EvidenceType;
-import com.master_thesis.maturity_assessment.maturity_models.models.Question;
+import com.master_thesis.maturity_assessment.maturity_models.models.Practice;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -48,9 +48,9 @@ class EvidenceTextExtractionServiceTest {
         evidence.setId(45L);
         evidence.setEvidenceType(EvidenceType.URL);
         evidence.setExternalUrl("https://example.com/path/to/evidence");
-        Question question = new Question();
-        question.setId(1001L);
-        evidence.setQuestion(question);
+        Practice practice = new Practice();
+        practice.setId(1001L);
+        evidence.setPractice(practice);
 
         EvidenceTextExtractionService.ExtractedEvidence extracted = service.extract(evidence);
 
@@ -62,13 +62,13 @@ class EvidenceTextExtractionServiceTest {
     private Evidence fileEvidence() {
         Assessment assessment = new Assessment();
         assessment.setId(23L);
-        Question question = new Question();
-        question.setId(1001L);
+        Practice practice = new Practice();
+        practice.setId(1001L);
 
         Evidence evidence = new Evidence();
         evidence.setId(45L);
         evidence.setAssessment(assessment);
-        evidence.setQuestion(question);
+        evidence.setPractice(practice);
         evidence.setEvidenceType(EvidenceType.FILE);
         evidence.setFileName("example.txt");
         evidence.setFilePath("23/1001/example.txt");

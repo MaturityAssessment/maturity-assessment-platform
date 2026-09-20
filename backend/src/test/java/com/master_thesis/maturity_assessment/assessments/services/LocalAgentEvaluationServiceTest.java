@@ -96,6 +96,29 @@ class LocalAgentEvaluationServiceTest {
     }
 
     @Test
+    void practiceEvidenceIsSharedContextAndDoesNotMakeUnansweredQuestionsReviewable() {
+        MaturityModel model = model(false);
+        Practice practice = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        practice.setRequiresEvidence(true);
+        Question unanswered = new Question();
+        unanswered.setId(1002L);
+        unanswered.setType("boolean");
+        unanswered.setPractice(practice);
+        practice.setQuestions(List.of(practice.getQuestions().getFirst(), unanswered));
+        var evidence = new com.master_thesis.maturity_assessment.assessments.models.Evidence();
+        evidence.setId(90L);
+        evidence.setPractice(practice);
+        List<?> questions = ReflectionTestUtils.invokeMethod(service, "buildReviewQuestions",
+                model, Map.of(RESPONSE_KEY, "Documented process"), List.of(evidence), 5);
+        assertEquals(1, questions.size());
+        Map<?, ?> payload = ReflectionTestUtils.invokeMethod(service, "questionPayload",
+                questions.getFirst(), List.of());
+        assertEquals(practice.getId(), payload.get("practiceId"));
+        assertEquals(true, payload.get("practiceRequiresEvidence"));
+        assertTrue(!payload.containsKey("requiresEvidence"));
+    }
+
+    @Test
     void missingConfigurationStopsBeforeLoadingAssessment() {
         doThrow(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "disabled"))
                 .when(localAgentClient)

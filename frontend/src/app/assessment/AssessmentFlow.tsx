@@ -48,7 +48,6 @@ import {
   getAssessmentPracticeProgress,
   isAnswered,
   isDependentQuestionDisabled,
-  isEvidenceOnlyQuestion,
   isPracticeRequiredComplete,
   pruneDisabledQuestionData,
 } from "./assessmentFlowUtils";
@@ -56,7 +55,7 @@ import {
   AssessmentEvidenceByField,
   buildEvidencePayload,
   hydrateEvidenceByField,
-  removeEvidenceFields,
+  getPracticeEvidenceField,
   validateEvidenceForSave,
 } from "./assessmentEvidence";
 import {
@@ -299,9 +298,6 @@ export default function AssessmentFlow() {
           rendered: false,
           disabled: false,
           required: Boolean(question.required),
-          requiresEvidence:
-            Boolean(question.requiresEvidence) ||
-            isEvidenceOnlyQuestion(question),
           hasGuidance: Boolean(question.help?.trim()),
           canClear: false,
         };
@@ -316,17 +312,12 @@ export default function AssessmentFlow() {
       const validationStatus =
         loadedAssessment?.questionEvaluations?.[fieldName]
           ?.validationStatus;
-      const hasContent =
-        isAnswered(formData[fieldName]) ||
-        (evidenceFiles.get(fieldName)?.length ?? 0) > 0;
+      const hasContent = isAnswered(formData[fieldName]);
 
       return {
         rendered: true,
         disabled,
         required: Boolean(question.required),
-        requiresEvidence:
-          Boolean(question.requiresEvidence) ||
-          isEvidenceOnlyQuestion(question),
         hasGuidance: Boolean(question.help?.trim()),
         canClear:
           hasContent &&
@@ -343,7 +334,6 @@ export default function AssessmentFlow() {
   }, [
     activePracticeStep,
     campaignToken,
-    evidenceFiles,
     formData,
     loadedAssessment?.questionEvaluations,
   ]);
@@ -596,21 +586,17 @@ export default function AssessmentFlow() {
     markReviewedFieldsUpdated(new Set([field, ...removedFields]));
     setFormData(nextFormData);
     setChangeRevision((current) => current + 1);
-    if (removedFields.size > 0) {
-      setEvidenceFiles((previousFiles) =>
-        removeEvidenceFields(previousFiles, removedFields)
-      );
-      setEvidenceRevision((current) => current + 1);
-    }
   };
 
   const handleEvidenceItemsChange = (
     field: string,
     items: AssessmentEvidenceInputItem[]
   ) => {
-    if (acceptedResponseKeys.has(field)) return;
     setReviewError(null);
-    markReviewedFieldsUpdated(new Set([field]));
+    const practiceStep = practiceSteps.find((step) => getPracticeEvidenceField(step.practice.id) === field);
+    markReviewedFieldsUpdated(new Set(practiceStep
+      ? practiceStep.practice.questions.map((question) => getFieldName(practiceStep, question))
+      : [field]));
     setChangeRevision((current) => current + 1);
     setEvidenceRevision((current) => current + 1);
     setEvidenceFiles((prev) => {
@@ -660,9 +646,6 @@ export default function AssessmentFlow() {
     setFormData(nextFormData);
     setChangeRevision((current) => current + 1);
     setEvidenceRevision((current) => current + 1);
-    setEvidenceFiles((previousFiles) =>
-      removeEvidenceFields(previousFiles, removedFields)
-    );
   };
 
   const openPractice = (nextStep: AssessmentPracticeStep) => {
@@ -1520,8 +1503,7 @@ function populatedDependentFieldCount(
   removedFields.forEach((field) => {
     if (
       isAnswered(formData[field]) ||
-      isAnswered(formData[`${field}_justification`]) ||
-      (evidenceFiles.get(field)?.length ?? 0) > 0
+      isAnswered(formData[`${field}_justification`])
     ) {
       count += 1;
     }
@@ -1550,7 +1532,7 @@ function dependencyRemovalConfirmation(
   const affected = count === 1 ? "a dependent question" : `${count} dependent questions`;
   return `This change will disable ${affected} and permanently clear ${
     count === 1 ? "its" : "their"
-  } answer and evidence. Continue?`;
+  } answer. Continue?`;
 }
 
 function getMultipartAuthHeaders() {

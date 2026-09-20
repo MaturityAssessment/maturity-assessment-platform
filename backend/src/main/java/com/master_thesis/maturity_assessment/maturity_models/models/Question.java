@@ -46,9 +46,6 @@ public class Question {
     @JoinColumn(name = "depends_on_question_id")
     private Question dependsOnQuestion;
 
-    @Column(name = "requires_evidence", nullable = false)
-    private Boolean requiresEvidence = false;
-
     @Column(name = "required", nullable = false, columnDefinition = "boolean default false")
     private Boolean required = false;
 

@@ -11,11 +11,11 @@ test("serializes retained links and uploads only local files", () => {
   const file = new File(["evidence"], "control.txt", { type: "text/plain" });
   const evidence = new Map([
     [
-      "D1_M1_10_100",
+      "practice_10_evidence",
       [
         {
           id: "new-file",
-          questionId: 100,
+          practiceId: 10,
           type: "file" as const,
           description: "Control export",
           file,
@@ -27,7 +27,7 @@ test("serializes retained links and uploads only local files", () => {
         {
           id: "saved-link",
           evidenceId: 42,
-          questionId: 100,
+          practiceId: 10,
           type: "link" as const,
           description: "",
           file: null,
@@ -48,7 +48,7 @@ test("serializes retained links and uploads only local files", () => {
   assert.equal(validateEvidenceForSave(evidence), null);
 });
 
-test("hydrates persisted evidence into its question field", () => {
+test("hydrates persisted evidence into its practice field", () => {
   const steps = [
     {
       key: "practice-10",
@@ -75,7 +75,7 @@ test("hydrates persisted evidence into its question field", () => {
       {
         id: 7,
         assessmentId: 3,
-        questionId: 100,
+        practiceId: 10,
         description: "Policy",
         evidenceType: "FILE",
         fileName: "policy.pdf",
@@ -86,7 +86,7 @@ test("hydrates persisted evidence into its question field", () => {
     steps
   );
 
-  const items = hydrated.get("D1_M1_10_100");
+  const items = hydrated.get("practice_10_evidence");
   assert.equal(items?.[0].evidenceId, 7);
   assert.equal(items?.[0].fileName, "policy.pdf");
   assert.equal(hasValidEvidenceItems(items), true);
@@ -95,11 +95,11 @@ test("hydrates persisted evidence into its question field", () => {
 test("rejects insecure links", () => {
   const evidence = new Map([
     [
-      "D1_M1_10_100",
+      "practice_10_evidence",
       [
         {
           id: "link",
-          questionId: 100,
+          practiceId: 10,
           type: "link" as const,
           description: "",
           file: null,
@@ -110,4 +110,14 @@ test("rejects insecure links", () => {
   ]);
 
   assert.match(validateEvidenceForSave(evidence) || "", /https/);
+});
+
+test("retains over-limit migrated evidence but rejects new additions", () => {
+  const items = Array.from({ length: 6 }, (_, index) => ({
+    id: String(index), evidenceId: index + 1, practiceId: 10,
+    type: "link" as const, description: "", file: null, url: "https://example.com/" + index,
+  }));
+  assert.equal(validateEvidenceForSave(new Map([["practice_10_evidence", items]])), null);
+  assert.match(validateEvidenceForSave(new Map([["practice_10_evidence",
+    [...items, { ...items[0], id: "new", evidenceId: undefined }]]]))!, /five evidence items/);
 });

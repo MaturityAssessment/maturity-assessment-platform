@@ -12,7 +12,7 @@ export type AssessmentEvidenceByField = Map<
   AssessmentEvidenceInputItem[]
 >;
 
-export const MAX_EVIDENCE_ITEMS_PER_QUESTION = 5;
+export const MAX_EVIDENCE_ITEMS_PER_PRACTICE = 5;
 export const MAX_EVIDENCE_FILE_SIZE = 50 * 1024 * 1024;
 export const MAX_EVIDENCE_REQUEST_FILE_SIZE = 250 * 1024 * 1024;
 
@@ -57,8 +57,8 @@ export function validateEvidenceForSave(evidence: AssessmentEvidenceByField) {
   let uploadedBytes = 0;
 
   for (const items of evidence.values()) {
-    if (items.length > MAX_EVIDENCE_ITEMS_PER_QUESTION) {
-      return "A question can contain at most five evidence items.";
+    if (items.length > MAX_EVIDENCE_ITEMS_PER_PRACTICE && items.some((item) => !item.evidenceId)) {
+      return "A practice can contain at most five evidence items.";
     }
 
     for (const item of items) {
@@ -96,7 +96,7 @@ export function buildEvidencePayload(evidence: AssessmentEvidenceByField) {
         evidenceId: item.evidenceId,
         itemKey,
         clientKey: item.id,
-        questionId: item.questionId,
+        practiceId: item.practiceId,
         type: item.type === "file" ? "FILE" : "URL",
         description: item.description.trim(),
         ...(item.type === "link" ? { url: item.url.trim() } : {}),
@@ -114,34 +114,30 @@ export function hydrateEvidenceByField(
   persistedEvidence: Evidence[] | null | undefined,
   practiceSteps: AssessmentPracticeStep[]
 ): AssessmentEvidenceByField {
-  const byQuestionId = new Map<
+  const byPracticeId = new Map<
     number,
-    { fieldName: string; questionId: number }
+    { fieldName: string; practiceId: number }
   >();
 
   practiceSteps.forEach((step) => {
-    step.practice.questions.forEach((question) => {
-      if (question.id) {
-        byQuestionId.set(question.id, {
-          fieldName: `${step.dimension.id}_${step.module.code}_${String(
-            step.practice.id || step.practice.name
-          )}_${question.id}`,
-          questionId: question.id,
-        });
-      }
-    });
+    if (step.practice.id != null) {
+      byPracticeId.set(step.practice.id, {
+        fieldName: getPracticeEvidenceField(step.practice.id),
+        practiceId: step.practice.id,
+      });
+    }
   });
 
   const result: AssessmentEvidenceByField = new Map();
   (persistedEvidence || []).forEach((evidence) => {
-    const target = byQuestionId.get(evidence.questionId);
+    const target = byPracticeId.get(evidence.practiceId);
     if (!target) return;
 
     const items = result.get(target.fieldName) || [];
     items.push({
       id: evidence.clientKey || `persisted-evidence-${evidence.id}`,
       evidenceId: evidence.id,
-      questionId: evidence.questionId,
+      practiceId: evidence.practiceId,
       type: evidence.evidenceType === "FILE" ? "file" : "link",
       description: evidence.description || "",
       file: null,
@@ -163,4 +159,8 @@ export function removeEvidenceFields(
   const next = new Map(evidence);
   fields.forEach((field) => next.delete(field));
   return next;
+}
+
+export function getPracticeEvidenceField(practiceId: number | undefined) {
+  return `practice_${practiceId}_evidence`;
 }

@@ -8,7 +8,7 @@ public class EvidenceSubmissionItemRequest {
     private Long evidenceId;
     private String itemKey;
     private String clientKey;
-    private Long questionId;
+    private Long practiceId;
     private EvidenceType type;
     private String description;
     private String url;

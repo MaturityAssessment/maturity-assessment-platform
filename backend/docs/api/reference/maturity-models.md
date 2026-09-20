@@ -174,6 +174,7 @@ This example creates a small model. Replace `domainId` with an existing domain.
       "practices": [{
         "code": "review",
         "name": "Code review",
+        "requiresEvidence": false,
         "weight": 1,
         "aggregationRule": "AVERAGE",
         "gatingRules": [],
@@ -183,7 +184,6 @@ This example creates a small model. Replace `domainId` with an existing domain.
           "type": "boolean",
           "weight": 1,
           "required": true,
-          "requiresEvidence": false,
           "booleanCorrectAnswer": true
         }]
       }]
@@ -255,7 +255,12 @@ rules affect calculated results, not which REST endpoints are available.
 ## Question types
 
 Common question fields are `code`, `weight`, `text`, `type`, `help`,
-`dependsOnQuestionCode`, `required`, and `requiresEvidence`.
+`dependsOnQuestionCode` and `required`.
+
+`requiresEvidence` is a practice field, defaults to `false`, and is preserved
+through model versions and editor read/write. In workbooks, use
+`practiceRequiresEvidence` on the Practices sheet. Legacy question-level flags
+are ignored; evidence-only question types are rejected.
 
 | Type | Authoring settings | Respondent value |
 |---|---|---|
@@ -266,8 +271,7 @@ Common question fields are `code`, `weight`, `text`, `type`, `help`,
 | `open_answer` | Common fields | Text, up to 10,000 characters |
 | `numeric` | Integer `rangeMin` < `rangeMax`, `rangeHighValueIsMaximum` | Integer within inclusive bounds |
 | `percentage` | Same range settings as numeric | Integer within inclusive bounds |
-| `evidence` | Evidence-only; forces `requiresEvidence: true` | Evidence metadata; omit an answer entry |
-
+|
 Multiple Selection uses creator-defined `rawValue` values for cumulative
 scoring. For example, a question can include:
 

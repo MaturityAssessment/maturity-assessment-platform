@@ -31,13 +31,13 @@ public class EvidenceController {
         return ResponseEntity.ok(evidence);
     }
 
-    @GetMapping("/assessment/{assessmentId}/question/{questionId}")
-    public ResponseEntity<List<EvidenceDTO>> getEvidenceByAssessmentAndQuestion(
+    @GetMapping("/assessment/{assessmentId}/practice/{practiceId}")
+    public ResponseEntity<List<EvidenceDTO>> getEvidenceByAssessmentAndPractice(
             @PathVariable Long assessmentId,
-            @PathVariable Long questionId) {
-        List<EvidenceDTO> evidence = evidenceService.getEvidenceByAssessmentAndQuestion(
+            @PathVariable Long practiceId) {
+        List<EvidenceDTO> evidence = evidenceService.getEvidenceByAssessmentAndPractice(
                 assessmentId,
-                questionId,
+                practiceId,
                 getCurrentUser()
         );
         return ResponseEntity.ok(evidence);

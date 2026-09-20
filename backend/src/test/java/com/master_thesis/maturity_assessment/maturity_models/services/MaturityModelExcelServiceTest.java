@@ -56,11 +56,11 @@ class MaturityModelExcelServiceTest {
         QuestionDTO in2 = model.getDimensions().get(0).getModules().get(0).getPractices().get(0).getQuestions().get(1);
         QuestionDTO out1 = questions.get(0);
         QuestionDTO out2 = questions.get(1);
+        assertTrue(parsed.getMaturityModel().getDimensions().getFirst().getModules().getFirst()
+                .getPractices().getFirst().getRequiresEvidence());
         assertEquals(in1.getHelp(), out1.getHelp());
-        assertEquals(in1.getRequiresEvidence(), out1.getRequiresEvidence());
         assertEquals(in1.getRequired(), out1.getRequired());
         assertEquals(in2.getHelp(), out2.getHelp());
-        assertEquals(in2.getRequiresEvidence(), out2.getRequiresEvidence());
         assertEquals(in2.getRequired(), out2.getRequired());
     }
 
@@ -76,12 +76,23 @@ class MaturityModelExcelServiceTest {
                     List.of("dimensionId", "moduleCode", "moduleName", "moduleDescription"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_MODULES), fmt));
             assertEquals(
-                    List.of("dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription"),
+                    List.of("dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_PRACTICES), fmt));
             assertEquals(
                     MaturityModelExcelService.QUESTION_EXPORT_HEADERS,
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_QUESTIONS), fmt));
         }
+    }
+
+    @Test
+    void importRejectsEvidenceOnlyQuestions() throws Exception {
+        MaturityModelDTO model = buildSampleModel();
+        model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst()
+                .getQuestions().getFirst().setType("evidence");
+        CsvUploadResponse parsed = excelService.parseExcelWorkbook(
+                new ByteArrayInputStream(excelService.exportMaturityModelToXlsx(model)));
+        assertFalse(parsed.isSuccess());
+        assertTrue(parsed.getErrorDetails().contains("questionType"), parsed.getErrorDetails());
     }
 
     private static List<String> headerRowValues(Sheet sheet, DataFormatter fmt) {
@@ -175,7 +186,6 @@ class MaturityModelExcelServiceTest {
         mcq.setText("Pick a level");
         mcq.setType("multiple_choice");
         mcq.setHelp("JSON export");
-        mcq.setRequiresEvidence(false);
         mcq.setRequired(false);
         mcq.setChoices(List.of(c1, c2));
 
@@ -233,7 +243,6 @@ class MaturityModelExcelServiceTest {
         mcq.setText("Pick a level");
         mcq.setType("multiple_selection");
         mcq.setHelp("JSON export");
-        mcq.setRequiresEvidence(false);
         mcq.setRequired(false);
         mcq.setChoices(List.of(c1, c2));
 
@@ -429,7 +438,6 @@ class MaturityModelExcelServiceTest {
         question1.setText("Does it work, reliably?");
         question1.setType("LIKERT");
         question1.setHelp("Help text with \"quote\"");
-        question1.setRequiresEvidence(true);
         question1.setRequired(false);
 
         QuestionDTO question2 = new QuestionDTO();
@@ -437,12 +445,12 @@ class MaturityModelExcelServiceTest {
         question2.setText("Provide implementation notes");
         question2.setType("open_answer");
         question2.setHelp("Second help with comma, info");
-        question2.setRequiresEvidence(false);
         question2.setRequired(true);
 
         PracticeDTO practice = new PracticeDTO();
         practice.setId(42L);
         practice.setName("Practice A");
+        practice.setRequiresEvidence(true);
         practice.setDescription("Practice description line1\nline2");
         practice.setWeight(2.0);
         practice.setQuestions(List.of(question1, question2));
@@ -580,7 +588,6 @@ class MaturityModelExcelServiceTest {
         q.setText(text);
         q.setType(type);
         q.setHelp(help);
-        q.setRequiresEvidence(requiresEvidence);
         q.setRequired(required);
         q.setChoices(choices);
         q.setScalePointCount(likertMax != null ? likertMax : 5);

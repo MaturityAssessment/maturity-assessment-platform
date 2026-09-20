@@ -133,7 +133,7 @@ maturity-assessment-platform/
 | MaturityModel and MaturityLevel | Store a versioned model and its maturity scale. |
 | Dimension, Module, Practice, and Question | Define the questionnaire hierarchy and question configuration. |
 | Assessment | Stores responses, lifecycle state, and the reference to an exact model version. |
-| Evidence | Stores supporting file or HTTPS-link metadata for assessment questions. |
+| Evidence | Stores supporting file or HTTPS-link metadata for assessment practices. |
 | QuestionEvaluation | Stores evaluator decisions, scores, and reviewer notes. |
 | DimensionResult | Stores dimension-level assessment results. |
 | Campaign and CampaignParticipant | Connect an organizer, model version, invitations, and participant assessments. |

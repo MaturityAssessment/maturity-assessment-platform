@@ -14,9 +14,9 @@ import com.master_thesis.maturity_assessment.campaigns.models.CampaignParticipan
 import com.master_thesis.maturity_assessment.campaigns.repository.CampaignParticipantRepository;
 import com.master_thesis.maturity_assessment.campaigns.repository.CampaignRepository;
 import com.master_thesis.maturity_assessment.maturity_models.models.MaturityModel;
-import com.master_thesis.maturity_assessment.maturity_models.models.Question;
+import com.master_thesis.maturity_assessment.maturity_models.models.Practice;
 import com.master_thesis.maturity_assessment.maturity_models.repository.MaturityModelRepository;
-import com.master_thesis.maturity_assessment.maturity_models.repository.QuestionRepository;
+import com.master_thesis.maturity_assessment.maturity_models.repository.PracticeRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -62,7 +62,7 @@ class CampaignPersistenceIntegrationTest {
     private MaturityModelRepository maturityModelRepository;
 
     @Autowired
-    private QuestionRepository questionRepository;
+    private PracticeRepository practiceRepository;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -74,11 +74,11 @@ class CampaignPersistenceIntegrationTest {
         Campaign campaign = saveCampaign(owner, model);
         CampaignParticipant participant = saveParticipant(campaign, uniqueEmail(), hash('a'));
         Assessment assessment = saveCampaignAssessment(campaign, participant, model, AssessmentStatus.DRAFT);
-        Question question = saveQuestion();
+        Practice practice = savePractice();
 
         Evidence evidence = new Evidence();
         evidence.setAssessment(assessment);
-        evidence.setQuestion(question);
+        evidence.setPractice(practice);
         evidence.setUploadedByCampaignParticipant(participant);
         Evidence savedEvidence = evidenceRepository.saveAndFlush(evidence);
 
@@ -385,13 +385,13 @@ class CampaignPersistenceIntegrationTest {
                 model,
                 AssessmentStatus.DRAFT
         );
-        Question question = saveQuestion();
+        Practice practice = savePractice();
 
         assertThrows(
                 DataIntegrityViolationException.class,
                 () -> insertEvidence(
                         assessment.getId(),
-                        question.getId(),
+                        practice.getId(),
                         owner.getId(),
                         participant.getId()
                 )
@@ -419,13 +419,13 @@ class CampaignPersistenceIntegrationTest {
                 model,
                 AssessmentStatus.DRAFT
         );
-        Question question = saveQuestion();
+        Practice practice = savePractice();
 
         assertThrows(
                 DataIntegrityViolationException.class,
                 () -> insertEvidence(
                         assessment.getId(),
-                        question.getId(),
+                        practice.getId(),
                         null,
                         otherParticipant.getId()
                 )
@@ -557,12 +557,11 @@ class CampaignPersistenceIntegrationTest {
         return saved;
     }
 
-    private Question saveQuestion() {
-        Question question = new Question();
-        question.setCode("CAMPAIGN_TEST_" + UUID.randomUUID());
-        question.setText("Campaign persistence evidence question");
-        question.setType("open_answer");
-        return questionRepository.saveAndFlush(question);
+    private Practice savePractice() {
+        Practice practice = new Practice();
+        practice.setCode("CAMPAIGN_TEST_" + UUID.randomUUID());
+        practice.setName("Campaign persistence evidence practice");
+        return practiceRepository.saveAndFlush(practice);
     }
 
     private void insertCampaignAssessment(
@@ -596,7 +595,7 @@ class CampaignPersistenceIntegrationTest {
 
     private void insertEvidence(
             Long assessmentId,
-            Long questionId,
+            Long practiceId,
             Long uploadedByUserId,
             Long uploadedByParticipantId
     ) {
@@ -604,7 +603,7 @@ class CampaignPersistenceIntegrationTest {
                 """
                 INSERT INTO evidence (
                     assessment_id,
-                    question_id,
+                    practice_id,
                     evidence_type,
                     uploaded_at,
                     uploaded_by_user_id,
@@ -612,7 +611,7 @@ class CampaignPersistenceIntegrationTest {
                 ) VALUES (?, ?, 'FILE', CURRENT_TIMESTAMP, ?, ?)
                 """,
                 assessmentId,
-                questionId,
+                practiceId,
                 uploadedByUserId,
                 uploadedByParticipantId
         );

@@ -37,8 +37,7 @@ public class CsvParsingService {
             "multiple_choice",
             "multiple_selection",
             "numeric",
-            "percentage",
-            "evidence"
+            "percentage"
     );
 
     private static final int MIN_MATURITY_LEVELS = 2;
@@ -194,7 +193,7 @@ public class CsvParsingService {
         } else {
             String normalizedType = row.getQuestionType().toLowerCase(Locale.ROOT);
             if (!ALLOWED_QUESTION_TYPES.contains(normalizedType)) {
-                errors.add("Row " + lineNumber + ": questionType must be one of boolean, likert, open_answer, multiple_choice, multiple_selection, numeric, percentage, evidence");
+                errors.add("Row " + lineNumber + ": questionType must be one of boolean, likert, open_answer, multiple_choice, multiple_selection, numeric, percentage");
             } else {
                 if ("multiple_selection".equals(normalizedType)) {
                     try {
@@ -449,6 +448,7 @@ public class CsvParsingService {
                 practiceDTO.setName(row.getPracticeName());
                 practiceDTO.setDescription(blankToNull(row.getPracticeDescription()));
                 practiceDTO.setWeight(practiceWeight);
+                practiceDTO.setRequiresEvidence(parseBoolean(row.getPracticeRequiresEvidence(), false));
                 practice = new PracticeAccumulator(practiceDTO);
                 module.practices.put(practiceKey, practice);
             }
@@ -461,9 +461,6 @@ public class CsvParsingService {
             String qType = row.getQuestionType().toLowerCase(Locale.ROOT);
             questionDTO.setType(qType);
             questionDTO.setHelp(blankToNull(row.getQuestionHelp()));
-            boolean evidenceOnly = "evidence".equals(qType);
-            questionDTO.setRequiresEvidence(evidenceOnly
-                    || parseBoolean(row.getQuestionRequiresEvidence(), false));
             questionDTO.setRequired(parseBoolean(row.getQuestionRequired(), false));
             if (("multiple_choice".equals(qType) || "multiple_selection".equals(qType)) && !isBlank(row.getQuestionChoices())) {
                 try {

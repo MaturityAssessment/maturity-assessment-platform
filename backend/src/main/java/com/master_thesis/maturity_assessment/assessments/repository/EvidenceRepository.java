@@ -10,7 +10,7 @@ import java.util.List;
 public interface EvidenceRepository extends JpaRepository<Evidence, Long> {
     List<Evidence> findByAssessmentId(Long assessmentId);
     List<Evidence> findByAssessmentIdOrderByIdAsc(Long assessmentId);
-    List<Evidence> findByAssessmentIdAndQuestionId(Long assessmentId, Long questionId);
+    List<Evidence> findByAssessmentIdAndPracticeId(Long assessmentId, Long practiceId);
 
-    boolean existsByQuestion_Practice_Module_Dimension_MaturityModel_Id(Long maturityModelId);
+    boolean existsByPractice_Practice_Module_Dimension_MaturityModel_Id(Long maturityModelId);
 }

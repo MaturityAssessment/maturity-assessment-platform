@@ -5,11 +5,10 @@ import com.master_thesis.maturity_assessment.assessments.dto.AssessmentResponse;
 import com.master_thesis.maturity_assessment.assessments.dto.EvidenceDTO;
 import com.master_thesis.maturity_assessment.assessments.dto.EvidenceSubmissionItemRequest;
 import com.master_thesis.maturity_assessment.assessments.dto.QuestionResponseRequest;
-import com.master_thesis.maturity_assessment.assessments.models.EvidenceType;
 import com.master_thesis.maturity_assessment.auth.models.User;
 import com.master_thesis.maturity_assessment.campaigns.models.CampaignParticipant;
 import com.master_thesis.maturity_assessment.maturity_models.models.MaturityModel;
-import com.master_thesis.maturity_assessment.maturity_models.models.Question;
+import com.master_thesis.maturity_assessment.maturity_models.models.Practice;
 import com.master_thesis.maturity_assessment.maturity_models.repository.MaturityModelRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,10 +18,10 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -58,9 +57,6 @@ public class AssessmentEvidenceWorkflowService {
                 evidenceFileKeys,
                 metadataProvided
         );
-        if (metadataProvided) {
-            validateEvidencePlacement(request, synchronizedEvidence);
-        }
         response.setEvidence(synchronizedEvidence);
         return response;
     }
@@ -84,7 +80,6 @@ public class AssessmentEvidenceWorkflowService {
                 evidenceFileKeys,
                 true
         );
-        validateEvidencePlacement(request, synchronizedEvidence);
         response.setEvidence(synchronizedEvidence);
         return response;
     }
@@ -116,9 +111,6 @@ public class AssessmentEvidenceWorkflowService {
                 evidenceFileKeys,
                 metadataProvided
         );
-        if (metadataProvided) {
-            validateEvidencePlacement(request, synchronizedEvidence);
-        }
         validateRequiredEvidence(request, synchronizedEvidence);
         response.setEvidence(synchronizedEvidence);
         return response;
@@ -143,7 +135,6 @@ public class AssessmentEvidenceWorkflowService {
                 evidenceFileKeys,
                 true
         );
-        validateEvidencePlacement(request, synchronizedEvidence);
         validateRequiredEvidence(request, synchronizedEvidence);
         response.setEvidence(synchronizedEvidence);
         return response;
@@ -167,7 +158,6 @@ public class AssessmentEvidenceWorkflowService {
                 evidenceFileKeys,
                 true
         );
-        validateEvidencePlacement(request, synchronizedEvidence);
         response.setEvidence(synchronizedEvidence);
         return response;
     }
@@ -193,7 +183,6 @@ public class AssessmentEvidenceWorkflowService {
                 evidenceFileKeys,
                 true
         );
-        validateEvidencePlacement(request, synchronizedEvidence);
         validateRequiredEvidence(request, synchronizedEvidence);
         response.setEvidence(synchronizedEvidence);
         return response;
@@ -216,7 +205,7 @@ public class AssessmentEvidenceWorkflowService {
     ) throws IOException {
         List<EvidenceSubmissionItemRequest> normalizedMetadata = metadataProvided
                 ? metadata
-                : legacyFileMetadata(evidenceFiles, evidenceFileKeys);
+                : requireNoLegacyFiles(evidenceFiles, evidenceFileKeys);
         return evidenceService.synchronizeEvidence(
                 response.getId(),
                 request.getMaturityModelId(),
@@ -228,76 +217,32 @@ public class AssessmentEvidenceWorkflowService {
         );
     }
 
-    private List<EvidenceSubmissionItemRequest> legacyFileMetadata(
-            List<MultipartFile> evidenceFiles,
-            List<String> evidenceFileKeys
+    private List<EvidenceSubmissionItemRequest> requireNoLegacyFiles(
+            List<MultipartFile> files, List<String> keys
     ) {
-        List<MultipartFile> files = evidenceFiles == null ? List.of() : evidenceFiles;
-        List<String> keys = evidenceFileKeys == null ? List.of() : evidenceFileKeys;
-        if (files.isEmpty() && keys.isEmpty()) {
-            return List.of();
+        if ((files != null && !files.isEmpty()) || (keys != null && !keys.isEmpty())) {
+            throw badRequest("Evidence uploads require metadata with practiceId.");
         }
-        if (files.size() != keys.size()) {
-            throw badRequest("Each uploaded evidence file must have exactly one evidenceFileKey.");
-        }
-
-        List<EvidenceSubmissionItemRequest> items = new ArrayList<>();
-        for (String key : keys) {
-            Long questionId = parseQuestionIdFromLegacyKey(key);
-            if (questionId == null) {
-                throw badRequest("Invalid legacy evidenceFileKey: " + key);
-            }
-            EvidenceSubmissionItemRequest item = new EvidenceSubmissionItemRequest();
-            item.setItemKey(key);
-            item.setQuestionId(questionId);
-            item.setType(EvidenceType.FILE);
-            items.add(item);
-        }
-        return items;
-    }
-
-    private void validateEvidencePlacement(AssessmentRequest request, List<EvidenceDTO> evidence) {
-        MaturityModel model = requireModel(request.getMaturityModelId());
-        Map<String, Object> responses = responseValues(request);
-        Set<Long> evidenceQuestionIds = evidence.stream()
-                .map(EvidenceDTO::getQuestionId)
-                .collect(java.util.stream.Collectors.toSet());
-
-        for (Question question : allQuestions(model)) {
-            if (!evidenceQuestionIds.contains(question.getId())) {
-                continue;
-            }
-            if (!isQuestionVisible(question, responses)
-                    || (!isEvidenceOnlyQuestion(question) && !isQuestionAnswered(question, responses))) {
-                throw badRequest("Evidence can only be attached to an answered, visible question: " + question.getId());
-            }
-        }
+        return List.of();
     }
 
     private void validateRequiredEvidence(AssessmentRequest request, List<EvidenceDTO> evidence) {
         MaturityModel model = requireModel(request.getMaturityModelId());
         Map<String, Object> responses = responseValues(request);
-        Set<Long> evidenceQuestionIds = evidence.stream()
-                .map(EvidenceDTO::getQuestionId)
+        Set<Long> practiceIds = evidence.stream().map(EvidenceDTO::getPracticeId)
                 .collect(java.util.stream.Collectors.toSet());
-
-        for (Question question : allQuestions(model)) {
-            boolean evidenceOnly = isEvidenceOnlyQuestion(question);
-            if (!isQuestionVisible(question, responses)
-                    || (evidenceOnly && !Boolean.TRUE.equals(question.getRequired()))
-                    || (!evidenceOnly && (!Boolean.TRUE.equals(question.getRequiresEvidence())
-                    || !isQuestionAnswered(question, responses)))) {
-                continue;
-            }
-            if (!evidenceQuestionIds.contains(question.getId())) {
-                throw badRequest("Missing required evidence for questionId: " + question.getId());
+        for (var dimension : Optional.ofNullable(model.getDimensions()).orElse(List.of())) {
+            for (var module : Optional.ofNullable(dimension.getModules()).orElse(List.of())) {
+                for (Practice practice : Optional.ofNullable(module.getPractices()).orElse(List.of())) {
+                    boolean active = practice.getQuestions() != null && practice.getQuestions().stream()
+                            .anyMatch(question -> assessmentService.isQuestionVisible(question, responses));
+                    if (active && Boolean.TRUE.equals(practice.getRequiresEvidence())
+                            && !practiceIds.contains(practice.getId())) {
+                        throw badRequest("Missing required evidence for practiceId: " + practice.getId());
+                    }
+                }
             }
         }
-    }
-
-    private boolean isEvidenceOnlyQuestion(Question question) {
-        return question != null && question.getType() != null
-                && "evidence".equalsIgnoreCase(question.getType());
     }
 
     private MaturityModel requireModel(Long maturityModelId) {
@@ -306,83 +251,6 @@ public class AssessmentEvidenceWorkflowService {
         }
         return maturityModelRepository.findById(maturityModelId)
                 .orElseThrow(() -> badRequest("Maturity model not found."));
-    }
-
-    private List<Question> allQuestions(MaturityModel model) {
-        List<Question> questions = new ArrayList<>();
-        if (model.getDimensions() == null) {
-            return questions;
-        }
-        model.getDimensions().forEach(dimension -> {
-            if (dimension.getModules() == null) {
-                return;
-            }
-            dimension.getModules().forEach(module -> {
-                if (module.getPractices() == null) {
-                    return;
-                }
-                module.getPractices().forEach(practice -> {
-                    if (practice.getQuestions() != null) {
-                        questions.addAll(practice.getQuestions());
-                    }
-                });
-            });
-        });
-        return questions;
-    }
-
-    private Long parseQuestionIdFromLegacyKey(String questionKey) {
-        if (questionKey == null || questionKey.isBlank()) {
-            return null;
-        }
-        String[] parts = questionKey.split("_");
-        try {
-            return Long.parseLong(parts[parts.length - 1]);
-        } catch (NumberFormatException ex) {
-            return null;
-        }
-    }
-
-    private boolean isQuestionAnswered(Question question, Map<String, Object> responses) {
-        if (question.getId() == null) {
-            return false;
-        }
-        String suffix = "_" + question.getId();
-        for (Map.Entry<String, Object> entry : responses.entrySet()) {
-            String key = entry.getKey();
-            if (key != null && !key.endsWith("_justification") && key.endsWith(suffix)) {
-                return isAnswered(entry.getValue());
-            }
-        }
-        return false;
-    }
-
-    private boolean isQuestionVisible(Question question, Map<String, Object> responses) {
-        Question parent = question.getDependsOnQuestion();
-        if (parent == null || parent.getId() == null) {
-            return true;
-        }
-        String suffix = "_" + parent.getId();
-        for (Map.Entry<String, Object> entry : responses.entrySet()) {
-            if (entry.getKey() == null || !entry.getKey().endsWith(suffix)) {
-                continue;
-            }
-            Object value = entry.getValue();
-            if (value instanceof Number && ((Number) value).intValue() == 1) {
-                return true;
-            }
-            if (value instanceof String raw) {
-                String normalized = raw.trim();
-                return "1".equals(normalized)
-                        || "true".equalsIgnoreCase(normalized)
-                        || "yes".equalsIgnoreCase(normalized);
-            }
-        }
-        return false;
-    }
-
-    private boolean isAnswered(Object value) {
-        return value != null && (!(value instanceof String) || !((String) value).trim().isEmpty());
     }
 
     private Map<String, Object> responseValues(AssessmentRequest request) {
