@@ -220,6 +220,64 @@ class MaturityModelExcelServiceTest {
     }
 
     @Test
+    void exportThenImport_multipleSelection_roundTrips() throws Exception {
+        QuestionChoiceDTO c1 = new QuestionChoiceDTO();
+        c1.setLabel("Low");
+        c1.setRawValue(2.0);
+        QuestionChoiceDTO c2 = new QuestionChoiceDTO();
+        c2.setLabel("High");
+        c2.setRawValue(8.0);
+
+        QuestionDTO mcq = new QuestionDTO();
+        mcq.setWeight(1.0);
+        mcq.setText("Pick a level");
+        mcq.setType("multiple_selection");
+        mcq.setHelp("JSON export");
+        mcq.setRequiresEvidence(false);
+        mcq.setRequired(false);
+        mcq.setChoices(List.of(c1, c2));
+
+        PracticeDTO practice = new PracticeDTO();
+        practice.setId(1L);
+        practice.setName("P");
+        practice.setWeight(1.0);
+        practice.setQuestions(List.of(mcq));
+
+        ModuleDTO module = new ModuleDTO();
+        module.setCode("M1");
+        module.setName("Mod");
+        module.setWeight(1.0);
+        module.setPractices(List.of(practice));
+
+        DimensionDTO dimension = new DimensionDTO();
+        dimension.setId("d1");
+        dimension.setName("Dim");
+        dimension.setDescription("D");
+        dimension.setModules(List.of(module));
+
+        MaturityModelDTO model = new MaturityModelDTO();
+        model.setName("MCQ model");
+        model.setDescription("desc");
+        model.setIsActive(true);
+        model.setAutoEvaluated(true);
+        model.setLevels(sampleFiveLevels());
+        model.setDimensions(List.of(dimension));
+
+        byte[] xlsx = excelService.exportMaturityModelToXlsx(model);
+        CsvUploadResponse parsed = excelService.parseExcelWorkbook(new ByteArrayInputStream(xlsx));
+        assertTrue(parsed.isSuccess(), parsed.getErrorDetails());
+        assertFalse(Boolean.TRUE.equals(parsed.getMaturityModel().getIsActive()));
+        QuestionDTO out = parsed.getMaturityModel().getDimensions().get(0).getModules().get(0).getPractices().get(0).getQuestions().get(0);
+        assertEquals("multiple_selection", out.getType());
+        assertNotNull(out.getChoices());
+        assertEquals(2, out.getChoices().size());
+        assertEquals("Low", out.getChoices().get(0).getLabel());
+        assertEquals(2.0, out.getChoices().get(0).getRawValue());
+        assertEquals("High", out.getChoices().get(1).getLabel());
+        assertEquals(8.0, out.getChoices().get(1).getRawValue());
+    }
+
+    @Test
     void import_withLegacyOptionalModuleColumn_succeeds() throws Exception {
         MaturityModelDTO model = buildSampleModel();
         model.setLevels(sampleFiveLevels());

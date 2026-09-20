@@ -51,6 +51,10 @@ export default function QuestionReviewCard({
   const isBoolean = question.question.type === "boolean";
   const isScale = question.question.type === "likert";
   const isMultipleChoice = question.question.type === "multiple_choice";
+  const isMultipleSelection = question.question.type === "multiple_selection";
+  const usesNormalizedInput = isMultipleSelection ||
+    question.question.type === "numeric" ||
+    question.question.type === "percentage";
   const isRangeQuestion =
     question.question.type === "numeric" ||
     question.question.type === "percentage";
@@ -193,6 +197,8 @@ export default function QuestionReviewCard({
                 ? "Initial automated result calculated from the scale response"
               : isMultipleChoice
                 ? "Initial automated result calculated from the selected option"
+              : isMultipleSelection
+                ? `Initial cumulative result: ${question.initialScore}`
               : isRangeQuestion
                 ? "Initial automated result calculated from the numeric response"
               : `Initial automated score: ${question.initialScore}`
@@ -235,7 +241,7 @@ export default function QuestionReviewCard({
                     ? "Manual scale point"
                     : isMultipleChoice
                       ? "Manual option"
-                    : isRangeQuestion
+                    : usesNormalizedInput
                       ? "Manual normalized score"
                     : "Manual score"}
               </label>
@@ -243,7 +249,7 @@ export default function QuestionReviewCard({
                 Required
               </span>
             </div>
-            {isRangeQuestion ? (
+            {usesNormalizedInput ? (
               <input
                 id={`score-${question.responseKey}`}
                 type="number"

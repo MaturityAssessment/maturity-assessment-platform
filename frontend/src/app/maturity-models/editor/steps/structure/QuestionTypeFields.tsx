@@ -120,7 +120,8 @@ export default function QuestionTypeFields({
     );
   }
 
-  if (question.type === "multiple_choice") {
+  if (question.type === "multiple_choice" || question.type === "multiple_selection") {
+    const multipleSelection = question.type === "multiple_selection";
     return (
       <div className="md:col-span-2">
         <div className="mb-2 flex items-center justify-between">
@@ -134,6 +135,7 @@ export default function QuestionTypeFields({
                 {
                   label: "",
                   score: 0,
+                  rawValue: 0,
                 },
               ])
             }
@@ -145,7 +147,7 @@ export default function QuestionTypeFields({
         <div className="space-y-2">
           <div className="grid grid-cols-[1fr_7rem_auto] gap-2 px-1 text-xs font-medium text-gray-500">
             <span>Option label</span>
-            <span>Score (0–1)</span>
+            <span>{multipleSelection ? "Raw value" : "Score (0–1)"}</span>
             <span className="w-8" aria-hidden="true" />
           </div>
           {(question.choices ?? []).map((choice, choiceIndex) => (
@@ -172,16 +174,16 @@ export default function QuestionTypeFields({
               <input
                 type="number"
                 min={0}
-                max={1}
-                step="0.01"
-                aria-label={`Option ${choiceIndex + 1} normalized score`}
+                max={multipleSelection ? undefined : 1}
+                step={multipleSelection ? "any" : "0.01"}
+                aria-label={`Option ${choiceIndex + 1} ${multipleSelection ? "raw value" : "normalized score"}`}
                 className={inputClass.replace("mt-1 ", "")}
-                value={choice.score}
+                value={multipleSelection ? (Number.isFinite(choice.rawValue) ? choice.rawValue : "") : (Number.isFinite(choice.score) ? choice.score : "")}
                 onChange={(event) =>
                   setChoices(
                     (question.choices ?? []).map((item, index) =>
                       index === choiceIndex
-                        ? { ...item, score: Number(event.target.value) }
+                        ? { ...item, [multipleSelection ? "rawValue" : "score"]: event.target.value === "" ? NaN : Number(event.target.value) }
                         : item
                     )
                   )
@@ -205,8 +207,9 @@ export default function QuestionTypeFields({
           ))}
         </div>
         <p className="mt-2 text-xs text-gray-500">
-          Scores are internal values from 0 to 1. Respondents only see the
-          option labels.
+          {multipleSelection
+            ? "Selected raw values are added and divided by the total of all option values. Use non-negative values with at least one positive value. Respondents only see option labels."
+            : "Scores are internal values from 0 to 1. Respondents only see the option labels."}
         </p>
       </div>
     );

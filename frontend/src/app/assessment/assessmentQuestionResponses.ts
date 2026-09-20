@@ -33,7 +33,7 @@ export function collectQuestionResponses(
         responses[fieldName] = {
           questionId: question.id,
           response:
-            question.type === "open_answer"
+            question.type === "open_answer" || question.type === "multiple_selection"
               ? value
               : Number(value) || 0,
           ...(isAnswered(justification)

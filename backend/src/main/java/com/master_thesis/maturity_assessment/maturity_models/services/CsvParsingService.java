@@ -35,6 +35,7 @@ public class CsvParsingService {
             "likert",
             "open_answer",
             "multiple_choice",
+            "multiple_selection",
             "numeric",
             "percentage",
             "evidence"
@@ -193,9 +194,16 @@ public class CsvParsingService {
         } else {
             String normalizedType = row.getQuestionType().toLowerCase(Locale.ROOT);
             if (!ALLOWED_QUESTION_TYPES.contains(normalizedType)) {
-                errors.add("Row " + lineNumber + ": questionType must be one of boolean, likert, open_answer, multiple_choice, numeric, percentage, evidence");
+                errors.add("Row " + lineNumber + ": questionType must be one of boolean, likert, open_answer, multiple_choice, multiple_selection, numeric, percentage, evidence");
             } else {
-                if ("multiple_choice".equals(normalizedType)) {
+                if ("multiple_selection".equals(normalizedType)) {
+                    try {
+                        MultipleSelectionScoring.validateOptions(objectMapper.readValue(
+                                row.getQuestionChoices(), new TypeReference<List<QuestionChoiceDTO>>() {}));
+                    } catch (Exception e) {
+                        errors.add("Row " + lineNumber + ": invalid Multiple Selection options: " + e.getMessage());
+                    }
+                } else if ("multiple_choice".equals(normalizedType)) {
                     validateQuestionChoicesForRow(row.getQuestionChoices(), lineNumber, errors);
                 } else if ("numeric".equals(normalizedType) || "percentage".equals(normalizedType)) {
                     boolean hasBoundedRange = !isBlank(row.getQuestionRangeMin())
@@ -230,7 +238,7 @@ public class CsvParsingService {
                                 + ": questionScaleHighPointIsMaximum must be true or false");
                     }
                 } else if (!isBlank(row.getQuestionChoices())) {
-                    errors.add("Row " + lineNumber + ": questionChoices must be empty unless questionType is multiple_choice");
+                    errors.add("Row " + lineNumber + ": questionChoices must be empty unless questionType is multiple_choice or multiple_selection");
                 }
                 if (!"likert".equals(normalizedType)
                         && (!isBlank(row.getQuestionLikertScaleMax())
@@ -457,7 +465,7 @@ public class CsvParsingService {
             questionDTO.setRequiresEvidence(evidenceOnly
                     || parseBoolean(row.getQuestionRequiresEvidence(), false));
             questionDTO.setRequired(parseBoolean(row.getQuestionRequired(), false));
-            if ("multiple_choice".equals(qType) && !isBlank(row.getQuestionChoices())) {
+            if (("multiple_choice".equals(qType) || "multiple_selection".equals(qType)) && !isBlank(row.getQuestionChoices())) {
                 try {
                     questionDTO.setChoices(objectMapper.readValue(
                             row.getQuestionChoices().trim(),

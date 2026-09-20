@@ -57,6 +57,7 @@ export function formatQuestionType(type: Question["type"]): string {
     boolean: "Yes / No",
     likert: "Scale",
     multiple_choice: "Multiple choice",
+    multiple_selection: "Multiple Selection",
     numeric: "Number",
     percentage: "Percentage",
     open_answer: "Open answer",

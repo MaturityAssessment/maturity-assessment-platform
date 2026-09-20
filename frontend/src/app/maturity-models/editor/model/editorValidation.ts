@@ -328,8 +328,13 @@ export function validateDocument(
             });
           }
           if (
-            question.type === "multiple_choice" &&
-            choiceIssues(question.choices)
+            (question.type === "multiple_choice" && choiceIssues(question.choices)) ||
+            (question.type === "multiple_selection" && (
+              !question.choices?.length || question.choices.length > 100 ||
+              question.choices.some((choice) => !choice.label.trim() || !Number.isFinite(choice.rawValue) || (choice.rawValue ?? -1) < 0) ||
+              !Number.isFinite(question.choices.reduce((sum, choice) => sum + (choice.rawValue ?? 0), 0)) ||
+              question.choices.reduce((sum, choice) => sum + (choice.rawValue ?? 0), 0) <= 0
+            ))
           ) {
             add({
               step: "structure",

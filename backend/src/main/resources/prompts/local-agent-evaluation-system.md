@@ -33,3 +33,5 @@ Maturity score rules:
 - Scores for all other question types are integers from 1 to the provided `maxLevel`.
 - Use the maturity level descriptions when available.
 - If evidence is absent or only metadata is available, lower confidence and flag when the claim depends on the missing content.
+
+- Multiple Selection responses are arrays of zero-based option indexes. Add the selected options’ rawValue values and divide by the total rawValue of all options. An empty array explicitly means none apply and scores zero. Any adjusted manualScore must be normalized from 0 to 1.

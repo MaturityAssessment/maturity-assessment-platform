@@ -719,7 +719,7 @@ public class MaturityModelExcelService {
                         row.createCell(6).setCellValue(nullToEmpty(q.getText()));
                         row.createCell(7).setCellValue(q.getType() == null ? "" : q.getType().toLowerCase(Locale.ROOT));
                         String choices = "";
-                        if (q.getType() != null && "multiple_choice".equalsIgnoreCase(q.getType())
+                        if (q.getType() != null && ("multiple_choice".equalsIgnoreCase(q.getType()) || "multiple_selection".equalsIgnoreCase(q.getType()))
                                 && q.getChoices() != null && !q.getChoices().isEmpty()) {
                             try {
                                 choices = objectMapper.writeValueAsString(q.getChoices());

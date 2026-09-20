@@ -24,8 +24,12 @@ or question configuration.
   verify the saved version uses the new codes while the source version is unchanged.
 - Clear dependency references after deleting their parent question.
 - Prevent non-boolean, cross-practice, broken, and cyclic dependencies.
-- Configure boolean, Likert, multiple-choice, numeric, percentage, and
-  open-answer questions with the existing defaults and constraints.
+- Configure boolean, Likert, multiple-choice, Multiple Selection, numeric,
+  percentage, and open-answer questions with the existing defaults and constraints.
+- Configure Multiple Selection with 1–100 labeled options and non-negative raw
+  values. Reject missing/non-finite/negative values and a zero or non-finite total.
+- Verify equal-valued options remain separately selectable and “None of the
+  above” remains distinct from an unanswered question after assessment save/reload.
 
 ## Review and save
 
@@ -35,6 +39,10 @@ or question configuration.
 - Create inactive models through `/api/v1/maturity-model/editor`.
 - Create inactive versions through
   `/api/v1/maturity-model/{id}/versions/editor`.
+- Preserve Multiple Selection option labels, order, and raw values through
+  save/reload, version creation, and workbook export/import.
+- Verify selected raw values are summed and normalized by the total available
+  value; evaluator adjustments use the normalized 0–1 score.
 - Clear the browser draft and redirect to the saved model after success.
 # Text length limits
 
@@ -42,7 +50,7 @@ or question configuration.
 - Public codes stop at 64 characters.
 - Descriptions stop at 2,000 characters.
 - Question text and guidance stop at 500 characters.
-- Multiple-choice option labels stop at 150 characters.
+- Multiple-choice and Multiple Selection option labels stop at 150 characters in the editor.
 - Open assessment answers stop at 10,000 characters and show a live count.
 - Evidence descriptions stop at 500 characters and evidence URLs at 1,000.
 - Evaluator insight stops at 2,000 characters.

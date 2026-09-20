@@ -166,6 +166,7 @@ export default function QuestionEditor({
                 <option value="boolean">Yes / No</option>
                 <option value="likert">Scale</option>
                 <option value="multiple_choice">Multiple choice</option>
+                <option value="multiple_selection">Multiple Selection</option>
                 <option value="numeric">Numeric</option>
                 <option value="percentage">Percentage</option>
                 <option value="open_answer">Open answer</option>

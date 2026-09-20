@@ -517,12 +517,12 @@ export function changeQuestionType(
     rangeMax: question.rangeMax ?? 100,
     rangeHighValueIsMaximum: question.rangeHighValueIsMaximum ?? true,
     choices:
-      type === "multiple_choice"
+      type === "multiple_choice" || type === "multiple_selection"
         ? question.choices?.length
-          ? question.choices
+          ? question.choices.map((choice) => ({ ...choice, rawValue: choice.rawValue ?? choice.score }))
           : [
-              { label: "", score: 0 },
-              { label: "", score: 1 },
+              { label: "", score: 0, rawValue: 0 },
+              { label: "", score: 1, rawValue: 1 },
             ]
         : undefined,
   };

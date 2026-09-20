@@ -60,6 +60,10 @@ public class Question {
     @Column(name = "choice_options", columnDefinition = "TEXT")
     private String choiceOptions;
 
+    /** JSON options with labels and non-negative rawValue for multiple_selection. */
+    @Column(name = "selection_options", columnDefinition = "TEXT")
+    private String selectionOptions;
+
     /** Inclusive integer bounds for Numeric and Percentage questions. */
     @Column(name = "range_min", nullable = false)
     private Integer rangeMin = 0;

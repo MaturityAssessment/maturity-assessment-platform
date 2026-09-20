@@ -30,7 +30,7 @@ type AssessmentFeedbackReviewTabProps = {
   evidenceFiles: AssessmentEvidenceByField;
   questionEvaluations?: AssessmentResponse["questionEvaluations"];
   respondentUpdatedResponseKeys: ReadonlySet<string>;
-  onInputChange: (field: string, value: string | number) => void;
+  onInputChange: (field: string, value: string | number | number[] | undefined) => void;
   onClearAnswer: (field: string) => void;
   onEvidenceItemsChange: (
     field: string,

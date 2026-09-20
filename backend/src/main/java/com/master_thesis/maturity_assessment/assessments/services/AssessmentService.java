@@ -76,6 +76,7 @@ public class AssessmentService {
 
     // Inner class to store question metadata
     private static class QuestionInfo {
+        private List<QuestionChoiceDTO> selectionOptions;
         private final String type;
         private final Double weight;
         private final Double practiceWeight;
@@ -349,6 +350,14 @@ public class AssessmentService {
                                                 question.getRangeHighValueIsMaximum() == null
                                                         || question.getRangeHighValueIsMaximum()
                                         );
+                                        if ("multiple_selection".equals(question.getType())) {
+                                            try {
+                                                info.selectionOptions = objectMapper.readValue(question.getSelectionOptions(),
+                                                        new TypeReference<List<QuestionChoiceDTO>>() {});
+                                            } catch (Exception e) {
+                                                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid selection configuration.");
+                                            }
+                                        }
                                         metadataMap.put(responseKey, info);
                                     }
                                 }
@@ -409,6 +418,10 @@ public class AssessmentService {
             return null;
         }
 
+        if ("multiple_selection".equals(questionType)) {
+            return com.master_thesis.maturity_assessment.maturity_models.services.MultipleSelectionScoring.score(
+                    responseValue, questionInfo.selectionOptions);
+        }
         if ("open_answer".equals(questionType)) {
             // A numeric-looking free-text response is still respondent text, not a score.
             return null;
@@ -856,6 +869,9 @@ public class AssessmentService {
                         HttpStatus.BAD_REQUEST,
                         "Question response must contain an answer: " + responseKey
                 );
+            }
+            if ("multiple_selection".equals(question.getType())) {
+                convertResponseToScore(submitted.getResponse(), question);
             }
             if (submitted.getResponse() instanceof String text && text.length() > TextLimits.OPEN_ANSWER) {
                 throw new ResponseStatusException(
@@ -1911,7 +1927,8 @@ public class AssessmentService {
             }
             return;
         }
-        if (questionInfo != null && ("likert".equalsIgnoreCase(questionInfo.getType())
+        if (questionInfo != null && ("multiple_selection".equalsIgnoreCase(questionInfo.getType())
+                || "likert".equalsIgnoreCase(questionInfo.getType())
                 || "numeric".equalsIgnoreCase(questionInfo.getType())
                 || "percentage".equalsIgnoreCase(questionInfo.getType()))) {
             if (score == null || !Double.isFinite(score) || score < 0.0 || score > 1.0) {
@@ -2082,6 +2099,7 @@ public class AssessmentService {
             boolean normalizedQuestion = "boolean".equalsIgnoreCase(info.getType())
                     || "likert".equalsIgnoreCase(info.getType())
                     || "multiple_choice".equalsIgnoreCase(info.getType())
+                    || "multiple_selection".equalsIgnoreCase(info.getType())
                     || "numeric".equalsIgnoreCase(info.getType())
                     || "percentage".equalsIgnoreCase(info.getType());
             double questionScore = maturityScoringService.roundAndClampNormalized(

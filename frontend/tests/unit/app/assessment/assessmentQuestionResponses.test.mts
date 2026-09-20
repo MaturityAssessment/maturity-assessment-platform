@@ -92,3 +92,43 @@ test("hydrates answers and respondent justifications from evaluation rows", () =
     }
   );
 });
+
+
+test("multiple selection preserves option indexes and explicit none through save and hydration", () => {
+  const selectionStep: AssessmentPracticeStep = {
+    ...step,
+    practice: {
+      ...step.practice,
+      questions: [{ ...step.practice.questions[0], type: "multiple_selection" }],
+    },
+  };
+  for (const selected of [[0, 2], []]) {
+    const responses = collectQuestionResponses([selectionStep], { D1_M1_10_100: selected });
+    assert.deepEqual(responses.D1_M1_10_100.response, selected);
+    assert.deepEqual(hydrateQuestionResponses({ D1_M1_10_100: {
+      responseKey: "D1_M1_10_100", questionId: 100, response: selected, initialScore: null,
+    }}), { D1_M1_10_100: selected });
+  }
+  assert.deepEqual(collectQuestionResponses([selectionStep], {}), {});
+});
+
+
+test("multiple selection validates indexes and formats selected labels", async () => {
+  const { isQuestionResponseValid, isQuestionComplete } = await import("../../../../src/app/assessment/assessmentFlowUtils.ts");
+  const { formatQuestionResponseValue } = await import("../../../../src/app/evaluate/[id]/evaluationModel.ts");
+  const question = {
+    ...step.practice.questions[0], type: "multiple_selection" as const,
+    choices: [
+      { label: "Policy", score: 0, rawValue: 2 },
+      { label: "Training", score: 0, rawValue: 2 },
+    ],
+  };
+  assert.equal(isQuestionResponseValid(question, [0, 1]), true);
+  for (const invalid of [0.5, [0, 0], [-1], [2], [0.5], ["0"]]) {
+    assert.equal(isQuestionResponseValid(question, invalid), false);
+  }
+  assert.equal(isQuestionComplete(question, [], []), true);
+  assert.equal(isQuestionComplete(question, undefined, []), false);
+  assert.equal(formatQuestionResponseValue(question, [0, 1], []), "Policy; Training");
+  assert.equal(formatQuestionResponseValue(question, [], []), "None of the above");
+});

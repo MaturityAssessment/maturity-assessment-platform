@@ -563,7 +563,7 @@ export default function AssessmentFlow() {
     });
   };
 
-  const handleInputChange = (field: string, value: string | number) => {
+  const handleInputChange = (field: string, value: string | number | number[] | undefined) => {
     if (acceptedResponseKeys.has(field)) return;
 
     const { formData: nextFormData, removedFields } = pruneDisabledQuestionData(

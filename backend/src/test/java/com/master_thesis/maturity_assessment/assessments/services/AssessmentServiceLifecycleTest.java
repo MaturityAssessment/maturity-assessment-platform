@@ -371,6 +371,42 @@ class AssessmentServiceLifecycleTest {
     }
 
     @Test
+    void multipleSelectionPersistsIndexesAndNormalizesCumulativeValues() {
+        MaturityModel model = booleanScoringModel();
+        List<Question> questions = model.getDimensions().getFirst().getModules().getFirst()
+                .getPractices().getFirst().getQuestions();
+        questions.forEach(question -> {
+            question.setType("multiple_selection");
+            question.setSelectionOptions("""
+                    [{"label":"Policy","rawValue":2},{"label":"Training","rawValue":3},{"label":"Audit","rawValue":5}]
+                    """);
+        });
+        Assessment draft = draftAssessment();
+
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(
+                USER_ID,
+                MODEL_ID,
+                AssessmentStatus.DRAFT
+        )).thenReturn(Optional.of(draft));
+        when(dimensionResultRepository.findByAssessmentId(ASSESSMENT_ID)).thenReturn(List.of());
+
+        AssessmentResponse response = assessmentService.createAssessment(request(Map.of(
+                "D1_M1_101_1001", List.of(0, 1),
+                "D1_M1_101_1002", List.of(2)
+        )), user);
+
+        assertEquals(3.0, response.getDimensionResults().getFirst().getAverageScore());
+        assertEquals(50.0, response.getDimensionResults().getFirst().getPercentageScore());
+        assertEquals(3.0, response.getOverallAverage());
+        verify(questionEvaluationRepository).saveAll(argThat(items -> {
+            Set<Double> scores = new java.util.HashSet<>();
+            items.forEach(item -> scores.add(item.getInitialScore()));
+            return scores.equals(Set.of(0.5));
+        }));
+    }
+
+    @Test
     void campaignParticipantLazilyCreatesAndSubmitsOneOwnedAssessment() {
         MaturityModel model = model(true);
         Campaign campaign = new Campaign();

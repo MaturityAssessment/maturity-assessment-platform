@@ -40,6 +40,10 @@ belong to the selected model.
       "questionId": 42,
       "response": 1,
       "respondentJustification": "All changes receive a review."
+    },
+    "engineering_delivery_12_43": {
+      "questionId": 43,
+      "response": [0, 2]
     }
   },
   "respondentUpdatedResponseKeys": []
@@ -50,6 +54,14 @@ Use [question-type values](maturity-models.md#question-types). For boolean paren
 of dependent questions, use numeric `1`/`0`: current evidence visibility checks
 recognize numeric/string affirmative values but do not recognize a JSON boolean
 `true`. Evidence-only questions use evidence metadata without an answer entry.
+
+For `multiple_selection`, send an array of unique zero-based indexes into that
+question's `choices`, as for question 43 in the example. `[]` means “none apply”
+and counts as an answer, including for a required question; omit an unanswered
+question. Scalar scores, labels, duplicate indexes, fractional indexes, and
+indexes outside the configured options are rejected with `400` on save or submit.
+Use indexes from the assessment's exact model version; options with equal raw
+values remain distinct choices.
 
 Saves replace the complete answer map, not just changed keys. On returned
 assessments, accepted answers and their justifications must remain unchanged.
@@ -301,6 +313,11 @@ Each `questionEvaluations` entry contains `id`, `responseKey`, `questionId`,
 Review status can be null before classification. Read answers from this map;
 responses do not expose the legacy top-level `responses` map.
 
+For Multiple Selection, `response` preserves the selected-index array, including
+`[]`. At submission, `initialScore` is calculated as
+`sum(selected rawValue) / sum(all rawValue)`; it is separate from the saved answer.
+Restore selections from `response` when resuming an assessment.
+
 Example response excerpt:
 
 ```json
@@ -314,6 +331,15 @@ Example response excerpt:
       "questionId": 42,
       "responseKey": "engineering_delivery_12_42",
       "response": 1,
+      "validationStatus": null,
+      "manualScore": null,
+      "reviewerNote": null
+    },
+    "engineering_delivery_12_43": {
+      "questionId": 43,
+      "responseKey": "engineering_delivery_12_43",
+      "response": [0, 2],
+      "initialScore": null,
       "validationStatus": null,
       "manualScore": null,
       "reviewerNote": null
@@ -359,6 +385,7 @@ adjustments. Flagged items need notes before send-back. Notes are limited to
 |---|---|
 | Boolean | 0 or 1 |
 | Multiple choice | A configured option score in 0–1 |
+| Multiple Selection | Finite normalized number in 0–1; supply the adjusted score, not raw values or option indexes |
 | Scale, numeric, percentage | Normalized number in 0–1 |
 | Open answer | Integer level from 1 through the model's maximum level |
 | Other types, when a score is supplied | Integer level from 1 through the model's maximum level |

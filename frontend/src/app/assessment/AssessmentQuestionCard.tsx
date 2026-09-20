@@ -46,7 +46,7 @@ interface AssessmentQuestionCardProps {
     guidance?: boolean;
   };
   onAskAssistant?: () => void;
-  onInputChange: (field: string, value: string | number) => void;
+  onInputChange: (field: string, value: string | number | number[] | undefined) => void;
   onClearAnswer: (field: string) => void;
   onEvidenceItemsChange: (
     field: string,
@@ -294,6 +294,33 @@ export default function AssessmentQuestionCard({
                 />
               )}
 
+              {question.type === "multiple_selection" && (
+                <div className="space-y-2">
+                  {(question.choices ?? []).map((choice, index) => (
+                    <label key={index} className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 p-3 hover:bg-blue-50">
+                      <input
+                        type="checkbox"
+                        name={fieldName}
+                        checked={Array.isArray(value) && value.includes(index)}
+                        onChange={(event) => {
+                          const selected: number[] = Array.isArray(value) ? value : [];
+                          onInputChange(fieldName, event.target.checked
+                            ? [...selected, index].sort((a, b) => a - b)
+                            : selected.filter((item) => item !== index));
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                      />
+                      <span>{choice.label}</span>
+                    </label>
+                  ))}
+                  <label className="flex cursor-pointer items-center gap-3 p-3">
+                    <input type="checkbox" checked={Array.isArray(value) && value.length === 0}
+                      onChange={(event) => onInputChange(fieldName, event.target.checked ? [] : undefined)} />
+                    <span>None of the above</span>
+                  </label>
+                </div>
+              )}
+
               {question.type === "multiple_choice" && (
                 <ChoiceOptions
                   question={question}
@@ -504,6 +531,9 @@ function formatEvaluatorResult(question: Question, score: number) {
       ? `Evaluator result: ${choice.label}`
       : "Evaluator result calculated from the selected option";
   }
+  if (question.type === "multiple_selection") {
+    return "Evaluator result calculated from the selected options";
+  }
   if (question.type === "numeric" || question.type === "percentage") {
     return "Evaluator result calculated from the numeric response";
   }
@@ -516,6 +546,8 @@ function getQuestionInstruction(question: Question) {
       return "Yes or no";
     case "likert":
       return "Choose a point on the scale";
+    case "multiple_selection":
+      return "Select all that apply";
     case "multiple_choice":
       return "Select one";
     case "numeric":
@@ -538,7 +570,7 @@ function BooleanOptions({
   fieldName: string;
   value: unknown;
   disabled: boolean;
-  onInputChange: (field: string, value: string | number) => void;
+  onInputChange: (field: string, value: string | number | number[] | undefined) => void;
 }) {
   const options = [
     { label: "Yes", value: 1, icon: Check },
@@ -595,7 +627,7 @@ function LikertOptions({
   minLabel?: string | null;
   maxLabel?: string | null;
   disabled: boolean;
-  onInputChange: (field: string, value: string | number) => void;
+  onInputChange: (field: string, value: string | number | number[] | undefined) => void;
 }) {
   return (
     <div className="max-w-2xl overflow-x-auto pb-1">
@@ -707,7 +739,7 @@ function ChoiceOptions({
   fieldName: string;
   value: unknown;
   disabled: boolean;
-  onInputChange: (field: string, value: string | number) => void;
+  onInputChange: (field: string, value: string | number | number[] | undefined) => void;
 }) {
   if (!question.choices?.length) {
     return (
@@ -775,7 +807,7 @@ function NumericResponseField({
   invalid: boolean;
   suffix?: string;
   showSlider?: boolean;
-  onInputChange: (field: string, value: string | number) => void;
+  onInputChange: (field: string, value: string | number | number[] | undefined) => void;
 }) {
   const descriptionId = `${fieldName}-range-description`;
   const errorId = `${fieldName}-range-error`;
@@ -875,7 +907,7 @@ function OpenAnswerField({
 }: {
   fieldName: string;
   value: unknown;
-  onInputChange: (field: string, value: string | number) => void;
+  onInputChange: (field: string, value: string | number | number[] | undefined) => void;
 }) {
   const length = String(value ?? "").length;
   return (

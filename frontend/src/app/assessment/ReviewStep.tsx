@@ -338,6 +338,9 @@ function formatAnswer(question: Question, value: unknown) {
     return `${String(value)}%`;
   }
 
+  if (question.type === "multiple_selection" && Array.isArray(value)) {
+    return value.length === 0 ? "None of the above" : value.map((index) => question.choices?.[index]?.label ?? "Unknown option").join("; ");
+  }
   if (question.type === "multiple_choice") {
     return (
       question.choices?.find(

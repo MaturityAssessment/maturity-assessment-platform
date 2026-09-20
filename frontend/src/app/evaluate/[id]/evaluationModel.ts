@@ -51,6 +51,9 @@ export function formatQuestionResponseValue(
     return formatResponseValue(value);
   }
 
+  if (question.type === "multiple_selection" && Array.isArray(value)) {
+    return value.length === 0 ? "None of the above" : value.map((index) => question.choices?.[index]?.label ?? "Unknown option").join("; ");
+  }
   if (question.type === "multiple_choice") {
     const selectedScore = Number(value);
     const choice = question.choices?.find(

@@ -49,6 +49,11 @@ export function getQuestionResponseBounds(question: Question) {
 
 export function isQuestionResponseValid(question: Question, value: unknown) {
   if (!isAnswered(value)) return true;
+  if (question.type === "multiple_selection") {
+    return Array.isArray(value) && new Set(value).size === value.length && value.every(
+      (index) => Number.isInteger(index) && index >= 0 && index < (question.choices?.length ?? 0)
+    );
+  }
   if (question.type !== "numeric" && question.type !== "percentage") return true;
 
   const bounds = getQuestionResponseBounds(question);

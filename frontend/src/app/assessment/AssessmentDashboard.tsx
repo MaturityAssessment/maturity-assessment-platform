@@ -84,7 +84,7 @@ type AssessmentDashboardProps = {
   showLeaveAction?: boolean;
   onReview: () => void;
   onRetrySave: () => void;
-  onInputChange: (field: string, value: string | number) => void;
+  onInputChange: (field: string, value: string | number | number[] | undefined) => void;
   onClearAnswer: (field: string) => void;
   onEvidenceItemsChange: (
     field: string,

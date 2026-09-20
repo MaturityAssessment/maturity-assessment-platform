@@ -58,6 +58,7 @@ public class MaturityModelService {
                         "boolean",
                         TYPE_LIKERT,
                         TYPE_MULTIPLE_CHOICE,
+                        "multiple_selection",
                         "open_answer",
                         TYPE_NUMERIC,
                         TYPE_PERCENTAGE,
@@ -513,6 +514,14 @@ public class MaturityModelService {
                                 dto.setChoices(new ArrayList<>());
                         }
                 }
+                if ("multiple_selection".equals(question.getType()) && question.getSelectionOptions() != null) {
+                        try {
+                                dto.setChoices(objectMapper.readValue(question.getSelectionOptions(),
+                                                new TypeReference<List<QuestionChoiceDTO>>() {}));
+                        } catch (Exception e) {
+                                throw new IllegalOperationException("INVALID_MULTIPLE_SELECTION", "Invalid selection options.");
+                        }
+                }
                 return dto;
         }
 
@@ -639,6 +648,13 @@ public class MaturityModelService {
                         }
                 } else {
                         question.setChoiceOptions(null);
+                }
+                if ("multiple_selection".equals(dto.getType())) {
+                        try {
+                                question.setSelectionOptions(objectMapper.writeValueAsString(dto.getChoices()));
+                        } catch (Exception e) {
+                                throw new IllegalOperationException("INVALID_MULTIPLE_SELECTION", "Invalid selection options.");
+                        }
                 }
                 if (isRangeQuestion(dto.getType())) {
                         question.setRangeMin(dto.getRangeMin() != null ? dto.getRangeMin() : 0);
@@ -1399,6 +1415,9 @@ public class MaturityModelService {
                                         }
                                         for (QuestionDTO questionDTO : practiceDTO.getQuestions()) {
                                                 validateQuestionType(questionDTO);
+                                                if ("multiple_selection".equals(questionDTO.getType())) {
+                                                        MultipleSelectionScoring.validateOptions(questionDTO.getChoices());
+                                                }
                                                 if (TYPE_MULTIPLE_CHOICE.equalsIgnoreCase(questionDTO.getType())) {
                                                         validateMultipleChoiceQuestion(questionDTO);
                                                 }
@@ -1422,7 +1441,7 @@ public class MaturityModelService {
                         throw new IllegalOperationException(
                                         "INVALID_QUESTION_TYPE",
                                         "Question '" + questionDTO.getCode()
-                                                        + "' must use one of: boolean, likert, multiple_choice, open_answer, numeric, percentage, evidence.");
+                                                        + "' must use one of: boolean, likert, multiple_choice, multiple_selection, open_answer, numeric, percentage, evidence.");
                 }
                 questionDTO.setType(type);
                 if (isEvidenceOnlyType(type)) {

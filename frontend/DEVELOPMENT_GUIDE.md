@@ -931,7 +931,8 @@ export interface AuthenticationResponse {
 }
 
 // Question types supported:
-// "boolean" | "likert" | "open_answer" | "numeric" | "percentage" | "evidence" | "boolean_justification"
+// "boolean" | "likert" | "multiple_choice" | "multiple_selection"
+// | "open_answer" | "numeric" | "percentage" | "evidence"
 ```
 
 ### Type Guards

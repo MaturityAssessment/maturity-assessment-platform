@@ -6,4 +6,6 @@ import lombok.Data;
 public class QuestionChoiceDTO {
     private String label;
     private Double score;
+    /** Cumulative raw value, used only for multiple_selection. */
+    private Double rawValue;
 }

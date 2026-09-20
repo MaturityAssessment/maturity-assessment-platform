@@ -58,6 +58,8 @@ function getResponseFormat(question: Question, modelMaxLevel: number): string {
       return "Yes or No";
     case "likert":
       return `Scale with ${Math.max(2, question.scalePointCount ?? 5)} points`;
+    case "multiple_selection":
+      return `Select all that apply: ${question.choices?.map((choice) => choice.label).join("; ") ?? "configured options"}`;
     case "multiple_choice":
       return question.choices?.length
         ? `One of: ${question.choices

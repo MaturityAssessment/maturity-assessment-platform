@@ -95,6 +95,11 @@ Use an [exported workbook](#get-apiv1maturity-modelidexportxlsx) or the
 for the expected workbook layout. Review the parsed document and submit it to
 `POST /editor` or `POST /{id}/versions/editor` to persist it.
 
+For Multiple Selection rows, use `questionType: multiple_selection` and put the
+`choices` JSON array of `label`/`rawValue` objects in the `questionChoices` cell.
+See [question types](#question-types) for configuration and scoring rules;
+workbook export preserves these options and their order.
+
 **Response:** `200`, `MaturityModelEditorImportResponse`:
 
 | Field | Type / meaning |
@@ -257,10 +262,33 @@ Common question fields are `code`, `weight`, `text`, `type`, `help`,
 | `boolean` | `booleanCorrectAnswer` | JSON boolean (also accepts 0/1) |
 | `likert` | `scalePointCount` (2–100, default 5), `scaleMinLabel`, `scaleMaxLabel` (max 50 each), `scaleHighPointIsMaximum` | Integer point from 1 through the configured count |
 | `multiple_choice` | `choices`: 1–100 objects with nonblank `label` and `score` in 0–1 | Configured numeric score, not label or option index |
+| `multiple_selection` | `choices`: 1–100 objects with nonblank `label` and finite non-negative `rawValue`; total must be finite and positive | Array of unique zero-based option indexes; `[]` explicitly means none apply |
 | `open_answer` | Common fields | Text, up to 10,000 characters |
 | `numeric` | Integer `rangeMin` < `rangeMax`, `rangeHighValueIsMaximum` | Integer within inclusive bounds |
 | `percentage` | Same range settings as numeric | Integer within inclusive bounds |
 | `evidence` | Evidence-only; forces `requiresEvidence: true` | Evidence metadata; omit an answer entry |
+
+Multiple Selection uses creator-defined `rawValue` values for cumulative
+scoring. For example, a question can include:
+
+```json
+{
+  "type": "multiple_selection",
+  "choices": [
+    {"label": "Policy documented", "rawValue": 2},
+    {"label": "Staff trained", "rawValue": 3},
+    {"label": "Practice audited", "rawValue": 5}
+  ]
+}
+```
+
+Selecting `[0, 2]` sums to 7 out of 10, producing a normalized score of `0.7`.
+Selecting every option scores `1`; selecting none scores `0`. Zero-valued options
+are allowed, but at least one option must have a positive raw value. The `score`
+field is used by Multiple Choice; it is not required or used for Multiple
+Selection. See [assessment requests](assessments.md#assessment-request) for
+answer validation and [review requests](assessments.md#review-request) for
+manual adjustments.
 
 Scores for objective questions normalize to 0–1 according to their configuration.
 Open answers need reviewer scores for manual evaluation. Maturity levels and

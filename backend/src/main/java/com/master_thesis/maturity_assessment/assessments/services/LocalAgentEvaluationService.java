@@ -324,7 +324,7 @@ public class LocalAgentEvaluationService {
         boolean booleanQuestion = "boolean".equalsIgnoreCase(question.type());
         boolean scaleQuestion = "likert".equalsIgnoreCase(question.type());
         boolean multipleChoiceQuestion = "multiple_choice".equalsIgnoreCase(question.type());
-        boolean rangeQuestion = "numeric".equalsIgnoreCase(question.type())
+        boolean rangeQuestion = "multiple_selection".equalsIgnoreCase(question.type()) || "numeric".equalsIgnoreCase(question.type())
                 || "percentage".equalsIgnoreCase(question.type());
         Double scoreCandidate = manualScore;
         boolean configuredMultipleChoiceScore = !multipleChoiceQuestion || manualScore == null
@@ -639,12 +639,14 @@ public class LocalAgentEvaluationService {
     }
 
     private List<Map<String, Object>> parseChoices(Question question) {
-        if (!"multiple_choice".equalsIgnoreCase(question.getType()) || !StringUtils.hasText(question.getChoiceOptions())) {
+        boolean selection = "multiple_selection".equalsIgnoreCase(question.getType());
+        String raw = selection ? question.getSelectionOptions() : question.getChoiceOptions();
+        if ((!selection && !"multiple_choice".equalsIgnoreCase(question.getType())) || !StringUtils.hasText(raw)) {
             return List.of();
         }
         try {
             List<QuestionChoiceDTO> choices = objectMapper.readValue(
-                    question.getChoiceOptions(),
+                    raw,
                     new TypeReference<List<QuestionChoiceDTO>>() {
                     }
             );
@@ -653,7 +655,7 @@ public class LocalAgentEvaluationService {
                     .map(choice -> {
                         Map<String, Object> payload = new LinkedHashMap<>();
                         payload.put("label", nullToEmpty(choice.getLabel()));
-                        payload.put("score", choice.getScore());
+                        payload.put(selection ? "rawValue" : "score", selection ? choice.getRawValue() : choice.getScore());
                         return payload;
                     })
                     .toList();

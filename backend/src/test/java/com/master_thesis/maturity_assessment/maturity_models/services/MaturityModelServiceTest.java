@@ -454,6 +454,35 @@ class MaturityModelServiceTest {
     }
 
     @Test
+    void createMaturityModel_persistsMultipleSelectionRawValues() {
+        Domain domain = domain();
+        MaturityModelDTO dto = updateDto(domain.getId(), null);
+        QuestionDTO question = dto.getDimensions().get(0).getModules().get(0)
+                .getPractices().get(0).getQuestions().get(0);
+        question.setType("multiple_selection");
+        var option = new com.master_thesis.maturity_assessment.maturity_models.dto.QuestionChoiceDTO();
+        option.setLabel("Policy");
+        option.setRawValue(12.5);
+        question.setChoices(List.of(option));
+
+        when(domainRepository.findById(domain.getId())).thenReturn(Optional.of(domain));
+        when(maturityModelRepository.saveAndFlush(any(MaturityModel.class))).thenAnswer(invocation -> {
+            MaturityModel model = invocation.getArgument(0);
+            assignGeneratedIds(model);
+            return model;
+        });
+        when(maturityModelRepository.save(any(MaturityModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MaturityModelDTO response = service.createMaturityModel(dto);
+
+        QuestionDTO savedQuestion = response.getDimensions().get(0).getModules().get(0)
+                .getPractices().get(0).getQuestions().get(0);
+        assertEquals("multiple_selection", savedQuestion.getType());
+        assertEquals("Policy", savedQuestion.getChoices().getFirst().getLabel());
+        assertEquals(12.5, savedQuestion.getChoices().getFirst().getRawValue());
+    }
+
+    @Test
     void createMaturityModel_rejectsInvalidIntegerBounds() {
         MaturityModelDTO dto = updateDto(domain().getId(), null);
         QuestionDTO question = dto.getDimensions().get(0).getModules().get(0)

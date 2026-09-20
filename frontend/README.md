@@ -166,7 +166,7 @@ coverage thresholds, and test-writing conventions.
 
 - `assessment/page.tsx` - Full assessment form with all question types
 - `EvidenceUpload.tsx` - File upload component for evidence questions
-- Supports: boolean, likert, open_answer, numeric, percentage, evidence, boolean_justification
+- Supports: boolean, likert, multiple_choice, multiple_selection, open_answer, numeric, percentage, evidence. See the [question-type contract](../backend/docs/api/reference/maturity-models.md#question-types).
 
 ### Results
 

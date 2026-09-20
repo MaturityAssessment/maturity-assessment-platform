@@ -55,12 +55,15 @@ Models use **Dimensions → Modules → Practices → Questions** to organize as
 | Boolean | Yes or no. |
 | Scale (`likert`) | A point on a configured scale with endpoint labels. |
 | Multiple choice | One of the configured answer options. |
+| Multiple Selection | All applicable answer options, or an explicit “None of the above.” |
 | Numeric | An integer within configured bounds. |
 | Percentage | An integer percentage within configured bounds. |
 | Open answer | Free text for evaluator review. |
 | Evidence | Supporting evidence for evaluator review. |
 
 Curators configure required answers, evidence requirements, and applicable scoring settings, including answer direction, bounds, option scores, and weights. Questions can depend on a boolean parent in the same practice; dependent questions become applicable when the parent answer is Yes. Validation checks dependencies and public codes.
+
+For Multiple Selection, curators assign non-negative raw values to options, with at least one positive value. Selected values are added and divided by the total available value for normalized scoring. Respondents see the option labels.
 
 See the [model reference](./backend/docs/api/reference/maturity-models.md) for the editor contract and validation rules.
 

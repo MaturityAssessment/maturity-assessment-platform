@@ -21,7 +21,7 @@ public class QuestionDTO {
     private Boolean required;
     /** For boolean questions, the answer that receives normalized score 1. */
     private Boolean booleanCorrectAnswer;
-    /** Options for type {@code multiple_choice}: each has a label and normalized score from 0 to 1. */
+    /** Options: multiple_choice uses normalized score; multiple_selection uses cumulative rawValue. */
     private List<QuestionChoiceDTO> choices;
     private Integer scalePointCount;
     private String scaleMinLabel;

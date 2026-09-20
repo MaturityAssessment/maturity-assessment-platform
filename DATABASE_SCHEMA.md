@@ -348,6 +348,7 @@ Individual assessment questions within practices.
 | required               | BOOLEAN      | NOT NULL, DEFAULT false | Whether this question must be answered    |
 | boolean_correct_answer | BOOLEAN      | NOT NULL, DEFAULT true | Boolean answer receiving normalized score 1 |
 | choice_options         | TEXT         |                       | JSON multiple-choice labels and normalized scores |
+| selection_options      | TEXT         | Required when type is `multiple_selection` | JSON Multiple Selection labels and cumulative raw values; added by V37 |
 | scale_point_count      | INTEGER      | NOT NULL, DEFAULT 5, CHECK 2–100 | Number of Scale response points |
 | scale_min_label        | VARCHAR(50)  |                       | Optional tag for point 1 |
 | scale_max_label        | VARCHAR(50)  |                       | Optional tag for the highest point |
@@ -367,11 +368,20 @@ Individual assessment questions within practices.
 
 - `boolean` - Yes/No questions; the configured correct answer scores 1 and the other scores 0 internally
 - `likert` - independently sized Scale questions normalized linearly to 0–1 in the configured direction
+- `multiple_choice` - One configured option; its score is already normalized to 0–1
+- `multiple_selection` - Select all applicable options; selected raw values are summed and divided by the total available raw value
 - `open_answer` - Free text excluded from automatic scoring; evaluator level 1–N normalizes to 0–1 before aggregation
 - `numeric` - Integer within configured inclusive bounds, normalized to 0–1
 - `percentage` - Integer within configured inclusive bounds, normalized to 0–1
 - `evidence` - Evidence file upload
-- `boolean_justification` - Yes/No with text justification
+
+For `multiple_selection`, `selection_options` stores a JSON array of objects with
+`label` and `rawValue`, exposed as `choices` in the model API. Service validation
+requires 1–100 options, nonblank labels, finite non-negative raw values, and a
+finite positive total. Migration V37 adds this column and the
+`questions_multiple_selection_options_required` check, which requires a non-null
+configuration for this type. Responses are stored in `question_evaluations`, not
+in the question configuration.
 
 ---
 
@@ -461,18 +471,24 @@ review for one assessment/question pair.
 | assessment_id            | BIGINT       | FOREIGN KEY, NOT NULL             | Owning assessment |
 | question_id              | BIGINT       | FOREIGN KEY, NOT NULL             | Canonical question relationship |
 | response_key             | VARCHAR(500) | NOT NULL                          | Client correlation key |
-| response                 | JSONB        |                                   | Number, string, or boolean respondent answer |
-| initial_score            | DOUBLE       |                                   | Automated score frozen at submission; Boolean and Scale use normalized 0–1 |
+| response                 | JSONB        |                                   | Number, string, boolean, or Multiple Selection option-index array |
+| initial_score            | DOUBLE       |                                   | Automated score frozen at submission; objective question types use normalized 0–1 |
 | respondent_justification | TEXT         |                                   | Optional respondent explanation |
 | validation_status        | VARCHAR(20)  |                                   | `ACCEPTED`, `ADJUSTED`, or `FLAGGED` after review |
-| manual_score             | DOUBLE       |                                   | Optional curator override; Boolean and Scale use normalized 0–1 |
+| manual_score             | DOUBLE       |                                   | Optional curator override; objective question types use normalized 0–1 |
 | reviewer_note            | TEXT         |                                   | Optional curator note |
 | created_at               | TIMESTAMP    | NOT NULL                          | Creation timestamp |
 | updated_at               | TIMESTAMP    |                                   | Last update timestamp |
 
 The table is unique by both `(assessment_id, response_key)` and
 `(assessment_id, question_id)`. `response` and review fields are nullable so an
-evidence-only question can be reviewed without a respondent scalar answer.
+evidence-only question can be reviewed without a respondent answer.
+
+For Multiple Selection, `response` contains unique zero-based indexes into the
+question's configured options. `[]` explicitly answers “none apply” and scores
+zero; an omitted answer is unanswered. `initial_score` stores the selected
+raw-value sum divided by the total raw value of all options. An adjusted
+`manual_score` must be a finite number in 0–1.
 
 ---
 

@@ -47,6 +47,8 @@ export interface GatingRule {
 export interface QuestionChoice {
   label: string;
   score: number;
+  /** Non-negative cumulative value for Multiple Selection options. */
+  rawValue?: number;
 }
 
 export interface Question {
@@ -60,6 +62,7 @@ export interface Question {
     | "boolean"
     | "likert"
     | "multiple_choice"
+    | "multiple_selection"
     | "numeric"
     | "percentage"
     | "open_answer"
@@ -71,7 +74,7 @@ export interface Question {
   required?: boolean; // Whether this question must be answered
   /** Boolean answer that receives normalized score 1; the other receives 0. */
   booleanCorrectAnswer?: boolean;
-  /** Custom options with normalized scores when type is multiple_choice. */
+  /** Options use score for multiple_choice and rawValue for multiple_selection. */
   choices?: QuestionChoice[];
   /** Independent configuration for Scale (internally `likert`) questions. */
   scalePointCount?: number;
