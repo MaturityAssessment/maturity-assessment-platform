@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { CampaignSummary } from "@/api/types";
 import { DashboardPanel } from "@/components/dashboard/DashboardPrimitives";
+import { Badge } from "@/components/ui/badge";
 import { isCampaignExpired } from "./campaignForm";
 
 type CampaignStatusFilter = "all" | "active" | "ended";
@@ -36,15 +37,7 @@ function CampaignIcon() {
 }
 
 function CampaignStatusBadge({ ended }: { ended: boolean }) {
-  return ended ? (
-    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
-      Ended
-    </span>
-  ) : (
-    <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-      Active
-    </span>
-  );
+  return <Badge color={ended ? "slate" : "emerald"}>{ended ? "Ended" : "Active"}</Badge>;
 }
 
 export default function CampaignsPanel({

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Pencil, Search, Trash2, X } from "lucide-react";
-import { Modal, PageLoading, SideNavbar } from "@/components";
+import { Badge, Modal, PageLoading, SideNavbar } from "@/components";
 import apiClient from "@/api/axios";
 import { useAuth } from "@/context";
 import type { UpdateUserRequest, UserDTO } from "@/api/types";
@@ -13,10 +13,10 @@ import AdminBreadcrumb from "@/components/admin/AdminBreadcrumb";
 
 type UserMode = "PENDING" | "APPROVED";
 
-const roleStyles: Record<UserDTO["role"], string> = {
-  ADMIN: "bg-red-50 text-red-700",
-  CURATOR: "bg-violet-50 text-violet-700",
-  USER: "bg-slate-100 text-slate-600",
+const roleColors: Record<UserDTO["role"], "red" | "violet" | "slate"> = {
+  ADMIN: "red",
+  CURATOR: "violet",
+  USER: "slate",
 };
 
 function userInitial(user: UserDTO) {
@@ -411,12 +411,10 @@ export default function UserManagementPage() {
                           </td>
                           {activeMode === "APPROVED" && (
                             <td className="px-5 py-4">
-                              <span
-                                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${roleStyles[user.role]}`}
-                              >
+                              <Badge color={roleColors[user.role]}>
                                 {user.role.charAt(0) +
                                   user.role.slice(1).toLocaleLowerCase()}
-                              </span>
+                              </Badge>
                             </td>
                           )}
                           <td className="px-5 py-4 text-sm text-slate-600">

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import type { DashboardAssessmentView } from "@/app/dashboard/types";
 import { DomainIcon } from "@/components/visualization/DomainIcon";
+import { Badge } from "@/components/ui/badge";
 
 export function DashboardPanel({
   id,
@@ -81,31 +82,15 @@ export function StatusBadge({
   status: DashboardAssessmentView["status"];
 }) {
   if (status === "draft") {
-    return (
-      <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-        In progress
-      </span>
-    );
+    return <Badge color="blue">In progress</Badge>;
   }
   if (status === "pending-review") {
-    return (
-      <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
-        Pending review
-      </span>
-    );
+    return <Badge color="amber">Pending review</Badge>;
   }
   if (status === "changes-requested") {
-    return (
-      <span className="inline-flex rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700">
-        Changes requested
-      </span>
-    );
+    return <Badge color="orange">Changes requested</Badge>;
   }
-  return (
-    <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-      Completed
-    </span>
-  );
+  return <Badge color="emerald">Completed</Badge>;
 }
 
 export function ProgressResult({

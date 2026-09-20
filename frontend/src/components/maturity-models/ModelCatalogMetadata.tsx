@@ -1,25 +1,12 @@
 import { MaturityModelSummary } from "@/api/types";
 import type { MaturityModelGroup } from "@/app/maturity-models/catalog";
+import { Badge } from "@/components/ui/badge";
 
 export function ModelStatus({ group }: { group: MaturityModelGroup }) {
   return (
-    <span
-      className={
-        group.activeVersion
-          ? "inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200"
-          : "inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-200"
-      }
-    >
-      <span
-        className={
-          group.activeVersion
-            ? "h-1.5 w-1.5 rounded-full bg-emerald-500"
-            : "h-1.5 w-1.5 rounded-full bg-gray-400"
-        }
-        aria-hidden="true"
-      />
+    <Badge color={group.activeVersion ? "emerald" : "gray"} dot outlined className="font-medium">
       {group.activeVersion ? "Active" : "No active version"}
-    </span>
+    </Badge>
   );
 }
 

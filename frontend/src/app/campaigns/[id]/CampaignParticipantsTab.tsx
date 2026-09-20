@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { CampaignDetail, CampaignParticipant } from "@/api/types";
 import { DashboardPanel } from "@/components/dashboard/DashboardPrimitives";
+import { Badge, type BadgeColor } from "@/components/ui/badge";
 import { isCampaignExpired } from "../campaignForm";
 
 type ParticipantFilter = "all" | "not-started" | "in-progress" | "submitted" | "evaluated";
@@ -183,19 +184,19 @@ export default function CampaignParticipantsTab({
 
 function ParticipantStatus({ participant }: { participant: CampaignParticipant }) {
   const key = participantStatusKey(participant);
-  const styles = {
-    "not-started": "bg-slate-100 text-slate-600",
-    "in-progress": "bg-blue-50 text-blue-700",
-    submitted: "bg-amber-50 text-amber-700",
-    evaluated: "bg-emerald-50 text-emerald-700",
-  }[key];
+  const colors: Record<Exclude<ParticipantFilter, "all">, BadgeColor> = {
+    "not-started": "slate",
+    "in-progress": "blue",
+    submitted: "amber",
+    evaluated: "emerald",
+  };
   const label = {
     "not-started": "Not started",
     "in-progress": participant.assessmentStatus === "CHANGES_REQUESTED" ? "Changes requested" : "In progress",
     submitted: "Awaiting evaluation",
     evaluated: "Evaluated",
   }[key];
-  return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${styles}`}>{label}</span>;
+  return <Badge color={colors[key]}>{label}</Badge>;
 }
 
 function participantStatusKey(participant: CampaignParticipant): Exclude<ParticipantFilter, "all"> {

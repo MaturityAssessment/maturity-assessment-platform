@@ -161,7 +161,6 @@ coverage thresholds, and test-writing conventions.
 | `/maturity-models/[id]` | Model detail    | Authenticated  |
 | `/assessment`        | Create assessment  | Authenticated  |
 | `/assessments`       | My assessments     | Authenticated  |
-| `/assessments/all`   | All assessments    | CURATOR/ADMIN  |
 | `/evaluate`          | Evaluation list    | CURATOR+       |
 | `/evaluate/[id]`     | Evaluate assessment| CURATOR+       |
 | `/results`           | Results & export   | Authenticated  |

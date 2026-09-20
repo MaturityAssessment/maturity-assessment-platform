@@ -5,6 +5,8 @@ export { default as UserMenu } from "./navigation/UserMenu";
 export { default as ProgressBar } from "./visualization/ProgressBar";
 export { Modal } from "./ui/modal";
 export { AlertNotification } from "./ui/alert-notification";
+export { Badge } from "./ui/badge";
+export type { BadgeColor, BadgeProps } from "./ui/badge";
 export type { AlertNotificationPayload } from "./ui/alert-notification";
 export { PageLoading } from "./feedback/PageLoading";
 export { default as Notice } from "./feedback/Notice";

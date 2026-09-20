@@ -12,7 +12,7 @@ import type {
   CampaignResults,
   MaturityModel,
 } from "@/api/types";
-import { PageLoading, TopNavbar } from "@/components";
+import { Badge, PageLoading, TopNavbar } from "@/components";
 import { useAuth } from "@/context";
 import { cn } from "@/lib/utils";
 import { buildPracticeSteps } from "../../assessment/assessmentRoutes";
@@ -209,16 +209,7 @@ export default function CampaignDetailPage() {
         subtitle={`${campaign.maturityModelName} · Version ${campaign.maturityModelVersion}`}
         backButton={{ href: "/campaigns", label: "Back to campaigns" }}
         rightActions={
-          <span
-            className={cn(
-              "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold",
-              ended
-                ? "bg-slate-100 text-slate-600"
-                : "bg-emerald-50 text-emerald-700"
-            )}
-          >
-            {ended ? "Ended" : "Active"}
-          </span>
+          <Badge color={ended ? "slate" : "emerald"}>{ended ? "Ended" : "Active"}</Badge>
         }
         sticky
       />

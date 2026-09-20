@@ -730,8 +730,6 @@ app/
 │   └── page.tsx          → /assessment
 ├── assessments/
 │   ├── page.tsx          → /assessments
-│   └── all/
-│       └── page.tsx      → /assessments/all
 ├── evaluate/
 │   ├── page.tsx          → /evaluate
 │   └── [id]/

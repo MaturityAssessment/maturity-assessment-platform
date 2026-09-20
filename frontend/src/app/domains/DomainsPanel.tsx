@@ -15,6 +15,7 @@ import {
   DashboardPanel,
   EmptyState,
 } from "@/components/dashboard/DashboardPrimitives";
+import { Badge } from "@/components/ui/badge";
 import { DomainIcon } from "@/components/visualization/DomainIcon";
 
 type SortKey = "name" | "models" | "active";
@@ -264,17 +265,9 @@ export default function DomainsPanel({
                         {domain.maturityModelCount ?? 0}
                       </td>
                       <td className="px-5 py-4">
-                        <span
-                          className={
-                            domain.hasActiveMaturityModel
-                              ? "inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
-                              : "inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600"
-                          }
-                        >
-                          {domain.hasActiveMaturityModel
-                            ? "Available"
-                            : "Not available"}
-                        </span>
+                        <Badge color={domain.hasActiveMaturityModel ? "emerald" : "slate"}>
+                          {domain.hasActiveMaturityModel ? "Available" : "Not available"}
+                        </Badge>
                       </td>
                       {canManage && (
                         <td className="py-4 pl-5">
