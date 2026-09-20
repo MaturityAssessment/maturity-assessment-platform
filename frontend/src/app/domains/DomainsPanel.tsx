@@ -14,7 +14,7 @@ import type { Domain } from "@/api/types";
 import {
   DashboardPanel,
   EmptyState,
-} from "../dashboard/components/DashboardPrimitives";
+} from "@/components/dashboard/DashboardPrimitives";
 import { DomainIcon } from "@/components/visualization/DomainIcon";
 
 type SortKey = "name" | "models" | "active";

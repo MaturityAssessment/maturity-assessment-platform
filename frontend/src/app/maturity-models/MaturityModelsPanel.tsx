@@ -15,10 +15,10 @@ import {
   AssessmentIcon,
   DashboardPanel,
   EmptyState,
-} from "../dashboard/components/DashboardPrimitives";
+} from "@/components/dashboard/DashboardPrimitives";
 import type { MaturityModelGroup } from "./catalog";
 import { getVersionSummary } from "./catalog";
-import { ModelStatus } from "./ModelCatalogMetadata";
+import { ModelStatus } from "@/components/maturity-models/ModelCatalogMetadata";
 
 type SortKey = "name" | "domain" | "questions" | "versions" | "status";
 type SortDirection = "asc" | "desc";

@@ -9,7 +9,7 @@ import type { ModelDetails } from "../dashboard/dashboardAssessments";
 import {
   DashboardError,
   DashboardLoading,
-} from "../dashboard/components/DashboardStates";
+} from "@/components/dashboard/DashboardStates";
 import EvaluationQueuePanel from "./EvaluationQueuePanel";
 
 export default function Evaluate() {

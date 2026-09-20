@@ -7,7 +7,7 @@ import {
   Clock3,
   MessageSquareWarning,
 } from "lucide-react";
-import type { DashboardAssessmentView } from "../types";
+import type { DashboardAssessmentView } from "@/app/dashboard/types";
 import { DomainIcon } from "@/components/visualization/DomainIcon";
 
 export function DashboardPanel({

@@ -23,7 +23,7 @@ import {
   DashboardPanel,
   EmptyState,
   StatusBadge,
-} from "../dashboard/components/DashboardPrimitives";
+} from "@/components/dashboard/DashboardPrimitives";
 import { formatScore1ToN } from "@/lib/maturityFormat";
 
 type SortKey = "name" | "submitter" | "domain" | "score" | "submitted";

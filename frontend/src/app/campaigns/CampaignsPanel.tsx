@@ -12,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 import type { CampaignSummary } from "@/api/types";
-import { DashboardPanel } from "../dashboard/components/DashboardPrimitives";
+import { DashboardPanel } from "@/components/dashboard/DashboardPrimitives";
 import { isCampaignExpired } from "./campaignForm";
 
 type CampaignStatusFilter = "all" | "active" | "ended";

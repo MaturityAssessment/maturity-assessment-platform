@@ -12,7 +12,7 @@ import type {
 } from "@/api/types";
 import { Modal, PageLoading, SideNavbar } from "@/components";
 import { useAuth } from "@/context";
-import { DashboardError } from "../dashboard/components/DashboardStates";
+import { DashboardError } from "@/components/dashboard/DashboardStates";
 import CampaignsPanel from "./CampaignsPanel";
 import CreateCampaignModal from "./CreateCampaignModal";
 

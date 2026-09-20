@@ -1,5 +1,5 @@
 import { MaturityModelSummary } from "@/api/types";
-import { MaturityModelGroup } from "./catalog";
+import type { MaturityModelGroup } from "@/app/maturity-models/catalog";
 
 export function ModelStatus({ group }: { group: MaturityModelGroup }) {
   return (

@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import type { CampaignDetail, CampaignParticipant } from "@/api/types";
-import { DashboardPanel } from "../../dashboard/components/DashboardPrimitives";
+import { DashboardPanel } from "@/components/dashboard/DashboardPrimitives";
 import { isCampaignExpired } from "../campaignForm";
 
 type ParticipantFilter = "all" | "not-started" | "in-progress" | "submitted" | "evaluated";

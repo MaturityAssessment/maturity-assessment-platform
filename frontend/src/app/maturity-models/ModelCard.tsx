@@ -6,7 +6,7 @@ import {
   MaturityModelGroup,
   pluralLabel,
 } from "./catalog";
-import { ModelMetrics, ModelStatus } from "./ModelCatalogMetadata";
+import { ModelMetrics, ModelStatus } from "@/components/maturity-models/ModelCatalogMetadata";
 import { DomainIcon } from "@/components/visualization/DomainIcon";
 
 type ModelCardProps = {

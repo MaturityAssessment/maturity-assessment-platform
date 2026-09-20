@@ -7,7 +7,7 @@ import type { AssessmentResponse, MaturityModelSummary } from "@/api/types";
 import {
   buildDraftSelection,
   DraftSelection,
-} from "../../assessment/DraftSelectionModal";
+} from "@/components/assessment/DraftSelectionModal";
 import type { ModelDetails } from "../dashboardAssessments";
 
 type UseDashboardDraftActionsOptions = {

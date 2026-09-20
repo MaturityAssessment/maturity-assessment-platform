@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import DraftSelectionModal from "../assessment/DraftSelectionModal";
+import DraftSelectionModal from "@/components/assessment/DraftSelectionModal";
 import ModelCatalogActions from "./ModelCatalogActions";
-import { ModelCatalogLoadError } from "./ModelCatalogEmptyState";
+import { ModelCatalogLoadError } from "@/components/maturity-models/ModelCatalogEmptyState";
 import MaturityModelsPanel from "./MaturityModelsPanel";
 import useModelAssessmentStart from "./useModelAssessmentStart";
 import useMaturityModelCatalog from "./useMaturityModelCatalog";

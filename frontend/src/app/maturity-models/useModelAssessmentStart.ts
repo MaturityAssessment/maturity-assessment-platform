@@ -7,7 +7,7 @@ import type { AssessmentResponse, MaturityModelSummary } from "@/api/types";
 import {
   buildDraftSelection,
   type DraftSelection,
-} from "../assessment/DraftSelectionModal";
+} from "@/components/assessment/DraftSelectionModal";
 
 export default function useModelAssessmentStart() {
   const router = useRouter();

@@ -7,7 +7,7 @@ import apiClient from "@/api/axios";
 import { Modal, PageLoading, SideNavbar } from "@/components";
 import { useAuth } from "@/context";
 import type { ModelDetails } from "../../dashboard/dashboardAssessments";
-import AdminBreadcrumb from "../AdminBreadcrumb";
+import AdminBreadcrumb from "@/components/admin/AdminBreadcrumb";
 import AssessmentsPanel from "./AssessmentsPanel";
 
 export default function AssessmentManagementPage() {

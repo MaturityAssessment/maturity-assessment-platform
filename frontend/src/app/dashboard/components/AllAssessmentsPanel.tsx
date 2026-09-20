@@ -21,7 +21,7 @@ import {
   EmptyState,
   ProgressResult,
   StatusBadge,
-} from "./DashboardPrimitives";
+} from "@/components/dashboard/DashboardPrimitives";
 
 type StatusFilter = "all" | DashboardAssessmentStatus;
 type SortKey = "name" | "domain" | "status" | "outcome" | "updated";

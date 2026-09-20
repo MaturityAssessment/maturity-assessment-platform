@@ -8,8 +8,8 @@ import { Modal, PageLoading, SideNavbar } from "@/components";
 import apiClient from "@/api/axios";
 import { useAuth } from "@/context";
 import type { UpdateUserRequest, UserDTO } from "@/api/types";
-import { DashboardPanel } from "../../dashboard/components/DashboardPrimitives";
-import AdminBreadcrumb from "../AdminBreadcrumb";
+import { DashboardPanel } from "@/components/dashboard/DashboardPrimitives";
+import AdminBreadcrumb from "@/components/admin/AdminBreadcrumb";
 
 type UserMode = "PENDING" | "APPROVED";
 

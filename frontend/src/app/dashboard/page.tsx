@@ -6,14 +6,14 @@ import { SideNavbar } from "@/components";
 import GuidedTour from "@/components/guided-tour/GuidedTour";
 import TourInvitation from "@/components/guided-tour/TourInvitation";
 import { useAuth } from "@/context";
-import DraftSelectionModal from "../assessment/DraftSelectionModal";
+import DraftSelectionModal from "@/components/assessment/DraftSelectionModal";
 import AllAssessmentsPanel from "./components/AllAssessmentsPanel";
 import ContinueDraftsPanel from "./components/ContinueDraftsPanel";
 import DashboardHeader from "./components/DashboardHeader";
 import {
   DashboardError,
   DashboardLoading,
-} from "./components/DashboardStates";
+} from "@/components/dashboard/DashboardStates";
 import DraftDeleteModal from "./components/DraftDeleteModal";
 import SubmissionStatusPopup, {
   SubmissionStatus,

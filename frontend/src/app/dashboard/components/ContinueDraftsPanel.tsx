@@ -5,7 +5,7 @@ import {
   AssessmentIcon,
   DashboardPanel,
   EmptyState,
-} from "./DashboardPrimitives";
+} from "@/components/dashboard/DashboardPrimitives";
 
 export const QUICK_ACCESS_LIMIT = 4;
 

@@ -24,7 +24,7 @@ import {
 import ModelPageState, {
   getModelErrorMessage,
 } from "../../ModelPageState";
-import ModelStructureExplorer from "../../ModelStructureExplorer";
+import ModelStructureExplorer from "@/components/maturity-models/ModelStructureExplorer";
 import ModelVersionHeader from "../../ModelVersionHeader";
 import ModelVersionOverview from "../../ModelVersionOverview";
 import { selectModelIdentity } from "../../modelRepository";

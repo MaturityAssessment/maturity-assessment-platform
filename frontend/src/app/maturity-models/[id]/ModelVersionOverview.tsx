@@ -10,7 +10,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { MaturityModel } from "@/api/types";
-import { countModelStructure } from "./ModelStructureExplorer";
+import { countModelStructure } from "@/components/maturity-models/ModelStructureExplorer";
 
 function OverviewStat({
   value,

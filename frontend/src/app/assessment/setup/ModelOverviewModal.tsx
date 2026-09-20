@@ -11,7 +11,7 @@ import {
 import apiClient from "@/api/axios";
 import type { MaturityModel, MaturityModelSummary } from "@/api/types";
 import { Button, Modal } from "@/components";
-import ModelStructureExplorer from "../../maturity-models/[id]/ModelStructureExplorer";
+import ModelStructureExplorer from "@/components/maturity-models/ModelStructureExplorer";
 import { getModelErrorMessage } from "../../maturity-models/[id]/ModelPageState";
 
 type ModelOverviewModalProps = {
