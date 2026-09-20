@@ -63,10 +63,13 @@ frontend/
 │   │   └── types.ts            # API type definitions
 │   │
 │   ├── components/
-│   │   ├── ui/                 # shadcn/ui components (button, input, form, label, modal)
-│   │   ├── TopNavbar.tsx          # Navigation bar
-│   │   ├── Button.tsx          # Custom button
-│   │   └── EvidenceUpload.tsx  # Evidence file upload component
+│   │   ├── ui/                 # Low-level reusable UI primitives
+│   │   ├── navigation/         # Top/side navigation and user menu
+│   │   ├── feedback/           # Notices and loading states
+│   │   ├── visualization/      # Domain and progress visualizations
+│   │   ├── assessment/         # Shared assessment widgets
+│   │   ├── agent-chat/         # Agent chat components and hook
+│   │   └── guided-tour/        # Guided-tour components and geometry
 │   │
 │   ├── context/
 │   │   └── AuthContext.tsx     # Authentication context (tokens, user)
@@ -984,7 +987,12 @@ yarn test:dashboard   # Dashboard tests
 yarn test:campaigns   # Campaign tests
 yarn test:lib         # Shared-library tests
 yarn typecheck        # Type-check application and test TypeScript
+yarn storybook        # Run the component workbench
+yarn build-storybook  # Build the Storybook static bundle
 ```
+
+Storybook is configured under `.storybook/`. Component stories will be added
+incrementally as the shared component refactor continues.
 
 `yarn test:coverage` fails if aggregate line coverage drops below 90%, branch
 coverage below 75%, or function coverage below 90%. Treat those values as a

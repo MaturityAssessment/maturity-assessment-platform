@@ -25,7 +25,7 @@ import {
   isAnswered,
   isDependentQuestionDisabled,
 } from "./assessmentFlowUtils";
-import EvidenceUpload from "@/components/EvidenceUpload";
+import EvidenceUpload from "@/components/assessment/EvidenceUpload";
 import { getPracticeEvidenceField } from "./assessmentEvidence";
 import type { AssessmentEvidenceByField } from "./assessmentEvidence";
 

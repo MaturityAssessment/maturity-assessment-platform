@@ -2,7 +2,7 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { MaturityModelSummary } from "@/api/types";
-import { DomainIcon } from "@/components/DomainIcon";
+import { DomainIcon } from "@/components/visualization/DomainIcon";
 
 export default function ModelRepositoryHeader({
   model,

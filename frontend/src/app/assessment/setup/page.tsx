@@ -16,7 +16,7 @@ import {
 import apiClient from "@/api/axios";
 import type { AssessmentResponse } from "@/api/types";
 import { AlertNotification, PageLoading, TopNavbar } from "@/components";
-import { DomainIcon } from "@/components/DomainIcon";
+import { DomainIcon } from "@/components/visualization/DomainIcon";
 import DraftSelectionModal from "../DraftSelectionModal";
 import useMaturityModelCatalog from "../../maturity-models/useMaturityModelCatalog";
 import useModelAssessmentStart from "../../maturity-models/useModelAssessmentStart";

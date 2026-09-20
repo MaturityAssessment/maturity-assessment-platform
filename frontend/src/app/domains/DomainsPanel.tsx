@@ -15,7 +15,7 @@ import {
   DashboardPanel,
   EmptyState,
 } from "../dashboard/components/DashboardPrimitives";
-import { DomainIcon } from "@/components/DomainIcon";
+import { DomainIcon } from "@/components/visualization/DomainIcon";
 
 type SortKey = "name" | "models" | "active";
 type SortDirection = "asc" | "desc";

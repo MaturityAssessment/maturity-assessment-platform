@@ -16,7 +16,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context";
-import logo from "../../images/map-logo-big.png";
+import logo from "../../../images/map-logo-big.png";
 import UserMenu from "./UserMenu";
 
 interface NavigationItem {

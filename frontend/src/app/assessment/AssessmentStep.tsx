@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import AssessmentNavigationMenu, {
   type AssessmentNavigationModule,
 } from "./AssessmentNavigationMenu";
-import EvidenceUpload from "@/components/EvidenceUpload";
+import EvidenceUpload from "@/components/assessment/EvidenceUpload";
 import { getPracticeEvidenceField } from "./assessmentEvidence";
 import AssessmentQuestionCard from "./AssessmentQuestionCard";
 import {

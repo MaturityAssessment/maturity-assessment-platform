@@ -46,10 +46,13 @@ frontend/
 │   │   └── types.ts            # API type definitions
 │   │
 │   ├── components/
-│   │   ├── ui/                 # shadcn/ui components (button, input, form, label, modal)
-│   │   ├── TopNavbar.tsx          # Navigation bar
-│   │   ├── Button.tsx          # Custom button component
-│   │   └── EvidenceUpload.tsx  # Evidence file upload component
+│   │   ├── ui/                 # Low-level reusable UI primitives
+│   │   ├── navigation/         # Top/side navigation and user menu
+│   │   ├── feedback/           # Notices and loading states
+│   │   ├── visualization/      # Domain and progress visualizations
+│   │   ├── assessment/         # Shared assessment widgets
+│   │   ├── agent-chat/         # Agent chat components and hook
+│   │   └── guided-tour/        # Guided-tour components and geometry
 │   │
 │   ├── context/
 │   │   └── AuthContext.tsx     # Authentication context (tokens, user)
@@ -112,6 +115,15 @@ yarn dev
 ```
 
 Open http://localhost:3000/filipevm.
+
+### Run Storybook
+
+```bash
+yarn storybook
+```
+
+Storybook is configured under `.storybook/`; component stories will be added
+incrementally during the shared-component refactor.
 
 ### Build for Production
 

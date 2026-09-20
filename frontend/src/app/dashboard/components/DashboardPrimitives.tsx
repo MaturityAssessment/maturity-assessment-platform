@@ -8,7 +8,7 @@ import {
   MessageSquareWarning,
 } from "lucide-react";
 import type { DashboardAssessmentView } from "../types";
-import { DomainIcon } from "@/components/DomainIcon";
+import { DomainIcon } from "@/components/visualization/DomainIcon";
 
 export function DashboardPanel({
   id,

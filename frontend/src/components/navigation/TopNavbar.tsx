@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import logoIcon from "../../images/map-logo-icon.png";
+import logoIcon from "../../../images/map-logo-icon.png";
 import UserMenu from "./UserMenu";
 
 interface TopNavbarProps {

@@ -11,7 +11,7 @@ import {
   CreateDomainRequest,
   UpdateDomainAppearanceRequest,
 } from "@/api/types";
-import { DomainIcon } from "@/components/DomainIcon";
+import { DomainIcon } from "@/components/visualization/DomainIcon";
 import DomainsPanel from "./DomainsPanel";
 import {
   DOMAIN_COLOR_KEYS,

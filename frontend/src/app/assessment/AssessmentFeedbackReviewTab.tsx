@@ -15,7 +15,7 @@ import type {
 } from "@/api/types";
 import { cn } from "@/lib/utils";
 import type { AssessmentPracticeStep } from "./AssessmentStep";
-import EvidenceUpload from "@/components/EvidenceUpload";
+import EvidenceUpload from "@/components/assessment/EvidenceUpload";
 import { getPracticeEvidenceField } from "./assessmentEvidence";
 import AssessmentQuestionCard from "./AssessmentQuestionCard";
 import type { AssessmentEvidenceByField } from "./assessmentEvidence";
