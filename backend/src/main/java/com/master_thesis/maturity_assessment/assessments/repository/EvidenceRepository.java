@@ -12,5 +12,5 @@ public interface EvidenceRepository extends JpaRepository<Evidence, Long> {
     List<Evidence> findByAssessmentIdOrderByIdAsc(Long assessmentId);
     List<Evidence> findByAssessmentIdAndPracticeId(Long assessmentId, Long practiceId);
 
-    boolean existsByPractice_Practice_Module_Dimension_MaturityModel_Id(Long maturityModelId);
+    boolean existsByPractice_Module_Dimension_MaturityModel_Id(Long maturityModelId);
 }
