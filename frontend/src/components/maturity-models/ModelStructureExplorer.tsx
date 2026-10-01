@@ -17,6 +17,7 @@ import type {
   Question,
 } from "@/api/types";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 export type ModelStructureCounts = {
   dimensions: number;
@@ -224,18 +225,18 @@ function QuestionRow({
           </p>
           <div className="flex shrink-0 flex-wrap items-center gap-1.5">
             {question.required && (
-              <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+              <Badge color="rose" className="gap-1 px-2 py-0.5 text-[11px]">
                 Required
-              </span>
+              </Badge>
             )}
             {hasCustomWeight(question.weight) && (
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+              <Badge color="slate" className="gap-1 px-2 py-0.5 text-[11px] font-medium">
                 Weight {question.weight}
-              </span>
+              </Badge>
             )}
-            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+            <Badge color="blue" className="gap-1 px-2 py-0.5 text-[11px]">
               {typeLabel}
-            </span>
+            </Badge>
           </div>
         </div>
         {question.help?.trim() && (
@@ -408,16 +409,16 @@ function ModuleDisclosure({
           <span className="flex shrink-0 items-center gap-2">
             <span className="hidden flex-wrap items-center gap-1.5 sm:flex">
               {hasCustomWeight(module.weight) && (
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                <Badge color="slate" className="px-2.5 py-1 text-[11px] font-medium">
                   Weight {module.weight}
-                </span>
+                </Badge>
               )}
-              <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
+              <Badge color="violet" className="px-2.5 py-1 text-[11px]">
                 {module.practices.length} practices
-              </span>
-              <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+              </Badge>
+              <Badge color="blue" className="px-2.5 py-1 text-[11px]">
                 {questionCount} questions
-              </span>
+              </Badge>
             </span>
             <ChevronDown
               className={cn(
@@ -521,9 +522,9 @@ function DimensionDisclosure({
             )}
           </span>
           <span className="flex shrink-0 items-center gap-3">
-            <span className="hidden rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500 sm:inline-flex">
+            <Badge color="slate" className="hidden border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500 sm:inline-flex">
               {dimension.modules.length} modules · {questionCount} questions
-            </span>
+            </Badge>
             <ChevronDown
               className={cn(
                 "mt-1 h-5 w-5 shrink-0 text-slate-400 transition-transform duration-300 motion-reduce:transition-none",

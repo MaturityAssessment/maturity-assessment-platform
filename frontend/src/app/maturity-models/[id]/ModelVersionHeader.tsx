@@ -1,6 +1,5 @@
 import {
   CalendarDays,
-  Check,
   ChevronRight,
   GitBranch,
   LayoutGrid,
@@ -8,6 +7,7 @@ import {
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { MaturityModelSummary } from "@/api/types";
+import { Badge } from "@/components/ui/badge";
 import { DomainIcon } from "@/components/visualization/DomainIcon";
 
 type VersionTab = "overview" | "structure";
@@ -80,18 +80,13 @@ export default function ModelVersionHeader({
                   v{version ?? "?"}
                 </span>
                 {isActive ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/10">
-                    <Check className="h-3 w-3" aria-hidden="true" />
+                  <Badge color="emerald" outlined className="gap-1 px-2 py-1 text-[11px] ring-emerald-600/10">
                     Active
-                  </span>
+                  </Badge>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600">
-                    <span
-                      className="h-1.5 w-1.5 rounded-full bg-slate-400"
-                      aria-hidden="true"
-                    />
+                  <Badge color="slate" dot className="gap-1.5 px-2 py-1 text-[11px]">
                     Inactive
-                  </span>
+                  </Badge>
                 )}
               </div>
 

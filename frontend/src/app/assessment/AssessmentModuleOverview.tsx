@@ -11,6 +11,7 @@ import {
   Layers3,
 } from "lucide-react";
 import type { Dimension, Module } from "@/api/types";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import AssessmentNavigationMenu, {
   type AssessmentNavigationModule,
@@ -107,11 +108,11 @@ export default function AssessmentModuleOverview({
               />
 
               <div className="relative max-w-3xl">
-                <span className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                <Badge color="indigo" className="gap-2 border border-indigo-100 px-3 py-1 text-xs">
                   <Layers3 className="h-3.5 w-3.5" aria-hidden="true" />
                   Module {String(moduleNumber).padStart(2, "0")} of{" "}
                   {String(moduleCount).padStart(2, "0")}
-                </span>
+                </Badge>
 
                 <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
                   {module.name}
@@ -326,34 +327,34 @@ function PracticeStatus({
 }) {
   if (outstandingFlaggedCount > 0) {
     return (
-      <span className="hidden items-center gap-1 rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-semibold text-orange-700 sm:inline-flex">
+      <Badge color="orange" className="hidden gap-1 px-2.5 py-1 text-[11px] sm:inline-flex">
         <Flag className="h-3 w-3" aria-hidden="true" />
         {outstandingFlaggedCount} left
-      </span>
+      </Badge>
     );
   }
 
   if (requiredComplete) {
     return (
-      <span className="hidden items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 sm:inline-flex">
+      <Badge color="emerald" className="hidden gap-1 px-2.5 py-1 text-[11px] sm:inline-flex">
         <Check className="h-3 w-3" aria-hidden="true" />
         Complete
-      </span>
+      </Badge>
     );
   }
 
   if (answeredCount > 0) {
     return (
-      <span className="hidden items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 sm:inline-flex">
+      <Badge color="amber" className="hidden gap-1 px-2.5 py-1 text-[11px] sm:inline-flex">
         <CircleDot className="h-3 w-3" aria-hidden="true" />
         In progress
-      </span>
+      </Badge>
     );
   }
 
   return (
-    <span className="hidden rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500 sm:inline-flex">
+    <Badge color="slate" className="hidden px-2.5 py-1 text-[11px] text-slate-500 sm:inline-flex">
       Not started
-    </span>
+    </Badge>
   );
 }

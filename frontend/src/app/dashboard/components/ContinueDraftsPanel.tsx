@@ -6,6 +6,7 @@ import {
   DashboardPanel,
   EmptyState,
 } from "@/components/dashboard/DashboardPrimitives";
+import { Badge } from "@/components/ui/badge";
 
 export const QUICK_ACCESS_LIMIT = 4;
 
@@ -53,9 +54,7 @@ export default function ContinueDraftsPanel({
                   colorKey={assessment.domainColorKey}
                   domainName={assessment.domain}
                 />
-                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
-                  In progress
-                </span>
+                <Badge color="blue" className="px-2.5 py-1 text-[11px]">In progress</Badge>
               </div>
               <div className="mt-5 min-w-0 flex-1">
                 <h3 className="line-clamp-2 font-semibold leading-5 text-slate-900">
