@@ -566,7 +566,7 @@ function LikertOptions({
           </span>
         </div>
 
-        <div className="relative mt-5 h-12 rounded-lg px-2 focus-within:ring-2 focus-within:ring-indigo-200">
+        <div className="relative mt-5 h-12 rounded-lg px-2">
           <div className="absolute left-4 right-4 top-3 h-1 rounded-full bg-slate-200">
             <div
               className="h-full rounded-full bg-indigo-500 transition-[width]"
