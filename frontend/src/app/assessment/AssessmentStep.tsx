@@ -358,7 +358,6 @@ export default function AssessmentStep({
                           question={question}
                           fieldName={fieldName}
                           value={formData[fieldName]}
-                          modelMaxLevel={modelMaxLevel}
                           disabled={disabled}
                           evaluation={evaluation}
                           respondentUpdated={Boolean(

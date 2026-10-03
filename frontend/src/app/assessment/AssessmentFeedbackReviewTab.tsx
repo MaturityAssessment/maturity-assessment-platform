@@ -26,7 +26,6 @@ import {
 import { isDependentQuestionDisabled } from "./assessmentFlowUtils";
 
 type AssessmentFeedbackReviewTabProps = {
-  modelMaxLevel: number;
   practiceSteps: AssessmentPracticeStep[];
   formData: AssessmentData;
   evidenceFiles: AssessmentEvidenceByField;
@@ -41,7 +40,6 @@ type AssessmentFeedbackReviewTabProps = {
 };
 
 export default function AssessmentFeedbackReviewTab({
-  modelMaxLevel,
   practiceSteps,
   formData,
   evidenceFiles,
@@ -212,7 +210,6 @@ export default function AssessmentFeedbackReviewTab({
                 question={item.question}
                 fieldName={item.fieldName}
                 value={formData[item.fieldName]}
-                modelMaxLevel={modelMaxLevel}
                 disabled={isDependentQuestionDisabled(
                   item.step,
                   item.question,

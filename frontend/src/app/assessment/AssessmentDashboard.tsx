@@ -307,7 +307,6 @@ export default function AssessmentDashboard({
       ) : activeTab === "review" ? (
         feedbackItemCount > 0 ? (
           <AssessmentFeedbackReviewTab
-            modelMaxLevel={Math.max(2, model.levels?.length || 5)}
             practiceSteps={practiceSteps}
             formData={formData}
             evidenceFiles={evidenceFiles}
