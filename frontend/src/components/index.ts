@@ -1,4 +1,5 @@
 export { Button, buttonVariants } from "./ui/button";
+export { default as TopNavbarWithTabs } from "./navigation/TopNavbarWithTabs";
 export { default as TopNavbar } from "./navigation/TopNavbar";
 export { default as SideNavbar } from "./navigation/SideNavbar";
 export { default as UserMenu } from "./navigation/UserMenu";

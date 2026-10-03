@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import Image from "next/image";
 import {
   ArrowRight,
   BadgeCheck,
@@ -35,7 +34,7 @@ import type {
 import TourInvitation from "@/components/guided-tour/TourInvitation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import logoIcon from "../../../images/map-logo-icon.png";
+import TopNavbarWithTabs from "@/components/navigation/TopNavbarWithTabs";
 import type { AssessmentPracticeStep } from "./AssessmentStep";
 import type { AssessmentEvidenceByField } from "./assessmentEvidence";
 import {
@@ -155,83 +154,62 @@ export default function AssessmentDashboard({
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-4 pt-5 sm:px-6 lg:px-10">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-              <Image
-                src={logoIcon}
-                alt="Maturity Assessment Platform"
-                className="h-10 w-10 shrink-0 object-contain"
-                priority
-              />
-              <div className="min-w-0">
-                <p className="truncate text-lg font-bold tracking-tight text-slate-950 sm:text-xl">
-                  {formatAssessmentTitle(model.name)}
-                </p>
-                {model.domain?.name && (
-                  <p className="mt-0.5 text-xs font-medium text-slate-500">
-                    {model.domain.name}
-                  </p>
-                )}
+      <TopNavbarWithTabs
+        title={formatAssessmentTitle(model.name)}
+        subtitle={model.domain?.name}
+        rightActions={
+          <div
+            data-help-tour={
+              showLeaveAction ? undefined : "assessment-dashboard-leave"
+            }
+            className="flex flex-wrap items-center gap-2 sm:justify-end"
+          >
+            {completed ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                <BadgeCheck className="h-4 w-4" aria-hidden="true" />
+                Evaluation complete
+              </span>
+            ) : (
+              <div data-help-tour="assessment-dashboard-autosave">
+                <AssessmentSaveIndicator
+                  status={saveStatus}
+                  error={saveError}
+                  onRetry={onRetrySave}
+                />
               </div>
-            </div>
-
-            <div
-              data-help-tour={
-                showLeaveAction ? undefined : "assessment-dashboard-leave"
-              }
-              className="flex flex-wrap items-center gap-2 sm:justify-end"
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onStartTour}
+              title="Show assessment dashboard tour"
+              aria-label="Show assessment dashboard tour"
+              className="text-slate-600"
             >
-              {completed ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
-                  <BadgeCheck className="h-4 w-4" aria-hidden="true" />
-                  Evaluation complete
-                </span>
-              ) : (
-                <div data-help-tour="assessment-dashboard-autosave">
-                  <AssessmentSaveIndicator
-                    status={saveStatus}
-                    error={saveError}
-                    onRetry={onRetrySave}
-                  />
-                </div>
-              )}
+              <CircleHelp className="h-4 w-4" aria-hidden="true" />
+              Guide me
+            </Button>
+            {showLeaveAction && (
               <Button
                 type="button"
-                variant="ghost"
-                onClick={onStartTour}
-                title="Show assessment dashboard tour"
-                aria-label="Show assessment dashboard tour"
-                className="text-slate-600"
+                variant="outline"
+                onClick={onLeave}
+                disabled={isLeaving}
+                data-help-tour="assessment-dashboard-leave"
+                className="border-slate-200 bg-white text-slate-700"
               >
-                <CircleHelp className="h-4 w-4" aria-hidden="true" />
-                Guide me
+                {completed || changesRequested
+                  ? "Back to assessments"
+                  : isLeaving
+                    ? "Saving..."
+                    : "Continue Later"}
               </Button>
-              {showLeaveAction && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onLeave}
-                  disabled={isLeaving}
-                  data-help-tour="assessment-dashboard-leave"
-                  className="border-slate-200 bg-white text-slate-700"
-                >
-                  {completed || changesRequested
-                    ? "Back to assessments"
-                    : isLeaving
-                      ? "Saving..."
-                      : "Continue Later"}
-                </Button>
-              )}
-            </div>
+            )}
           </div>
-
-          <nav
-            className="flex gap-7 overflow-x-auto"
-            aria-label="Assessment dashboard"
-            role="tablist"
-          >
+        }
+        tabsLabel="Assessment dashboard"
+        tabs={
+          <>
             <DashboardTab
               label="Overview"
               tab="overview"
@@ -267,9 +245,9 @@ export default function AssessmentDashboard({
               activeTab={activeTab}
               onSelect={onTabChange}
             />
-          </nav>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {tourInvitation && (
         <div className="mx-auto w-full max-w-[1440px] px-4 pt-5 sm:px-6 lg:px-10">

@@ -1,6 +1,6 @@
 import { useRef, type ChangeEvent, type ReactNode } from "react";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
-import { TopNavbar, Notice } from "@/components";
+import { TopNavbarWithTabs, Notice } from "@/components";
 import {
   EDITOR_STEPS,
   type EditorNotice,
@@ -49,14 +49,44 @@ export default function EditorChrome({
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      <TopNavbar
+      <TopNavbarWithTabs
         title={editing ? "Create new model version" : "Create maturity model"}
         subtitle={
           editing
             ? "The saved result will be a new inactive version."
             : "The saved model will remain inactive until you publish it."
         }
-        showUserMenu={false}
+        tabsLabel="Model editor steps"
+        tabs={EDITOR_STEPS.map((item, index) => {
+          const active = step === item.id;
+          const count = issueCountByStep[item.id];
+          return (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              id={`model-editor-tab-${item.id}`}
+              aria-controls={`model-editor-panel-${item.id}`}
+              aria-selected={active}
+              title={item.description}
+              onClick={() => onStepChange(item.id)}
+              className={`relative shrink-0 rounded-t-md px-1.5 pb-3 pt-1 text-sm font-semibold transition focus:outline-none focus-visible:bg-indigo-50 focus-visible:text-indigo-700 ${
+                active
+                  ? "text-indigo-700 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-indigo-600"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <span className="inline-flex items-center gap-2">
+                <span>{index + 1} {item.label}</span>
+                {count > 0 && (
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">
+                    {count}
+                  </span>
+                )}
+              </span>
+            </button>
+          );
+        })}
         rightActions={
           <div className="flex items-center gap-3">
             <input
@@ -87,52 +117,14 @@ export default function EditorChrome({
           />
         )}
 
-        <nav
-          aria-label="Model editor steps"
-          className="mb-6 grid overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm sm:grid-cols-4"
-        >
-          {EDITOR_STEPS.map((item, index) => {
-            const active = step === item.id;
-            const count = issueCountByStep[item.id];
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onStepChange(item.id)}
-                className={`flex items-center gap-3 border-b px-4 py-4 text-left transition last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 ${
-                  active
-                    ? "bg-blue-50 text-blue-950"
-                    : "bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                <span
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
-                    active
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-600"
-                  }`}
-                >
-                  {index + 1}
-                </span>
-                <span className="min-w-0">
-                  <span className="flex items-center gap-2 text-sm font-semibold">
-                    {item.label}
-                    {count > 0 && (
-                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">
-                        {count}
-                      </span>
-                    )}
-                  </span>
-                  <span className="hidden text-xs text-gray-500 lg:block">
-                    {item.description}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </nav>
 
-        {children}
+        <div
+          role="tabpanel"
+          id={`model-editor-panel-${step}`}
+          aria-labelledby={`model-editor-tab-${step}`}
+        >
+          {children}
+        </div>
       </main>
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur">
