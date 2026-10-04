@@ -206,6 +206,17 @@ export function deleteDimension(
   };
 }
 
+export function reorderDimension(
+  document: MaturityModelEditorDocument,
+  activeKey: string,
+  overKey: string
+) {
+  return {
+    ...document,
+    dimensions: reorderByKey(document.dimensions, activeKey, overKey),
+  };
+}
+
 export function addModule(
   document: MaturityModelEditorDocument,
   dimensionKey: string

@@ -74,6 +74,7 @@ export default function MaturityModelEditorPage({
       importing={state.importing}
       notice={state.notice}
       issueCountByStep={issueCountByStep}
+      issues={issues}
       onStepChange={editor.setStep}
       onDismissNotice={editor.dismissNotice}
       onImportFile={editor.importWorkbook}

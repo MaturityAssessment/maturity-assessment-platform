@@ -4,6 +4,7 @@ import { TopNavbarWithTabs, Notice } from "@/components";
 import {
   EDITOR_STEPS,
   type EditorNotice,
+  type EditorIssue,
   type EditorStep,
 } from "../model/editorTypes";
 
@@ -15,6 +16,7 @@ type EditorChromeProps = {
   importing: boolean;
   notice: EditorNotice | null;
   issueCountByStep: Record<EditorStep, number>;
+  issues: EditorIssue[];
   children: ReactNode;
   onStepChange: (step: EditorStep) => void;
   onDismissNotice: () => void;
@@ -31,6 +33,7 @@ export default function EditorChrome({
   importing,
   notice,
   issueCountByStep,
+  issues,
   children,
   onStepChange,
   onDismissNotice,
@@ -60,6 +63,9 @@ export default function EditorChrome({
         tabs={EDITOR_STEPS.map((item, index) => {
           const active = step === item.id;
           const count = issueCountByStep[item.id];
+          const hasErrors = issues.some((issue) =>
+            issue.severity === "error" && (item.id === "review" || issue.step === item.id)
+          );
           return (
             <button
               key={item.id}
@@ -79,7 +85,10 @@ export default function EditorChrome({
               <span className="inline-flex items-center gap-2">
                 <span>{index + 1} {item.label}</span>
                 {count > 0 && (
-                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">
+                  <span
+                    aria-label={`${count} issue${count === 1 ? "" : "s"}`}
+                    className={`rounded-full px-2 py-0.5 text-xs ${hasErrors ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"}`}
+                  >
                     {count}
                   </span>
                 )}

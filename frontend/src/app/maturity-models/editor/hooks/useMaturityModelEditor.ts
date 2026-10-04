@@ -35,6 +35,7 @@ import {
   movePractice,
   moveQuestion,
   reorderModule,
+  reorderDimension,
   reorderPractice,
   reorderQuestion,
   updateDimension,
@@ -204,7 +205,7 @@ export function useMaturityModelEditor(
         (counts, step) => {
           counts[step.id] = issues.filter(
             (issue) =>
-              issue.step === step.id && issue.severity === "error"
+              (step.id === "review" || issue.step === step.id)
           ).length;
           return counts;
         },
@@ -257,6 +258,10 @@ export function useMaturityModelEditor(
         withDocument((document) =>
           moveDimension(document, dimensionKey, direction)
         ),
+      reorderDimension: (activeKey: string, overKey: string) =>
+        withDocument((document) =>
+          reorderDimension(document, activeKey, overKey)
+        ),
       deleteDimension: (dimensionKey: string) => {
         if (!state.document) return;
         const next = deleteDimension(state.document, dimensionKey);
@@ -266,8 +271,13 @@ export function useMaturityModelEditor(
           first ? { type: "dimension", key: first.clientKey } : undefined
         );
       },
-      addModule: (dimensionKey: string) =>
-        withDocument((document) => addModule(document, dimensionKey)),
+      addModule: (dimensionKey: string) => {
+        if (!state.document) return;
+        const next = addModule(state.document, dimensionKey);
+        const modules = findDimension(next, dimensionKey)?.modules;
+        const added = modules?.[modules.length - 1];
+        replaceDocument(next, added ? { type: "module", key: added.clientKey } : undefined);
+      },
       updateModule: (
         dimensionKey: string,
         moduleKey: string,
@@ -303,8 +313,13 @@ export function useMaturityModelEditor(
             : undefined
         );
       },
-      addPractice: (moduleKey: string) =>
-        withDocument((document) => addPractice(document, moduleKey)),
+      addPractice: (moduleKey: string) => {
+        if (!state.document) return;
+        const next = addPractice(state.document, moduleKey);
+        const practices = findModule(next, moduleKey)?.module.practices;
+        const added = practices?.[practices.length - 1];
+        replaceDocument(next, added ? { type: "practice", key: added.clientKey } : undefined);
+      },
       updatePractice: (
         moduleKey: string,
         practiceKey: string,

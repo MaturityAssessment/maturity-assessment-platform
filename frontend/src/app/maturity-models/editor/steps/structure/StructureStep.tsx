@@ -33,7 +33,7 @@ export default function StructureStep({
         selection={selected}
         issues={issues}
         onSelect={onSelect}
-        onAddDimension={commands.addDimension}
+        commands={commands}
       />
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
