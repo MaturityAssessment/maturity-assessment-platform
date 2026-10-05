@@ -36,7 +36,7 @@ export default function StructureStep({
         commands={commands}
       />
 
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+      <section className="min-w-0 rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         {!selected ? (
           <div className="py-20 text-center text-gray-500">
             Add a dimension to begin.

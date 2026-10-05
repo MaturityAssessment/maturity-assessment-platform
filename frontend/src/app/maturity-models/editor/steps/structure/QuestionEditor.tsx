@@ -14,7 +14,8 @@ import {
   inputClass,
   labelClass,
 } from "../../components/FormFields";
-import { codeOrdinal, suggestCode } from "../../model/editorDocument";
+import { suggestCode } from "../../model/editorDocument";
+import { codePrefix } from "../../model/editorCodes";
 import { changeQuestionType } from "../../model/editorMutations";
 import { dependencyWouldCycle } from "../../model/editorValidation";
 import QuestionTypeFields, {
@@ -126,15 +127,12 @@ export default function QuestionEditor({
                     ...question,
                     text: event.target.value,
                     code:
-                      question.codeLocked || question.text
+                      question.codeLocked || question.text ||
+                      question.code !== suggestCode("Q", questionIndex + 1, "Question")
                         ? question.code
                         : suggestCode(
                             "Q",
-                            codeOrdinal(
-                              question.code,
-                              "Q",
-                              questionIndex + 1
-                            ),
+                            questionIndex + 1,
                             event.target.value
                           ),
                   })
@@ -144,6 +142,7 @@ export default function QuestionEditor({
             <CodeField
               id={`question-${question.clientKey}-code`}
               value={question.code}
+              prefix={codePrefix("Q", questionIndex + 1)}
               locked={question.codeLocked}
               onChange={(code) => onChange({ ...question, code })}
             />

@@ -24,6 +24,7 @@ export default function SelectedItemEditor({
   if (selected?.type === "dimension") {
     return (
       <DimensionEditor
+        key={selected.dimension.clientKey}
         document={document}
         dimension={selected.dimension}
         onSelect={onSelect}
@@ -34,6 +35,7 @@ export default function SelectedItemEditor({
   if (selected?.type === "module") {
     return (
       <ModuleEditor
+        key={selected.module.clientKey}
         dimension={selected.dimension}
         module={selected.module}
         onSelect={onSelect}

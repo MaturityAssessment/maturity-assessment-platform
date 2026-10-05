@@ -8,6 +8,7 @@ import type {
   ModelEditorPractice,
   ModelEditorQuestion,
 } from "@/api/types";
+import { codePrefix, renumberSiblingCodes } from "./editorCodes.ts";
 
 export const DEFAULT_AGGREGATION_RULE: AggregationRule = "WEIGHTED_AVERAGE";
 
@@ -64,7 +65,7 @@ export function suggestCode(
   ordinal: number,
   name: string
 ) {
-  return `${prefix}${ordinal}_${initials(name)}`;
+  return `${codePrefix(prefix, ordinal)}${initials(name)}`;
 }
 
 export function emptyQuestion(ordinal: number): ModelEditorQuestion {
@@ -164,7 +165,7 @@ export function hydrateDocument(
     ...level,
     number: index + 1,
   }));
-  return {
+  const document: MaturityModelEditorDocument = {
     ...raw,
     changelogMarkdown: raw.changelogMarkdown ?? "",
     autoEvaluated: raw.autoEvaluated ?? true,
@@ -226,6 +227,24 @@ export function hydrateDocument(
       })),
     })),
   };
+  // Initialize prefixes once; subsequent structural edits renumber only siblings.
+  document.dimensions = renumberSiblingCodes(document.dimensions, "D").items;
+  for (const dimension of document.dimensions) {
+    const modules = renumberSiblingCodes(dimension.modules, "M", dimension.gatingRules);
+    dimension.modules = modules.items;
+    dimension.gatingRules = modules.gatingRules;
+    for (const modelModule of dimension.modules) {
+      const practices = renumberSiblingCodes(modelModule.practices, "P", modelModule.gatingRules);
+      modelModule.practices = practices.items;
+      modelModule.gatingRules = practices.gatingRules;
+      for (const practice of modelModule.practices) {
+        const questions = renumberSiblingCodes(practice.questions, "Q", practice.gatingRules);
+        practice.questions = questions.items;
+        practice.gatingRules = questions.gatingRules;
+      }
+    }
+  }
+  return document;
 }
 
 export function serializeDocument(document: MaturityModelEditorDocument) {
@@ -308,25 +327,4 @@ export function countItems(document: MaturityModelEditorDocument) {
     practices,
     questions,
   };
-}
-
-export function codeOrdinal(
-  code: string,
-  prefix: "D" | "M" | "P" | "Q",
-  fallback: number
-) {
-  const match = code.match(new RegExp(`^${prefix}(\\d+)(?:_|$)`, "i"));
-  return match ? Number(match[1]) : fallback;
-}
-
-export function nextSiblingOrdinal(
-  items: Array<{ code: string }>,
-  prefix: "D" | "M" | "P" | "Q"
-) {
-  return (
-    items.reduce(
-      (largest, item) => Math.max(largest, codeOrdinal(item.code, prefix, 0)),
-      0
-    ) + 1
-  );
 }

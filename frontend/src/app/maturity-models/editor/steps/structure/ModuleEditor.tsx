@@ -1,4 +1,3 @@
-import { PlusIcon } from "@heroicons/react/24/outline";
 import type {
   ModelEditorDimension,
   ModelEditorModule,
@@ -8,7 +7,8 @@ import {
   inputClass,
   labelClass,
 } from "../../components/FormFields";
-import { codeOrdinal, suggestCode } from "../../model/editorDocument";
+import { suggestCode } from "../../model/editorDocument";
+import { codePrefix } from "../../model/editorCodes";
 import type {
   Selection,
   StructureEditorCommands,
@@ -18,6 +18,7 @@ import ItemHeader from "./ItemHeader";
 import { TEXT_LIMITS } from "@/config/textLimits";
 import AggregationRuleField from "../../components/AggregationRuleField";
 import GatingRuleField from "../../components/GatingRuleField";
+import ElementEditorTabs, { EditorSectionHeading } from "./ElementEditorTabs";
 
 export default function ModuleEditor({
   dimension,
@@ -41,6 +42,10 @@ export default function ModuleEditor({
       <ItemHeader
         kind="Module"
         code={module.code}
+        name={module.name}
+        context={`In ${dimension.name || "Untitled dimension"} · ${module.practices.length} practice${module.practices.length === 1 ? "" : "s"}`}
+        canMoveUp={moduleIndex > 0}
+        canMoveDown={moduleIndex < dimension.modules.length - 1}
         canDelete={dimension.modules.length > 1}
         onMoveUp={() =>
           commands.moveModule(dimension.clientKey, module.clientKey, -1)
@@ -62,102 +67,144 @@ export default function ModuleEditor({
           commands.deleteModule(dimension.clientKey, module.clientKey);
         }}
       />
-      <div className="grid gap-5 md:grid-cols-2">
-        <label className={labelClass}>
-          Name *
-          <input
-            className={inputClass}
-            value={module.name}
-            maxLength={TEXT_LIMITS.name}
-            onChange={(event) =>
-              update({
-                ...module,
-                name: event.target.value,
-                code:
-                  module.codeLocked || module.name
-                    ? module.code
-                    : suggestCode(
-                        "M",
-                        codeOrdinal(module.code, "M", moduleIndex + 1),
-                        event.target.value
-                      ),
-              })
-            }
-          />
-        </label>
-        <CodeField
-          id={`module-${module.clientKey}-code`}
-          value={module.code}
-          locked={module.codeLocked}
-          onChange={(code) => update({ ...module, code })}
-        />
-        <label className={`${labelClass} md:col-span-2`}>
-          Description
-          <textarea
-            rows={3}
-            className={inputClass}
-            value={module.description}
-            maxLength={TEXT_LIMITS.description}
-            onChange={(event) =>
-              update({ ...module, description: event.target.value })
-            }
-          />
-        </label>
-        <label className={labelClass}>
-          Weight
-          <input
-            type="number"
-            min="0.01"
-            step="0.01"
-            className={inputClass}
-            value={module.weight}
-            onChange={(event) =>
-              update({ ...module, weight: Number(event.target.value) || 1 })
-            }
-          />
-        </label>
-        <AggregationRuleField
-          id={`module-${module.clientKey}-aggregation-rule`}
-          label="Practice aggregation rule"
-          value={module.aggregationRule}
-          onChange={(aggregationRule) =>
-            update({ ...module, aggregationRule })
-          }
-        />
-        <GatingRuleField
-          idPrefix={`module-${module.clientKey}`}
-          childLabel="Practices"
-          childOptions={module.practices.map((practice) => ({
-            code: practice.code,
-            name: practice.name,
-          }))}
-          value={module.gatingRules}
-          onChange={(gatingRules) => update({ ...module, gatingRules })}
-        />
-      </div>
-      <div className="mt-8 flex items-start justify-between gap-4 border-t border-gray-100 pt-5">
-        <ChildItemList
-          title="Practices"
-          parentCode={module.code}
-          itemType="practice"
-          items={module.practices}
-          onSelect={onSelect}
-          onMove={(practiceKey, direction) =>
-            commands.movePractice(module.clientKey, practiceKey, direction)
-          }
-          onReorder={(activeKey, overKey) =>
-            commands.reorderPractice(module.clientKey, activeKey, overKey)
-          }
-        />
-        <button
-          type="button"
-          onClick={() => commands.addPractice(module.clientKey)}
-          className="inline-flex shrink-0 items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-        >
-          <PlusIcon className="mr-1.5 h-4 w-4" />
-          Add practice
-        </button>
-      </div>
+      <ElementEditorTabs
+        kind="Module"
+        tabs={[
+          {
+            id: "details",
+            label: "Details",
+            content: (
+              <>
+                <EditorSectionHeading
+                  title="Module details"
+                  description="Give this module a clear name and describe what it covers."
+                />
+                <div className="grid gap-6 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                  <label className={labelClass}>
+                    Name *
+                    <input
+                      className={inputClass}
+                      value={module.name}
+                      maxLength={TEXT_LIMITS.name}
+                      onChange={(event) =>
+                        update({
+                          ...module,
+                          name: event.target.value,
+                          code:
+                            module.codeLocked || module.name ||
+                            module.code !== suggestCode("M", moduleIndex + 1, "Module")
+                              ? module.code
+                              : suggestCode(
+                                  "M",
+                                  moduleIndex + 1,
+                                  event.target.value
+                                ),
+                        })
+                      }
+                    />
+                  </label>
+                  <CodeField
+                    id={`module-${module.clientKey}-code`}
+                    value={module.code}
+                    prefix={codePrefix("M", moduleIndex + 1)}
+                    locked={module.codeLocked}
+                    onChange={(code) => update({ ...module, code })}
+                  />
+                  <label className={`${labelClass} sm:col-span-2`}>
+                    Description
+                    <textarea
+                      rows={4}
+                      className={inputClass}
+                      value={module.description}
+                      maxLength={TEXT_LIMITS.description}
+                      placeholder="Describe the purpose and scope of this module."
+                      onChange={(event) =>
+                        update({ ...module, description: event.target.value })
+                      }
+                    />
+                  </label>
+                </div>
+              </>
+            ),
+          },
+          {
+            id: "scoring",
+            label: "Scoring",
+            content: (
+              <>
+                <EditorSectionHeading
+                  title="Score calculation"
+                  description="Choose how practice scores combine into the module score."
+                />
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <label className={labelClass}>
+                    Weight
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      className={inputClass}
+                      value={module.weight}
+                      onChange={(event) =>
+                        update({ ...module, weight: Number(event.target.value) || 1 })
+                      }
+                    />
+                    <span className="mt-2 block text-xs font-normal leading-5 text-gray-500">
+                      Relative importance when this dimension uses weighted aggregation.
+                    </span>
+                  </label>
+                  <AggregationRuleField
+                    id={`module-${module.clientKey}-aggregation-rule`}
+                    label="Practice aggregation rule"
+                    value={module.aggregationRule}
+                    onChange={(aggregationRule) =>
+                      update({ ...module, aggregationRule })
+                    }
+                  />
+                </div>
+              </>
+            ),
+          },
+          {
+            id: "gating",
+            label: "Gating rules",
+            count: module.gatingRules.length,
+            content: (
+              <GatingRuleField
+                idPrefix={`module-${module.clientKey}`}
+                childLabel="Practices"
+                childOptions={module.practices.map((practice) => ({
+                  code: practice.code,
+                  name: practice.name,
+                }))}
+                value={module.gatingRules}
+                onChange={(gatingRules) => update({ ...module, gatingRules })}
+              />
+            ),
+          },
+          {
+            id: "practices",
+            label: "Practices",
+            count: module.practices.length,
+            content: (
+              <ChildItemList
+                title="Practices"
+                parentCode={module.code}
+                itemType="practice"
+                items={module.practices}
+                onAdd={() => commands.addPractice(module.clientKey)}
+                onSelect={onSelect}
+                onMove={(practiceKey, direction) =>
+                  commands.movePractice(module.clientKey, practiceKey, direction)
+                }
+                onReorder={(activeKey, overKey) =>
+                  commands.reorderPractice(module.clientKey, activeKey, overKey)
+                }
+              />
+            ),
+          },
+        ]}
+      />
     </>
   );
 }

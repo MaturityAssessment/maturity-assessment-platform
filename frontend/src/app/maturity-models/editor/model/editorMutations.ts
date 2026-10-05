@@ -11,8 +11,8 @@ import {
   emptyModule,
   emptyPractice,
   emptyQuestion,
-  nextSiblingOrdinal,
 } from "./editorDocument.ts";
+import { renumberSiblingCodes } from "./editorCodes.ts";
 
 function replaceByKey<T extends { clientKey: string }>(
   items: T[],
@@ -124,41 +124,46 @@ export function findSelectedItem(
 function updateModuleParent(
   document: MaturityModelEditorDocument,
   moduleKey: string,
-  update: (module: ModelEditorModule) => ModelEditorModule
+  update: (module: ModelEditorModule) => ModelEditorModule,
+  renumberPractices = false
 ) {
-  return {
-    ...document,
-    dimensions: document.dimensions.map((dimension) => ({
-      ...dimension,
-      modules: dimension.modules.map((module) =>
-        module.clientKey === moduleKey ? update(module) : module
-      ),
-    })),
-  };
+  const found = findModule(document, moduleKey);
+  if (!found) return document;
+  let next = update(found.module);
+  if (next === found.module) return document;
+  if (renumberPractices && next.practices !== found.module.practices) {
+    const result = renumberSiblingCodes(next.practices, "P", next.gatingRules);
+    next = { ...next, practices: result.items, gatingRules: result.gatingRules };
+  }
+  return updateDimension(document, found.dimension.clientKey, {
+    ...found.dimension,
+    modules: replaceByKey(found.dimension.modules, moduleKey, next),
+  });
 }
 
 function updatePracticeParent(
   document: MaturityModelEditorDocument,
   practiceKey: string,
-  update: (practice: ModelEditorPractice) => ModelEditorPractice
+  update: (practice: ModelEditorPractice) => ModelEditorPractice,
+  renumberQuestions = false
 ) {
-  return {
-    ...document,
-    dimensions: document.dimensions.map((dimension) => ({
-      ...dimension,
-      modules: dimension.modules.map((module) => ({
-        ...module,
-        practices: module.practices.map((practice) =>
-          practice.clientKey === practiceKey ? update(practice) : practice
-        ),
-      })),
-    })),
-  };
+  const found = findPractice(document, practiceKey);
+  if (!found) return document;
+  let next = update(found.practice);
+  if (next === found.practice) return document;
+  if (renumberQuestions && next.questions !== found.practice.questions) {
+    const result = renumberSiblingCodes(next.questions, "Q", next.gatingRules);
+    next = { ...next, questions: result.items, gatingRules: result.gatingRules };
+  }
+  return updateModule(document, found.dimension.clientKey, found.module.clientKey, {
+    ...found.module,
+    practices: replaceByKey(found.module.practices, practiceKey, next),
+  });
 }
 
 export function addDimension(document: MaturityModelEditorDocument) {
   const dimension = emptyDimension(
-    nextSiblingOrdinal(document.dimensions, "D"),
+    document.dimensions.length + 1,
     1,
     1,
     1
@@ -175,8 +180,13 @@ export function addDimension(document: MaturityModelEditorDocument) {
 export function updateDimension(
   document: MaturityModelEditorDocument,
   dimensionKey: string,
-  dimension: ModelEditorDimension
+  dimension: ModelEditorDimension,
+  renumberModules = false
 ) {
+  if (renumberModules && dimension.modules !== findDimension(document, dimensionKey)?.modules) {
+    const result = renumberSiblingCodes(dimension.modules, "M", dimension.gatingRules);
+    dimension = { ...dimension, modules: result.items, gatingRules: result.gatingRules };
+  }
   return {
     ...document,
     dimensions: replaceByKey(document.dimensions, dimensionKey, dimension),
@@ -188,9 +198,11 @@ export function moveDimension(
   dimensionKey: string,
   direction: -1 | 1
 ) {
+  const dimensions = moveByKey(document.dimensions, dimensionKey, direction);
+  if (dimensions === document.dimensions) return document;
   return {
     ...document,
-    dimensions: moveByKey(document.dimensions, dimensionKey, direction),
+    dimensions: renumberSiblingCodes(dimensions, "D").items,
   };
 }
 
@@ -198,11 +210,13 @@ export function deleteDimension(
   document: MaturityModelEditorDocument,
   dimensionKey: string
 ) {
+  if (!findDimension(document, dimensionKey)) return document;
   return {
     ...document,
-    dimensions: document.dimensions.filter(
-      (dimension) => dimension.clientKey !== dimensionKey
-    ),
+    dimensions: renumberSiblingCodes(
+      document.dimensions.filter((dimension) => dimension.clientKey !== dimensionKey),
+      "D"
+    ).items,
   };
 }
 
@@ -211,9 +225,11 @@ export function reorderDimension(
   activeKey: string,
   overKey: string
 ) {
+  const dimensions = reorderByKey(document.dimensions, activeKey, overKey);
+  if (dimensions === document.dimensions) return document;
   return {
     ...document,
-    dimensions: reorderByKey(document.dimensions, activeKey, overKey),
+    dimensions: renumberSiblingCodes(dimensions, "D").items,
   };
 }
 
@@ -224,7 +240,7 @@ export function addModule(
   const dimension = findDimension(document, dimensionKey);
   if (!dimension) return document;
   const newModule = emptyModule(
-    nextSiblingOrdinal(dimension.modules, "M"),
+    dimension.modules.length + 1,
     1,
     1
   );
@@ -268,20 +284,10 @@ export function moveModule(
 ) {
   const dimension = findDimension(document, dimensionKey);
   if (!dimension) return document;
-  const removed = dimension.modules.find(
-    (module) => module.clientKey === moduleKey
-  );
   return updateDimension(document, dimensionKey, {
     ...dimension,
-    gatingRules: removed
-      ? dimension.gatingRules.filter(
-          (rule) =>
-            rule.selection !== "specificChild" ||
-            rule.childCode?.toLowerCase() !== removed.code.toLowerCase()
-        )
-      : dimension.gatingRules,
     modules: moveByKey(dimension.modules, moduleKey, direction),
-  });
+  }, true);
 }
 
 export function reorderModule(
@@ -295,7 +301,7 @@ export function reorderModule(
   return updateDimension(document, dimensionKey, {
     ...dimension,
     modules: reorderByKey(dimension.modules, activeKey, overKey),
-  });
+  }, true);
 }
 
 export function deleteModule(
@@ -305,12 +311,21 @@ export function deleteModule(
 ) {
   const dimension = findDimension(document, dimensionKey);
   if (!dimension) return document;
+  const removed = dimension.modules.find(
+    (module) => module.clientKey === moduleKey
+  );
+  if (!removed) return document;
   return updateDimension(document, dimensionKey, {
     ...dimension,
+    gatingRules: dimension.gatingRules.filter(
+      (rule) =>
+        rule.selection !== "specificChild" ||
+        rule.childCode?.toLowerCase() !== removed.code.toLowerCase()
+    ),
     modules: dimension.modules.filter(
       (module) => module.clientKey !== moduleKey
     ),
-  });
+  }, true);
 }
 
 export function addPractice(
@@ -321,7 +336,7 @@ export function addPractice(
     ...module,
     practices: [
       ...module.practices,
-      emptyPractice(nextSiblingOrdinal(module.practices, "P"), 1),
+      emptyPractice(module.practices.length + 1, 1),
     ],
   }));
 }
@@ -361,7 +376,7 @@ export function movePractice(
   return updateModuleParent(document, moduleKey, (module) => ({
     ...module,
     practices: moveByKey(module.practices, practiceKey, direction),
-  }));
+  }), true);
 }
 
 export function reorderPractice(
@@ -373,7 +388,7 @@ export function reorderPractice(
   return updateModuleParent(document, moduleKey, (module) => ({
     ...module,
     practices: reorderByKey(module.practices, activeKey, overKey),
-  }));
+  }), true);
 }
 
 export function deletePractice(
@@ -385,20 +400,19 @@ export function deletePractice(
     const removed = module.practices.find(
       (practice) => practice.clientKey === practiceKey
     );
+    if (!removed) return module;
     return {
       ...module,
-      gatingRules: removed
-        ? module.gatingRules.filter(
-            (rule) =>
-              rule.selection !== "specificChild" ||
-              rule.childCode?.toLowerCase() !== removed.code.toLowerCase()
-          )
-        : module.gatingRules,
+      gatingRules: module.gatingRules.filter(
+        (rule) =>
+          rule.selection !== "specificChild" ||
+          rule.childCode?.toLowerCase() !== removed.code.toLowerCase()
+      ),
       practices: module.practices.filter(
         (practice) => practice.clientKey !== practiceKey
       ),
     };
-  });
+  }, true);
 }
 
 export function addQuestion(
@@ -409,7 +423,7 @@ export function addQuestion(
     ...practice,
     questions: [
       ...practice.questions,
-      emptyQuestion(nextSiblingOrdinal(practice.questions, "Q")),
+      emptyQuestion(practice.questions.length + 1),
     ],
   }));
 }
@@ -458,7 +472,7 @@ export function moveQuestion(
   return updatePracticeParent(document, practiceKey, (practice) => ({
     ...practice,
     questions: moveByKey(practice.questions, questionKey, direction),
-  }));
+  }), true);
 }
 
 export function reorderQuestion(
@@ -470,7 +484,7 @@ export function reorderQuestion(
   return updatePracticeParent(document, practiceKey, (practice) => ({
     ...practice,
     questions: reorderByKey(practice.questions, activeKey, overKey),
-  }));
+  }), true);
 }
 
 export function deleteQuestion(
@@ -499,7 +513,7 @@ export function deleteQuestion(
             : candidate
         ),
     };
-  });
+  }, true);
 }
 
 export function changeQuestionType(

@@ -11,7 +11,8 @@ import {
   inputClass,
   labelClass,
 } from "../../components/FormFields";
-import { codeOrdinal, suggestCode } from "../../model/editorDocument";
+import { suggestCode } from "../../model/editorDocument";
+import { codePrefix } from "../../model/editorCodes";
 import type { StructureEditorCommands } from "../../model/editorTypes";
 import ItemHeader from "./ItemHeader";
 import QuestionEditor from "./QuestionEditor";
@@ -109,15 +110,12 @@ export default function PracticeEditor({
                 ...practice,
                 name: event.target.value,
                 code:
-                  practice.codeLocked || practice.name
+                  practice.codeLocked || practice.name ||
+                  practice.code !== suggestCode("P", practiceIndex + 1, "Practice")
                     ? practice.code
                     : suggestCode(
                         "P",
-                        codeOrdinal(
-                          practice.code,
-                          "P",
-                          practiceIndex + 1
-                        ),
+                        practiceIndex + 1,
                         event.target.value
                       ),
               })
@@ -127,6 +125,7 @@ export default function PracticeEditor({
         <CodeField
           id={`practice-${practice.clientKey}-code`}
           value={practice.code}
+          prefix={codePrefix("P", practiceIndex + 1)}
           locked={practice.codeLocked}
           onChange={(code) => update({ ...practice, code })}
         />

@@ -17,6 +17,7 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   Bars3Icon,
+  PlusIcon,
 } from "@heroicons/react/24/outline";
 import type { Selection } from "../../model/editorTypes";
 
@@ -28,6 +29,7 @@ export default function ChildItemList({
   onSelect,
   onMove,
   onReorder,
+  onAdd,
 }: {
   title: string;
   parentCode: string;
@@ -36,6 +38,7 @@ export default function ChildItemList({
   onSelect: (selection: Selection) => void;
   onMove: (itemKey: string, direction: -1 | 1) => void;
   onReorder: (activeKey: string, overKey: string) => void;
+  onAdd?: () => void;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -48,7 +51,24 @@ export default function ChildItemList({
 
   return (
     <div className="min-w-0 flex-1">
-      <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h3 className="text-base font-semibold text-gray-950">{title}</h3>
+          <p className="mt-1 text-sm leading-6 text-gray-500">
+            Open a {itemType} to edit it. Drag the rows or use the arrows to reorder.
+          </p>
+        </div>
+        {onAdd && (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="inline-flex shrink-0 items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white outline-none hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          >
+            <PlusIcon className="mr-1.5 h-4 w-4" />
+            Add {itemType}
+          </button>
+        )}
+      </div>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -61,7 +81,7 @@ export default function ChildItemList({
           items={items.map((item) => item.clientKey)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="mt-2 space-y-2">
+          <div className="space-y-3">
             {items.map((item, index) => (
               <SortableChildItem
                 key={item.clientKey}
@@ -77,6 +97,11 @@ export default function ChildItemList({
           </div>
         </SortableContext>
       </DndContext>
+      {!items.length && (
+        <p className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
+          No {title.toLowerCase()} yet. Add a {itemType} to get started.
+        </p>
+      )}
     </div>
   );
 }
@@ -116,10 +141,10 @@ function SortableChildItem({
         transition,
         zIndex: isDragging ? 20 : undefined,
       }}
-      className={`group relative flex items-center gap-2 rounded-md border p-2 transition ${
+      className={`group relative flex items-center gap-2 rounded-lg border p-3 transition ${
         isDragging
           ? "border-blue-400 bg-blue-50 opacity-80 shadow-lg"
-          : "border-gray-200 bg-gray-50 hover:border-blue-200 hover:bg-blue-50"
+          : "border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/40"
       }`}
     >
       <button

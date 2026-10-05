@@ -61,12 +61,15 @@ test("reordering dimensions, modules, and practices preserves descendants and or
   const document = fixture();
   const [first, second] = document.dimensions;
   const dimensions = reorderDimension(document, first.clientKey, second.clientKey);
-  assert.equal(dimensions.dimensions[1], first);
+  assert.equal(dimensions.dimensions[1].clientKey, first.clientKey);
+  assert.equal(dimensions.dimensions[1].code, "D02_D");
+  assert.equal(dimensions.dimensions[1].modules, first.modules);
   assert.equal(document.dimensions[0], first);
 
   const [a, b, c] = first.modules;
   const modules = reorderModule(document, first.clientKey, a.clientKey, c.clientKey);
-  assert.deepEqual(modules.dimensions[0].modules, [b, c, a]);
+  assert.deepEqual(modules.dimensions[0].modules.map((module) => module.clientKey), [b, c, a].map((module) => module.clientKey));
+  assert.deepEqual(modules.dimensions[0].modules.map((module) => module.code), ["M01_M", "M02_M", "M03_M"]);
   assert.equal(modules.dimensions[0].modules[2].practices, a.practices);
   assert.deepEqual(first.modules, [a, b, c]);
 
@@ -74,7 +77,8 @@ test("reordering dimensions, modules, and practices preserves descendants and or
   const next = emptyPractice(2, 1);
   a.practices.push(next);
   const practices = reorderPractice(document, a.clientKey, original.clientKey, next.clientKey);
-  assert.deepEqual(practices.dimensions[0].modules[0].practices, [next, original]);
+  assert.deepEqual(practices.dimensions[0].modules[0].practices.map((practice) => practice.clientKey), [next.clientKey, original.clientKey]);
+  assert.deepEqual(practices.dimensions[0].modules[0].practices.map((practice) => practice.code), ["P01_P", "P02_POLICY_CODE"]);
   assert.equal(practices.dimensions[0].modules[0].practices[1].questions, original.questions);
   assert.deepEqual(a.practices, [original, next]);
 });
