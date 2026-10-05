@@ -14,6 +14,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ArrowDownIcon, ArrowUpIcon, Bars3Icon, ChevronRightIcon, LinkIcon, TrashIcon } from "@heroicons/react/24/outline";
+import type { EditorIssue } from "../../model/editorTypes";
 import type { ModelEditorQuestion } from "@/api/types";
 
 const answerTypeLabels: Record<string, string> = {
@@ -26,11 +27,13 @@ const answerTypeLabels: Record<string, string> = {
 
 export default function QuestionReorderList({
   questions,
+  issues = [],
   onReorder,
   onSelect,
   onDelete,
 }: {
   questions: ModelEditorQuestion[];
+  issues?: EditorIssue[];
   onSelect: (questionKey: string) => void;
   onReorder: (activeKey: string, overKey: string) => void;
   onDelete: (question: ModelEditorQuestion) => void;
@@ -62,6 +65,7 @@ export default function QuestionReorderList({
             <SortableQuestionOrderItem
               key={question.clientKey}
               question={question}
+              issues={issues.filter((issue) => issue.questionKey === question.clientKey)}
               questionIndex={questionIndex}
               questionCount={questions.length}
               onMove={(direction) => {
@@ -80,6 +84,7 @@ export default function QuestionReorderList({
 
 function SortableQuestionOrderItem({
   question,
+  issues,
   questionIndex,
   questionCount,
   onMove,
@@ -87,6 +92,7 @@ function SortableQuestionOrderItem({
   onDelete,
 }: {
   question: ModelEditorQuestion;
+  issues: EditorIssue[];
   questionIndex: number;
   questionCount: number;
   onMove: (direction: -1 | 1) => void;
@@ -144,7 +150,7 @@ function SortableQuestionOrderItem({
             </span>
             <span className="font-mono text-[11px] [overflow-wrap:anywhere]">{question.code}</span>
             <span>{question.required ? "Required" : "Optional"}</span>
-            <span>Weight {question.weight}</span>
+            <span>Weight {Number.isFinite(question.weight) ? question.weight : "missing"}</span>
             {question.dependsOnQuestionCode && (
               <span className="inline-flex min-w-0 items-center gap-1.5 text-gray-600">
                 <LinkIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
@@ -152,6 +158,12 @@ function SortableQuestionOrderItem({
               </span>
             )}
           </span>
+          {issues.length > 0 && (
+            <span className="mt-2 block text-xs text-amber-800">
+              <span className="font-semibold">⚠ {issues.length} issue{issues.length === 1 ? "" : "s"}: </span>
+              {issues.map((issue) => issue.message).join(" ")}
+            </span>
+          )}
         </span>
         <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-gray-400 group-hover:text-blue-600">
           <span>Edit</span>

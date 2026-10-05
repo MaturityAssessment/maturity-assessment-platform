@@ -21,6 +21,7 @@ export type EditorIssue = {
   message: string;
   selection?: Selection;
   field?: string;
+  questionKey?: string;
 };
 
 export type EditorNotice = {

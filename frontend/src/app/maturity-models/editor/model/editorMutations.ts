@@ -524,7 +524,7 @@ export function changeQuestionType(
   return {
     ...question,
     type,
-    weight: question.weight || 1,
+    weight: question.weight ?? 1,
     required: question.required,
     booleanCorrectAnswer: question.booleanCorrectAnswer ?? true,
     scalePointCount: question.scalePointCount ?? 5,

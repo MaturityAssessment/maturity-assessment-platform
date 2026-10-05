@@ -88,18 +88,6 @@ export default function OutlineRow({
           <TriangleAlert className={`h-3.5 w-3.5 ${empty ? "text-amber-600" : "text-red-500"}`} aria-hidden="true" />
         </span>
       )}
-      {node.selection.type === "dimension" && (
-        <button
-          type="button"
-          disabled={!canDelete}
-          onClick={onDelete}
-          aria-label={`Delete dimension ${node.label}`}
-          title="Delete dimension"
-          className="ml-0.5 shrink-0 rounded-md p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          <Trash2 className="h-4 w-4" aria-hidden="true" />
-        </button>
-      )}
       <Menu>
         <MenuButton
           aria-label={`Actions for ${node.label}`} title={`Actions for ${node.label}`}

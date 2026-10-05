@@ -5,6 +5,7 @@ type EditorTab = {
   id: string;
   label: string;
   count?: number;
+  issueCount?: number;
   content: ReactNode;
 };
 
@@ -27,6 +28,11 @@ export default function ElementEditorTabs({
             className="group flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 outline-none transition hover:bg-white/70 hover:text-gray-950 focus-visible:ring-2 focus-visible:ring-blue-500 data-[selected]:bg-white data-[selected]:text-blue-700 data-[selected]:shadow-sm"
           >
             {tab.label}
+            {!!tab.issueCount && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900" aria-label={`${tab.issueCount} question issues`}>
+                ⚠ {tab.issueCount}
+              </span>
+            )}
             {tab.count !== undefined && (
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs tabular-nums text-gray-600 group-data-[selected]:bg-blue-50 group-data-[selected]:text-blue-700">
                 {tab.count}

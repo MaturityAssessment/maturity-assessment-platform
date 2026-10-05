@@ -3,10 +3,10 @@ import type {
   ModelEditorPractice,
   QuestionChoice,
 } from "@/api/types";
-import { countItems } from "./editorDocument";
+import { countItems } from "./editorDocument.ts";
 import type { EditorIssue, Selection } from "./editorTypes";
-import { TEXT_LIMITS } from "@/config/textLimits";
-import { hasGatingRuleIssues } from "./gatingRules";
+import { TEXT_LIMITS } from "../../../../config/textLimits.ts";
+import { hasGatingRuleIssues } from "./gatingRules.ts";
 
 function validCode(code: string) {
   return /^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(code.trim());
@@ -310,6 +310,10 @@ export function validateDocument(
         );
         const questionCodes = new Map<string, string>();
         practice.questions.forEach((question, questionIndex) => {
+          const firstQuestionIssue = issues.length;
+          if (!Number.isFinite(question.weight) || question.weight <= 0) {
+            add({ step: "structure", severity: "error", message: "Question weight is required and must be greater than zero.", selection: practiceSelection, field: `question-${question.clientKey}-weight` });
+          }
           checkCode(
             questionCodes,
             question.code,
@@ -402,6 +406,9 @@ export function validateDocument(
                 selection: practiceSelection,
               });
             }
+          }
+          for (const issue of issues.slice(firstQuestionIssue)) {
+            issue.questionKey = question.clientKey;
           }
         });
       });

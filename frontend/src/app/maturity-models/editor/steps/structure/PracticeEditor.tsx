@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowLeftIcon, PlusIcon } from "@heroicons/react/24/outline";
 import type {
   ModelEditorModule,
@@ -17,6 +17,7 @@ import type {
   Selection,
   StructureEditorCommands,
 } from "../../model/editorTypes";
+import { validateDocument } from "../../model/editorValidation";
 import QuestionEditor from "./QuestionEditor";
 import QuestionReorderList from "./QuestionReorderList";
 import ItemHeader from "./ItemHeader";
@@ -46,6 +47,9 @@ export default function PracticeEditor({
       setSelectedQuestionKey(practice.questions.at(-1)?.clientKey ?? null);
     }
   }
+  const questionIssues = useMemo(() => validateDocument(document).filter(
+    (issue) => issue.selection?.key === practice.clientKey && issue.questionKey
+  ), [document, practice.clientKey]);
   const selectedQuestion = practice.questions.find((question) => question.clientKey === selectedQuestionKey);
   const practiceIndex = module.practices.findIndex(
     (candidate) => candidate.clientKey === practice.clientKey
@@ -249,6 +253,7 @@ export default function PracticeEditor({
           {
             id: "questions",
             label: "Questions",
+            issueCount: questionIssues.length,
             count: practice.questions.length,
             content: (
               <>
@@ -261,7 +266,7 @@ export default function PracticeEditor({
                     <PlusIcon className="h-4 w-4" /> Add question
                   </button>
                 </div>
-                <QuestionReorderList questions={practice.questions}
+                <QuestionReorderList questions={practice.questions} issues={questionIssues}
                   onSelect={setSelectedQuestionKey}
                   onDelete={deleteQuestion}
                   onReorder={(activeKey, overKey) => commands.reorderQuestion(practice.clientKey, activeKey, overKey)} />
@@ -271,7 +276,7 @@ export default function PracticeEditor({
         ]}
       />
       {selectedQuestion && (
-        <QuestionEditor question={selectedQuestion}
+        <QuestionEditor question={selectedQuestion} issues={questionIssues.filter((issue) => issue.questionKey === selectedQuestion.clientKey)}
           questionIndex={practice.questions.findIndex((question) => question.clientKey === selectedQuestion.clientKey)}
           practice={practice} maxLevel={document.levels.length}
           onClose={() => setSelectedQuestionKey(null)}

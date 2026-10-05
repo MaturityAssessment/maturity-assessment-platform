@@ -27,11 +27,11 @@ export function ScaleConfigurationFields({
           min={2}
           max={10}
           className={inputClass}
-          value={question.scalePointCount}
+          value={Number.isFinite(question.scalePointCount) ? question.scalePointCount : ""}
           onChange={(event) =>
             onChange({
               ...question,
-              scalePointCount: Number(event.target.value),
+              scalePointCount: event.target.value === "" ? NaN : Number(event.target.value),
             })
           }
         />
@@ -227,9 +227,9 @@ export default function QuestionTypeFields({
           type="number"
           step={1}
           className={inputClass}
-          value={question.rangeMin}
+          value={Number.isFinite(question.rangeMin) ? question.rangeMin : ""}
           onChange={(event) =>
-            onChange({ ...question, rangeMin: Number(event.target.value) })
+            onChange({ ...question, rangeMin: event.target.value === "" ? NaN : Number(event.target.value) })
           }
         />
       </label>
@@ -239,9 +239,9 @@ export default function QuestionTypeFields({
           type="number"
           step={1}
           className={inputClass}
-          value={question.rangeMax}
+          value={Number.isFinite(question.rangeMax) ? question.rangeMax : ""}
           onChange={(event) =>
-            onChange({ ...question, rangeMax: Number(event.target.value) })
+            onChange({ ...question, rangeMax: event.target.value === "" ? NaN : Number(event.target.value) })
           }
         />
       </label>
@@ -257,12 +257,12 @@ export default function QuestionTypeFields({
             })
           }
         >
-          <option value="high">Maximum value ({question.rangeMax})</option>
-          <option value="low">Minimum value ({question.rangeMin})</option>
+          <option value="high">Maximum value ({Number.isFinite(question.rangeMax) ? question.rangeMax : "…"})</option>
+          <option value="low">Minimum value ({Number.isFinite(question.rangeMin) ? question.rangeMin : "…"})</option>
         </select>
       </label>
       <p className="text-xs text-gray-500 md:col-span-3">
-        Respondents enter whole numbers from {question.rangeMin} to {question.rangeMax}.
+        Respondents enter whole numbers from {Number.isFinite(question.rangeMin) ? question.rangeMin : "…"} to {Number.isFinite(question.rangeMax) ? question.rangeMax : "…"}.
         Values are normalized linearly to an internal score from 0 to 1.
       </p>
     </div>

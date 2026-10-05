@@ -20,6 +20,7 @@ import { TEXT_LIMITS } from "@/config/textLimits";
 
 export default function QuestionEditor({
   question,
+  issues = [],
   questionIndex,
   practice,
   maxLevel,
@@ -27,6 +28,7 @@ export default function QuestionEditor({
   onClose,
   onDelete,
 }: {
+  issues?: import("../../model/editorTypes").EditorIssue[];
   question: ModelEditorQuestion;
   questionIndex: number;
   practice: ModelEditorPractice;
@@ -58,6 +60,12 @@ export default function QuestionEditor({
               </button>
             </div>
             <div className="grid gap-5 p-5 sm:p-6 md:grid-cols-2">
+            {issues.length > 0 && (
+              <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 md:col-span-2">
+                <p className="font-semibold">This question needs attention</p>
+                <ul className="mt-1 list-disc pl-5">{issues.map((issue) => <li key={issue.id}>{issue.message}</li>)}</ul>
+              </div>
+            )}
             <label className={`${labelClass} md:col-span-2`}>
               Question text *
               <textarea
@@ -117,15 +125,18 @@ export default function QuestionEditor({
               <label className={labelClass}>
                 Weight
                 <input
+                  id={`question-${question.clientKey}-weight`}
                   type="number"
+                  aria-required="true"
+                  aria-invalid={!Number.isFinite(question.weight) || question.weight <= 0}
                   min="0.01"
                   step="0.01"
                   className={inputClass}
-                  value={question.weight}
+                  value={Number.isFinite(question.weight) ? question.weight : ""}
                   onChange={(event) =>
                     onChange({
                       ...question,
-                      weight: Number(event.target.value) || 1,
+                      weight: event.target.value === "" ? NaN : Number(event.target.value),
                     })
                   }
                 />
