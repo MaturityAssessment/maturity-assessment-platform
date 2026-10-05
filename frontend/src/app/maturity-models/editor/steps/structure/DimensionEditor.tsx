@@ -68,12 +68,14 @@ export default function DimensionEditor({
                   title="Dimension details"
                   description="Give this dimension a clear name and describe what it covers."
                 />
-                <div className="grid gap-6 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                <div className="grid gap-6 rounded-xl border border-gray-200 bg-white p-4 @lg:p-5 @2xl:grid-cols-2">
                   <label className={labelClass}>
-                    Name *
+                    Name <span className="text-blue-600" aria-hidden="true">*</span>
                     <input
                       className={inputClass}
                       value={dimension.name}
+                      aria-required="true"
+                      placeholder="e.g. Governance and strategy"
                       maxLength={TEXT_LIMITS.name}
                       onChange={(event) =>
                         update({
@@ -99,11 +101,13 @@ export default function DimensionEditor({
                     locked={dimension.codeLocked}
                     onChange={(code) => update({ ...dimension, code })}
                   />
-                  <label className={`${labelClass} sm:col-span-2`}>
-                    Description
+                  <label className={`${labelClass} @2xl:col-span-2`}>
+                    <span className="flex items-center justify-between gap-3">
+                      Description <span className="text-xs font-normal text-gray-400">Optional</span>
+                    </span>
                     <textarea
-                      rows={4}
-                      className={inputClass}
+                      rows={5}
+                      className={`${inputClass} resize-y leading-6`}
                       value={dimension.description}
                       maxLength={TEXT_LIMITS.description}
                       placeholder="Describe the purpose and scope of this dimension."
@@ -125,35 +129,34 @@ export default function DimensionEditor({
                   title="Score calculation"
                   description="Choose how module scores combine and map to a maturity level."
                 />
-                <div className="grid gap-6 sm:grid-cols-2">
-                  <label className={labelClass}>
-                    Weight
-                    <input
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      className={inputClass}
-                      value={dimension.weight}
-                      onChange={(event) =>
-                        update({
-                          ...dimension,
-                          weight: Number(event.target.value) || 1,
-                        })
-                      }
-                    />
-                    <span className="mt-2 block text-xs font-normal leading-5 text-gray-500">
-                      Relative importance when the model uses weighted aggregation.
-                    </span>
-                  </label>
-                  <AggregationRuleField
-                    id={`dimension-${dimension.clientKey}-aggregation-rule`}
-                    label="Module aggregation rule"
-                    value={dimension.aggregationRule}
-                    onChange={(aggregationRule) =>
-                      update({ ...dimension, aggregationRule })
+                <AggregationRuleField
+                  cards
+                  id={`dimension-${dimension.clientKey}-aggregation-rule`}
+                  label="Module aggregation rule"
+                  value={dimension.aggregationRule}
+                  onChange={(aggregationRule) =>
+                    update({ ...dimension, aggregationRule })
+                  }
+                />
+                <label className="grid gap-x-6 gap-y-2 rounded-xl border border-gray-200 bg-gray-50/70 p-5 @lg:grid-cols-[minmax(0,1fr)_8rem]">
+                  <span className="text-sm font-semibold text-gray-900">Weight in the model</span>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    className={`${inputClass} @lg:col-start-2 @lg:row-span-2 @lg:row-start-1 @lg:self-center`}
+                    value={dimension.weight}
+                    onChange={(event) =>
+                      update({
+                        ...dimension,
+                        weight: Number(event.target.value) || 1,
+                      })
                     }
                   />
-                </div>
+                  <span className="block text-sm font-normal leading-6 text-gray-500">
+                    Relative importance when the model uses weighted aggregation.
+                  </span>
+                </label>
                 <MappingRuleField
                   idPrefix={`dimension-${dimension.clientKey}`}
                   levels={document.levels}

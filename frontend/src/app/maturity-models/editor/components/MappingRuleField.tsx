@@ -13,22 +13,25 @@ export default function MappingRuleField({
   onChange: (rules: MappingRule[]) => void;
 }) {
   return (
-    <fieldset className="md:col-span-2 rounded-lg border border-gray-200 p-4">
-      <legend className="px-1 text-sm font-semibold text-gray-900">
-        Maturity mapping
-      </legend>
-      <p className="mb-3 text-sm text-gray-500">
-        Set the minimum normalized score required for each maturity level.
+    <fieldset className="min-w-0 rounded-xl border border-gray-200 bg-white p-4 md:col-span-2 @lg:p-5">
+      <legend className="sr-only">Maturity mapping</legend>
+      <h4 className="text-sm font-semibold text-gray-900">Maturity thresholds</h4>
+      <p className="mt-1 text-sm leading-6 text-gray-500">
+        Set the minimum score for each level. Start at 0% and increase with each level.
       </p>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-4 divide-y divide-gray-100">
         {levels.map((level, index) => {
           const rule = value[index] ?? {
             levelNumber: index + 1,
             minimumScore: index === 0 ? 0 : index / levels.length,
           };
           return (
-            <label key={level.number} className="text-sm font-medium text-gray-700">
-              Level {index + 1}: {level.name || "Unnamed"}
+            <label key={level.number} className="grid grid-cols-[1.75rem_minmax(0,1fr)_5.5rem] items-center gap-3 py-3 text-sm font-medium text-gray-700">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-700">{index + 1}</span>
+              <span className="min-w-0 break-words">
+                {level.name || "Unnamed level"}
+                <span className="mt-0.5 block text-xs font-normal text-gray-400">{index === 0 ? "Starting level · fixed at 0%" : `Level ${index + 1} minimum`}</span>
+              </span>
               <div className="relative">
                 <input
                   id={`${idPrefix}-mapping-level-${level.number}`}

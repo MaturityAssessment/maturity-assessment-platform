@@ -18,6 +18,7 @@ import {
   ArrowUpIcon,
   Bars3Icon,
   PlusIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import type { Selection } from "../../model/editorTypes";
 
@@ -52,8 +53,8 @@ export default function ChildItemList({
   return (
     <div className="min-w-0 flex-1">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h3 className="text-base font-semibold text-gray-950">{title}</h3>
+        <div className="min-w-0 flex-1 basis-64">
+          <h3 className="text-lg font-semibold tracking-tight text-gray-950">{title}</h3>
           <p className="mt-1 text-sm leading-6 text-gray-500">
             Open a {itemType} to edit it. Drag the rows or use the arrows to reorder.
           </p>
@@ -62,7 +63,7 @@ export default function ChildItemList({
           <button
             type="button"
             onClick={onAdd}
-            className="inline-flex shrink-0 items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white outline-none hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            className="inline-flex shrink-0 items-center rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white outline-none hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           >
             <PlusIcon className="mr-1.5 h-4 w-4" />
             Add {itemType}
@@ -141,7 +142,7 @@ function SortableChildItem({
         transition,
         zIndex: isDragging ? 20 : undefined,
       }}
-      className={`group relative flex items-center gap-2 rounded-lg border p-3 transition ${
+      className={`group relative flex items-center gap-2 rounded-xl border p-3 transition ${
         isDragging
           ? "border-blue-400 bg-blue-50 opacity-80 shadow-lg"
           : "border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/40"
@@ -151,7 +152,7 @@ function SortableChildItem({
         ref={setActivatorNodeRef}
         type="button"
         aria-label={`Drag ${item.name || item.code} to reorder`}
-        className="cursor-grab touch-none rounded p-1.5 text-gray-400 hover:bg-white hover:text-gray-700 active:cursor-grabbing"
+        className="cursor-grab touch-none rounded p-2 text-gray-400 outline-none hover:bg-white hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-blue-500 active:cursor-grabbing"
         {...attributes}
         {...listeners}
       >
@@ -160,13 +161,19 @@ function SortableChildItem({
       <button
         type="button"
         onClick={() => onSelect({ type: itemType, key: item.clientKey })}
-        className="min-w-0 flex-1 px-1 py-1 text-left"
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
       >
-        <span className="block font-mono text-xs font-semibold text-blue-700">
-          {parentCode}.{item.code}
+        <span className="min-w-0 flex-1">
+          <span className="block break-words text-sm font-semibold text-gray-900 group-hover:text-blue-700">
+            {item.name || `Untitled ${itemType}`}
+          </span>
+          <span title={`${parentCode}.${item.code}`} className="mt-1 block truncate font-mono text-xs text-gray-400">
+            {parentCode}.{item.code}
+          </span>
         </span>
-        <span className="mt-0.5 block truncate text-sm text-gray-700">
-          {item.name || `*Untitled ${itemType}`}
+        <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-gray-400 group-hover:text-blue-600">
+          <span className="hidden @lg:inline">Edit</span>
+          <ChevronRightIcon className="h-4 w-4" />
         </span>
       </button>
       <button
@@ -174,7 +181,8 @@ function SortableChildItem({
         disabled={index === 0}
         onClick={() => onMove(item.clientKey, -1)}
         aria-label={`Move ${item.name || item.code} up`}
-        className="rounded p-1.5 text-gray-400 hover:bg-white hover:text-gray-700 disabled:opacity-30"
+        title="Move up"
+        className="rounded p-2 text-gray-400 outline-none hover:bg-white hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-30"
       >
         <ArrowUpIcon className="h-4 w-4" />
       </button>
@@ -183,7 +191,8 @@ function SortableChildItem({
         disabled={index === itemCount - 1}
         onClick={() => onMove(item.clientKey, 1)}
         aria-label={`Move ${item.name || item.code} down`}
-        className="rounded p-1.5 text-gray-400 hover:bg-white hover:text-gray-700 disabled:opacity-30"
+        title="Move down"
+        className="rounded p-2 text-gray-400 outline-none hover:bg-white hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-30"
       >
         <ArrowDownIcon className="h-4 w-4" />
       </button>

@@ -1,3 +1,4 @@
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import type {
   ModelEditorDimension,
   ModelEditorModule,
@@ -39,11 +40,19 @@ export default function ModuleEditor({
 
   return (
     <>
+      <button
+        type="button"
+        onClick={() => onSelect({ type: "dimension", key: dimension.clientKey })}
+        className="mb-5 inline-flex max-w-full items-center gap-2 rounded text-sm font-medium text-gray-500 outline-none hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500"
+      >
+        <ArrowLeftIcon className="h-4 w-4 shrink-0" />
+        <span className="truncate">Back to {dimension.name || "Untitled dimension"}</span>
+      </button>
       <ItemHeader
         kind="Module"
         code={module.code}
         name={module.name}
-        context={`In ${dimension.name || "Untitled dimension"} · ${module.practices.length} practice${module.practices.length === 1 ? "" : "s"}`}
+        context={`${module.practices.length} practice${module.practices.length === 1 ? "" : "s"} in this module`}
         canMoveUp={moduleIndex > 0}
         canMoveDown={moduleIndex < dimension.modules.length - 1}
         canDelete={dimension.modules.length > 1}
@@ -79,12 +88,14 @@ export default function ModuleEditor({
                   title="Module details"
                   description="Give this module a clear name and describe what it covers."
                 />
-                <div className="grid gap-6 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                <div className="grid gap-6 rounded-xl border border-gray-200 bg-white p-4 @lg:p-5 @2xl:grid-cols-2">
                   <label className={labelClass}>
-                    Name *
+                    Name <span className="text-blue-600" aria-hidden="true">*</span>
                     <input
                       className={inputClass}
                       value={module.name}
+                      aria-required="true"
+                      placeholder="e.g. Leadership and accountability"
                       maxLength={TEXT_LIMITS.name}
                       onChange={(event) =>
                         update({
@@ -110,11 +121,13 @@ export default function ModuleEditor({
                     locked={module.codeLocked}
                     onChange={(code) => update({ ...module, code })}
                   />
-                  <label className={`${labelClass} sm:col-span-2`}>
-                    Description
+                  <label className={`${labelClass} @2xl:col-span-2`}>
+                    <span className="flex items-center justify-between gap-3">
+                      Description <span className="text-xs font-normal text-gray-400">Optional</span>
+                    </span>
                     <textarea
-                      rows={4}
-                      className={inputClass}
+                      rows={5}
+                      className={`${inputClass} resize-y leading-6`}
                       value={module.description}
                       maxLength={TEXT_LIMITS.description}
                       placeholder="Describe the purpose and scope of this module."
@@ -136,32 +149,31 @@ export default function ModuleEditor({
                   title="Score calculation"
                   description="Choose how practice scores combine into the module score."
                 />
-                <div className="grid gap-6 sm:grid-cols-2">
-                  <label className={labelClass}>
-                    Weight
-                    <input
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      className={inputClass}
-                      value={module.weight}
-                      onChange={(event) =>
-                        update({ ...module, weight: Number(event.target.value) || 1 })
-                      }
-                    />
-                    <span className="mt-2 block text-xs font-normal leading-5 text-gray-500">
-                      Relative importance when this dimension uses weighted aggregation.
-                    </span>
-                  </label>
-                  <AggregationRuleField
-                    id={`module-${module.clientKey}-aggregation-rule`}
-                    label="Practice aggregation rule"
-                    value={module.aggregationRule}
-                    onChange={(aggregationRule) =>
-                      update({ ...module, aggregationRule })
+                <AggregationRuleField
+                  cards
+                  id={`module-${module.clientKey}-aggregation-rule`}
+                  label="Practice aggregation rule"
+                  value={module.aggregationRule}
+                  onChange={(aggregationRule) =>
+                    update({ ...module, aggregationRule })
+                  }
+                />
+                <label className="grid gap-x-6 gap-y-2 rounded-xl border border-gray-200 bg-gray-50/70 p-5 @lg:grid-cols-[minmax(0,1fr)_8rem]">
+                  <span className="text-sm font-semibold text-gray-900">Weight in the dimension</span>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    className={`${inputClass} @lg:col-start-2 @lg:row-span-2 @lg:row-start-1 @lg:self-center`}
+                    value={module.weight}
+                    onChange={(event) =>
+                      update({ ...module, weight: Number(event.target.value) || 1 })
                     }
                   />
-                </div>
+                  <span className="block text-sm font-normal leading-6 text-gray-500">
+                    Relative importance when this dimension uses weighted aggregation.
+                  </span>
+                </label>
               </>
             ),
           },

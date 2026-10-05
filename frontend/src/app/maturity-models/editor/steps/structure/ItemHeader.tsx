@@ -28,10 +28,10 @@ export default function ItemHeader({
   onDelete: () => void;
 }) {
   return (
-    <div className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-gray-100 pb-5">
+    <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+          <p className="rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
             {kind}
           </p>
           <span className="rounded-md bg-gray-100 px-2 py-1 font-mono text-xs text-gray-600 [overflow-wrap:anywhere]">
@@ -39,7 +39,7 @@ export default function ItemHeader({
           </span>
         </div>
         {name !== undefined && (
-          <h2 className="mt-3 text-xl font-semibold leading-7 text-gray-950 [overflow-wrap:anywhere]">
+          <h2 className="mt-3 text-2xl font-semibold leading-8 tracking-tight text-gray-950 [overflow-wrap:anywhere]">
             {name || `Untitled ${kind.toLowerCase()}`}
           </h2>
         )}
@@ -49,7 +49,7 @@ export default function ItemHeader({
           </p>
         )}
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 bg-gray-50/70 p-1">
         <button
           type="button"
           onClick={onMoveUp}

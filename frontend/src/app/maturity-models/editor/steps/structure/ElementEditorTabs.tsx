@@ -16,15 +16,15 @@ export default function ElementEditorTabs({
   tabs: EditorTab[];
 }) {
   return (
-    <TabGroup>
+    <TabGroup className="@container">
       <TabList
         aria-label={`${kind} settings`}
-        className="flex gap-5 overflow-x-auto border-b border-gray-200 sm:gap-7"
+        className="grid grid-cols-2 gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1 @2xl:grid-cols-4"
       >
         {tabs.map((tab) => (
           <Tab
             key={tab.id}
-            className="group relative flex shrink-0 items-center gap-2 border-b-2 border-transparent px-1 pb-3 pt-2 text-sm font-medium text-gray-500 outline-none transition hover:text-gray-900 focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 data-[selected]:border-blue-600 data-[selected]:text-blue-700"
+            className="group flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 outline-none transition hover:bg-white/70 hover:text-gray-950 focus-visible:ring-2 focus-visible:ring-blue-500 data-[selected]:bg-white data-[selected]:text-blue-700 data-[selected]:shadow-sm"
           >
             {tab.label}
             {tab.count !== undefined && (
@@ -35,11 +35,11 @@ export default function ElementEditorTabs({
           </Tab>
         ))}
       </TabList>
-      <TabPanels className="pt-6">
+      <TabPanels className="pt-7">
         {tabs.map((tab) => (
           <TabPanel
             key={tab.id}
-            className="space-y-6 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="space-y-6 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             {tab.content}
           </TabPanel>
@@ -58,8 +58,8 @@ export function EditorSectionHeading({
 }) {
   return (
     <div>
-      <h3 className="text-base font-semibold text-gray-950">{title}</h3>
-      <p className="mt-1 text-sm leading-6 text-gray-500">{description}</p>
+      <h3 className="text-lg font-semibold tracking-tight text-gray-950">{title}</h3>
+      <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">{description}</p>
     </div>
   );
 }
