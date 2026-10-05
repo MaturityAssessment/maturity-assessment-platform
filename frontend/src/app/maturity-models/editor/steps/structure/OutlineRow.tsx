@@ -17,7 +17,7 @@ export function Highlight({ text, query }: { text: string; query: string }) {
 
 export default function OutlineRow({
   node, selected, expanded, query, issues, dragging, reorderDisabled,
-  canMoveUp, canMoveDown, onToggle, onSelect, onAdd, onDelete, onMove,
+  canMoveUp, canMoveDown, canDelete, onToggle, onSelect, onAdd, onDelete, onMove,
 }: {
   node: OutlineNode;
   selected: boolean;
@@ -28,6 +28,7 @@ export default function OutlineRow({
   reorderDisabled: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  canDelete: boolean;
   onToggle: () => void;
   onSelect: () => void;
   onAdd: () => void;
@@ -87,6 +88,18 @@ export default function OutlineRow({
           <TriangleAlert className={`h-3.5 w-3.5 ${empty ? "text-amber-600" : "text-red-500"}`} aria-hidden="true" />
         </span>
       )}
+      {node.selection.type === "dimension" && (
+        <button
+          type="button"
+          disabled={!canDelete}
+          onClick={onDelete}
+          aria-label={`Delete dimension ${node.label}`}
+          title="Delete dimension"
+          className="ml-0.5 shrink-0 rounded-md p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-30"
+        >
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
+        </button>
+      )}
       <Menu>
         <MenuButton
           aria-label={`Actions for ${node.label}`} title={`Actions for ${node.label}`}
@@ -99,7 +112,7 @@ export default function OutlineRow({
           <MenuItem disabled={!canMoveUp || reorderDisabled}><button type="button" disabled={!canMoveUp || reorderDisabled} onClick={() => onMove(-1)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-gray-700 data-[focus]:bg-blue-50 disabled:opacity-40"><ArrowUp className="h-4 w-4" aria-hidden="true" /> Move up</button></MenuItem>
           <MenuItem disabled={!canMoveDown || reorderDisabled}><button type="button" disabled={!canMoveDown || reorderDisabled} onClick={() => onMove(1)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-gray-700 data-[focus]:bg-blue-50 disabled:opacity-40"><ArrowDown className="h-4 w-4" aria-hidden="true" /> Move down</button></MenuItem>
           <div className="my-1 border-t border-gray-100" />
-          <MenuItem><button type="button" onClick={onDelete} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 data-[focus]:bg-red-50"><Trash2 className="h-4 w-4" aria-hidden="true" /> Delete</button></MenuItem>
+          <MenuItem disabled={!canDelete}><button type="button" disabled={!canDelete} onClick={onDelete} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 data-[focus]:bg-red-50 disabled:opacity-40"><Trash2 className="h-4 w-4" aria-hidden="true" /> Delete</button></MenuItem>
         </MenuItems>
       </Menu>
     </div>

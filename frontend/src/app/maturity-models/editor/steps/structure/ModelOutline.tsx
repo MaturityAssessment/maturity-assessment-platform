@@ -166,6 +166,7 @@ export default function ModelOutline({ document, selection, issues, onSelect, co
               query={query} issues={issueMessages.get(node.id) ?? []}
               dragging={dragging} reorderDisabled={searching}
               canMoveUp={index > 0} canMoveDown={index < items.length - 1}
+              canDelete={items.length > 1}
               onToggle={() => setCollapsed((previous) => {
                 const next = new Set(previous);
                 if (next.has(node.id)) next.delete(node.id); else next.add(node.id);

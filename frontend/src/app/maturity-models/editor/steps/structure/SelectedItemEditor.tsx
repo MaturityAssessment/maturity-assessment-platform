@@ -46,6 +46,8 @@ export default function SelectedItemEditor({
   if (selected?.type === "practice") {
     return (
       <PracticeEditor
+        key={selected.practice.clientKey}
+        onSelect={onSelect}
         document={document}
         module={selected.module}
         practice={selected.practice}

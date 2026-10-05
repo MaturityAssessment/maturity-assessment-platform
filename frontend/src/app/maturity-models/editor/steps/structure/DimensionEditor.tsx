@@ -196,6 +196,18 @@ export default function DimensionEditor({
                 itemType="module"
                 items={dimension.modules}
                 onAdd={() => commands.addModule(dimension.clientKey)}
+                onDelete={(moduleKey) => {
+                  const selectedModule = dimension.modules.find((item) => item.clientKey === moduleKey);
+                  if (!selectedModule) return;
+                  const referenced = dimension.gatingRules.some((rule) =>
+                    rule.selection === "specificChild" &&
+                    rule.childCode?.toLowerCase() === selectedModule.code.toLowerCase()
+                  );
+                  const message = referenced
+                    ? "Delete this module and all of its practices? Gating rules that reference it will also be removed."
+                    : "Delete this module and all of its practices?";
+                  if (window.confirm(message)) commands.deleteModule(dimension.clientKey, moduleKey);
+                }}
                 onSelect={onSelect}
                 onMove={(moduleKey, direction) =>
                   commands.moveModule(dimension.clientKey, moduleKey, direction)

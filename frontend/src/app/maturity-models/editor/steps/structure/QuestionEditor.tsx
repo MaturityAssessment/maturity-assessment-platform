@@ -1,10 +1,5 @@
-import { useState } from "react";
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  ChevronRightIcon,
-  TrashIcon,
-} from "@heroicons/react/24/outline";
+import { Dialog, DialogBackdrop, DialogPanel, DialogTitle, Description } from "@headlessui/react";
+import { XMarkIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type {
   ModelEditorPractice,
   ModelEditorQuestion,
@@ -29,7 +24,7 @@ export default function QuestionEditor({
   practice,
   maxLevel,
   onChange,
-  onMove,
+  onClose,
   onDelete,
 }: {
   question: ModelEditorQuestion;
@@ -37,88 +32,39 @@ export default function QuestionEditor({
   practice: ModelEditorPractice;
   maxLevel: number;
   onChange: (question: ModelEditorQuestion) => void;
-  onMove: (direction: -1 | 1) => void;
+  onClose: () => void;
   onDelete: () => void;
 }) {
-  const [expanded, setExpanded] = useState(true);
   const dependencyCandidates = practice.questions.filter(
     (candidate) =>
       candidate.clientKey !== question.clientKey &&
       candidate.type === "boolean" &&
       !dependencyWouldCycle(practice, question.code, candidate.code)
   );
-  const contentId = `question-${question.clientKey}-editor`;
-
   return (
-    <article className="rounded-lg border border-gray-200 bg-gray-50/70">
-      <div className="flex items-start gap-3 p-4">
-        <button
-          type="button"
-          onClick={() => setExpanded((value) => !value)}
-          aria-expanded={expanded}
-          aria-controls={contentId}
-          className="flex min-w-0 flex-1 items-start gap-2 text-left"
-        >
-          <ChevronRightIcon
-            aria-hidden="true"
-            className={`mt-0.5 h-4 w-4 shrink-0 text-gray-500 transition-transform ${
-              expanded ? "rotate-90" : ""
-            }`}
-          />
-          <span className="min-w-0">
-            <span className="block text-sm font-semibold text-gray-900">
-              {question.text || `Question ${questionIndex + 1}`}
-            </span>
-            <span className="mt-1 block font-mono text-xs text-gray-500">
-              {question.code} · {question.type}
-            </span>
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => onMove(-1)}
-          aria-label="Move question up"
-          className="rounded p-1.5 text-gray-400 hover:bg-white hover:text-gray-700"
-        >
-          <ArrowUpIcon className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => onMove(1)}
-          aria-label="Move question down"
-          className="rounded p-1.5 text-gray-400 hover:bg-white hover:text-gray-700"
-        >
-          <ArrowDownIcon className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={practice.questions.length <= 1}
-          aria-label="Delete question"
-          className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-30"
-        >
-          <TrashIcon className="h-4 w-4" />
-        </button>
-      </div>
-      <div
-        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out motion-reduce:transition-none ${
-          expanded
-            ? "grid-rows-[1fr] opacity-100"
-            : "grid-rows-[0fr] opacity-0"
-        }`}
-      >
-        <div
-          id={contentId}
-          aria-hidden={!expanded}
-          inert={!expanded}
-          className="min-h-0 overflow-hidden"
-        >
-          <div className="grid gap-4 border-t border-gray-200 bg-white p-4 md:grid-cols-2">
+    <Dialog open onClose={onClose} className="relative z-50">
+      <DialogBackdrop className="fixed inset-0 bg-gray-950/40" />
+      <div className="fixed inset-0 overflow-y-auto p-4 sm:p-6">
+        <div className="flex min-h-full items-center justify-center">
+          <DialogPanel className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-xl">
+            <div className="flex items-start justify-between gap-4 border-b border-gray-200 p-5 sm:p-6">
+              <div>
+                <DialogTitle className="text-xl font-semibold text-gray-950">Edit question {questionIndex + 1}</DialogTitle>
+                <Description className="mt-1 text-sm text-gray-500">Changes are kept in the model draft. Save the model to persist them.</Description>
+              </div>
+              <button type="button" onClick={onClose} aria-label="Close question editor"
+                className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-blue-500">
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="grid gap-5 p-5 sm:p-6 md:grid-cols-2">
             <label className={`${labelClass} md:col-span-2`}>
               Question text *
               <textarea
                 id={`question-${question.clientKey}-text`}
-                rows={2}
+                rows={3}
+                autoFocus
+                aria-required="true"
                 className={inputClass}
                 value={question.text}
                 maxLength={TEXT_LIMITS.questionText}
@@ -204,6 +150,7 @@ export default function QuestionEditor({
                   </option>
                 ))}
               </select>
+              <span className="text-xs font-normal text-gray-500">Dependencies can only target Yes / No questions in this practice.</span>
             </label>
             <ScaleConfigurationFields
               question={question}
@@ -240,9 +187,18 @@ export default function QuestionEditor({
                   Required answer
                 </label>
               </div>
-          </div>
+            </div>
+            <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-5 py-4 sm:px-6">
+              <button type="button" onClick={onDelete} disabled={practice.questions.length <= 1}
+                className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-30">
+                <TrashIcon className="h-4 w-4" /> Delete question
+              </button>
+              <button type="button" onClick={onClose}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Done</button>
+            </div>
+          </DialogPanel>
         </div>
       </div>
-    </article>
+    </Dialog>
   );
 }

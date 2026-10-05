@@ -19,6 +19,7 @@ import {
   Bars3Icon,
   PlusIcon,
   ChevronRightIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 import type { Selection } from "../../model/editorTypes";
 
@@ -31,6 +32,7 @@ export default function ChildItemList({
   onMove,
   onReorder,
   onAdd,
+  onDelete,
 }: {
   title: string;
   parentCode: string;
@@ -40,6 +42,7 @@ export default function ChildItemList({
   onMove: (itemKey: string, direction: -1 | 1) => void;
   onReorder: (activeKey: string, overKey: string) => void;
   onAdd?: () => void;
+  onDelete: (itemKey: string) => void;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -93,6 +96,7 @@ export default function ChildItemList({
                 parentCode={parentCode}
                 onSelect={onSelect}
                 onMove={onMove}
+                onDelete={() => onDelete(item.clientKey)}
               />
             ))}
           </div>
@@ -115,6 +119,7 @@ function SortableChildItem({
   parentCode,
   onSelect,
   onMove,
+  onDelete,
 }: {
   item: { clientKey: string; code: string; name: string };
   index: number;
@@ -123,6 +128,7 @@ function SortableChildItem({
   parentCode: string;
   onSelect: (selection: Selection) => void;
   onMove: (itemKey: string, direction: -1 | 1) => void;
+  onDelete: () => void;
 }) {
   const {
     attributes,
@@ -195,6 +201,16 @@ function SortableChildItem({
         className="rounded p-2 text-gray-400 outline-none hover:bg-white hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-30"
       >
         <ArrowDownIcon className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        disabled={itemCount <= 1}
+        onClick={onDelete}
+        aria-label={`Delete ${itemType} ${item.name || item.code}`}
+        title={`Delete ${itemType}`}
+        className="rounded p-2 text-gray-400 outline-none hover:bg-red-50 hover:text-red-600 focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-not-allowed disabled:opacity-30"
+      >
+        <TrashIcon aria-hidden="true" className="h-4 w-4" />
       </button>
     </div>
   );

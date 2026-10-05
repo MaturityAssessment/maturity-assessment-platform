@@ -205,6 +205,18 @@ export default function ModuleEditor({
                 itemType="practice"
                 items={module.practices}
                 onAdd={() => commands.addPractice(module.clientKey)}
+                onDelete={(practiceKey) => {
+                  const selectedPractice = module.practices.find((item) => item.clientKey === practiceKey);
+                  if (!selectedPractice) return;
+                  const referenced = module.gatingRules.some((rule) =>
+                    rule.selection === "specificChild" &&
+                    rule.childCode?.toLowerCase() === selectedPractice.code.toLowerCase()
+                  );
+                  const message = referenced
+                    ? "Delete this practice and all of its questions? Gating rules that reference it will also be removed."
+                    : "Delete this practice and all of its questions?";
+                  if (window.confirm(message)) commands.deletePractice(module.clientKey, practiceKey);
+                }}
                 onSelect={onSelect}
                 onMove={(practiceKey, direction) =>
                   commands.movePractice(module.clientKey, practiceKey, direction)
