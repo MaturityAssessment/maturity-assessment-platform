@@ -43,6 +43,9 @@ interface AssessmentQuestionCardProps {
     actions?: boolean;
     guidance?: boolean;
   };
+  headerActions?: React.ReactNode;
+  responseDetails?: React.ReactNode;
+  footer?: React.ReactNode;
   onAskAssistant?: () => void;
   onInputChange: (
     field: string,
@@ -60,6 +63,9 @@ export default function AssessmentQuestionCard({
   evaluation,
   respondentUpdated,
   helpTourTargets,
+  headerActions,
+  responseDetails,
+  footer,
   onAskAssistant,
   onInputChange,
   onClearAnswer,
@@ -195,6 +201,9 @@ export default function AssessmentQuestionCard({
         evaluation,
         respondentUpdated
       )}
+      headerActions={headerActions}
+      responseDetails={responseDetails}
+      footer={footer}
       onAskAssistant={onAskAssistant}
       onClear={
         hasContent && !interactionDisabled

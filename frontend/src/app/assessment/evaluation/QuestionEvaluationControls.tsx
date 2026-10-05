@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import type { EvaluationQuestion, QuestionReviewDraft } from "./types";
 
 interface QuestionEvaluationControlsProps {
+  part?: "all" | "actions" | "score" | "note";
   question: EvaluationQuestion;
   review: QuestionReviewDraft;
   scoreOptions: Array<{ value: number; label: string }>;
@@ -21,6 +22,7 @@ interface QuestionEvaluationControlsProps {
 }
 
 export default function QuestionEvaluationControls({
+  part = "all",
   question,
   review,
   scoreOptions,
@@ -92,12 +94,14 @@ export default function QuestionEvaluationControls({
   };
 
   return (
-    <article className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <>
+      {(part === "all" || part === "actions") && (
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex flex-wrap shrink-0 items-center gap-2">
           <button
             type="button"
+            aria-pressed={review.validationStatus === "ACCEPTED"}
             onClick={() => toggleStatus("ACCEPTED")}
             className={cn(
               "inline-flex h-9 items-center gap-1 rounded-md border px-3 text-xs font-semibold",
@@ -111,6 +115,7 @@ export default function QuestionEvaluationControls({
           </button>
           <button
             type="button"
+            aria-pressed={review.validationStatus === "ADJUSTED"}
             onClick={() => toggleStatus("ADJUSTED")}
             className={cn(
               "inline-flex h-9 items-center gap-1 rounded-md border px-3 text-xs font-semibold",
@@ -125,6 +130,7 @@ export default function QuestionEvaluationControls({
           <Tippy content="Flag this answer using the shared practice evidence for follow-up. A reviewer note is required.">
             <button
               type="button"
+              aria-pressed={review.validationStatus === "FLAGGED"}
               onClick={() => toggleStatus("FLAGGED")}
               className={cn(
                 "inline-flex h-9 items-center justify-center gap-1 rounded-md border px-3 text-xs font-semibold",
@@ -140,7 +146,9 @@ export default function QuestionEvaluationControls({
           </Tippy>
         </div>
       </div>
+      )}
 
+      {(part === "all" || part === "score") && <>
         <p className="mt-2 text-xs font-medium text-gray-600">
           {question.initialScore != null
             ? isBoolean
@@ -156,10 +164,9 @@ export default function QuestionEvaluationControls({
               : `Initial automated score: ${question.initialScore}`
             : "Not automatically scored"}
         </p>
-      <div className="mt-4 flex flex-col gap-3 border-t border-gray-100 pt-4">
-        <div className="grid gap-4 lg:grid-cols-[minmax(220px,320px)_1fr]">
+
           {needsScore && (
-          <section>
+          <section className="mt-3 max-w-sm">
             <div className="mb-2 flex items-center justify-between gap-2">
               <label
                 htmlFor={`score-${question.responseKey}`}
@@ -229,7 +236,8 @@ export default function QuestionEvaluationControls({
           </section>
           )}
 
-          <section className={cn(!needsScore && "lg:col-span-2")}>
+      </>}
+      {(part === "all" || part === "note") && <section className="border-t border-slate-200/80 bg-slate-50/80 px-5 py-4 sm:px-6">
             {!showNote ? (
               <button
                 type="button"
@@ -267,9 +275,7 @@ export default function QuestionEvaluationControls({
                 />
               </>
             )}
-          </section>
-        </div>
-      </div>
-    </article>
+          </section>}
+    </>
   );
 }

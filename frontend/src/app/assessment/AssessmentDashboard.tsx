@@ -48,6 +48,9 @@ import type { AssessmentSaveStatus } from "./assessmentAutosave";
 import type { AssessmentTourInvitationContent } from "./assessmentTour";
 import AssessmentFeedbackReviewTab from "./AssessmentFeedbackReviewTab";
 import AssessmentResultsTab from "./AssessmentResultsTab";
+import type { AssessmentRouteContext } from "./assessmentRoutes";
+import EvaluatorOverview from "./evaluation/EvaluatorOverview";
+import type { EvaluationController } from "./evaluation/useEvaluation";
 
 export type AssessmentDashboardTab =
   | "evaluation"
@@ -58,7 +61,10 @@ export type AssessmentDashboardTab =
   | "logs";
 
 type AssessmentDashboardProps = {
+  routeContext?: AssessmentRouteContext | null;
   evaluationPanel?: React.ReactNode;
+  evaluation?: EvaluationController;
+  onEvaluationQuestion?: (responseKey: string) => void;
   evaluationActive?: boolean;
   readOnly?: boolean;
   model: MaturityModel;
@@ -105,7 +111,10 @@ const dimensionIcons = [
 ];
 
 export default function AssessmentDashboard({
+  routeContext,
   evaluationPanel,
+  evaluation,
+  onEvaluationQuestion,
   evaluationActive = false,
   readOnly = false,
   model,
@@ -136,7 +145,6 @@ export default function AssessmentDashboard({
   onRetrySave,
   onInputChange,
   onClearAnswer,
-  onEvidenceItemsChange,
 }: AssessmentDashboardProps) {
   const summary = useMemo(
     () =>
@@ -280,7 +288,9 @@ export default function AssessmentDashboard({
       )}
 
       {activeTab === "evaluation" ? evaluationPanel : activeTab === "overview" ? (
-        <OverviewTab
+        evaluationActive && evaluation && onEvaluationQuestion ? (
+          <EvaluatorOverview model={model} evaluation={evaluation} onQuestion={onEvaluationQuestion} />
+        ) : <OverviewTab
           summary={summary}
           evaluationActive={evaluationActive}
           readOnly={readOnly}
@@ -298,12 +308,11 @@ export default function AssessmentDashboard({
             readOnly={readOnly}
             practiceSteps={practiceSteps}
             formData={formData}
-            evidenceFiles={evidenceFiles}
+            routeContext={routeContext}
             questionEvaluations={questionEvaluations}
             respondentUpdatedResponseKeys={respondentUpdatedResponseKeys}
             onInputChange={onInputChange}
             onClearAnswer={onClearAnswer}
-            onEvidenceItemsChange={onEvidenceItemsChange}
           />
         ) : null
       ) : activeTab === "results" ? (
@@ -442,6 +451,7 @@ function OverviewTab({
                 return (
                   <div
                     key={dimension.key}
+                    id={`assessment-dimension-${dimension.dimension.id}`}
                     className={cn(
                       "grid overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:grid-cols-[minmax(0,1fr)_auto]",
                       canOpen &&

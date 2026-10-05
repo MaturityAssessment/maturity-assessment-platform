@@ -363,10 +363,23 @@ export default function AssessmentStep({
                           }
                         : undefined;
 
+                      const reviewQuestion = evaluationController?.questions.find(q => q.responseKey === fieldName);
+                      const reviewControls = (part: "actions" | "score" | "note") => reviewQuestion && evaluationController ? (
+                        <fieldset disabled={!evaluationController.editable || evaluationController.busy}>
+                          <QuestionEvaluationControls part={part} question={reviewQuestion}
+                            review={evaluationController.reviews[fieldName] || { reviewerNote: "" }}
+                            scoreOptions={Array.from({ length: modelMaxLevel }, (_, i) => ({ value: i + 1, label: `Level ${i + 1}${maturityLevels.find(l => l.number === i + 1)?.name ? `: ${maturityLevels.find(l => l.number === i + 1)!.name}` : ""}` }))}
+                            onChange={evaluationController.updateReview} />
+                        </fieldset>
+                      ) : undefined;
+
                       return (
                         <div key={fieldName} id={`evaluation-question-${fieldName}`} tabIndex={-1}>
                         <AssessmentQuestionCard
                           readOnly={readOnly}
+                          headerActions={reviewControls("actions")}
+                          responseDetails={reviewControls("score")}
+                          footer={reviewControls("note")}
                           question={question}
                           fieldName={fieldName}
                           value={formData[fieldName]}
@@ -385,12 +398,7 @@ export default function AssessmentStep({
                           onInputChange={onInputChange}
                           onClearAnswer={onClearAnswer}
                         />
-                        {evaluationController?.questions.find(q => q.responseKey === fieldName) && <fieldset className="mt-2" disabled={!evaluationController.editable || evaluationController.busy}>
-                          <QuestionEvaluationControls question={evaluationController.questions.find(q => q.responseKey === fieldName)!}
-                            review={evaluationController.reviews[fieldName] || { reviewerNote: "" }}
-                            scoreOptions={Array.from({ length: modelMaxLevel }, (_, i) => ({ value: i + 1, label: `Level ${i + 1}${maturityLevels.find(l => l.number === i + 1)?.name ? `: ${maturityLevels.find(l => l.number === i + 1)!.name}` : ""}` }))}
-                            onChange={evaluationController.updateReview} />
-                        </fieldset>}
+
                         </div>
                       );
                     })

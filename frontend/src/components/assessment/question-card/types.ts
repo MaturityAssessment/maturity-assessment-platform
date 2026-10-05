@@ -47,6 +47,9 @@ export interface QuestionCardProps {
   disabledMessage?: string;
   guidance?: ReactNode;
   feedback?: QuestionCardFeedbackModel;
+  headerActions?: React.ReactNode;
+  responseDetails?: React.ReactNode;
+  footer?: React.ReactNode;
   onAskAssistant?: () => void;
   onClear?: () => void;
   anchors?: QuestionCardAnchors;

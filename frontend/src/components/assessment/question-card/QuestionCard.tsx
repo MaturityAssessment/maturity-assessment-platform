@@ -93,6 +93,9 @@ export function QuestionCard({
   disabledMessage,
   guidance,
   feedback,
+  headerActions,
+  responseDetails,
+  footer,
   onAskAssistant,
   onClear,
   anchors,
@@ -123,7 +126,7 @@ export function QuestionCard({
           <div className="min-w-0 flex-1">
             <div
               data-help-tour={anchors?.actions || undefined}
-              className="flex items-start justify-between gap-3"
+              className="flex flex-col items-start justify-between gap-3 sm:flex-row"
             >
               <div>
                 <p
@@ -147,7 +150,8 @@ export function QuestionCard({
                 </h3>
               </div>
 
-              <div className="flex shrink-0 items-center gap-1">
+              <div className="flex shrink-0 flex-wrap items-center gap-1 self-end sm:self-start">
+                {headerActions}
                 {onAskAssistant && (
                   <Tippy content="Ask the assistant about this item">
                     <button
@@ -210,9 +214,11 @@ export function QuestionCard({
             >
               {children}
             </fieldset>
+            {responseDetails}
           </div>
         </div>
       </div>
+      {footer}
     </article>
   );
 }

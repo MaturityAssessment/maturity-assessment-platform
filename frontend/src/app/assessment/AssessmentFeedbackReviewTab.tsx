@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
@@ -10,15 +11,13 @@ import {
 } from "lucide-react";
 import type {
   AssessmentData,
-  AssessmentEvidenceInputItem,
   AssessmentResponse,
 } from "@/api/types";
 import { cn } from "@/lib/utils";
 import type { AssessmentPracticeStep } from "./AssessmentStep";
-import EvidenceUpload from "@/components/assessment/EvidenceUpload";
-import { getPracticeEvidenceField } from "./assessmentEvidence";
 import AssessmentQuestionCard from "./AssessmentQuestionCard";
-import type { AssessmentEvidenceByField } from "./assessmentEvidence";
+import { buildAssessmentOverviewHref, buildAssessmentModuleHref, buildAssessmentPracticeHref } from "./assessmentRoutes";
+import type { AssessmentRouteContext } from "./assessmentRoutes";
 import {
   buildAssessmentFeedbackReviewItems,
   isReviewedItemUpdated,
@@ -29,27 +28,23 @@ type AssessmentFeedbackReviewTabProps = {
   readOnly?: boolean;
   practiceSteps: AssessmentPracticeStep[];
   formData: AssessmentData;
-  evidenceFiles: AssessmentEvidenceByField;
+  routeContext?: AssessmentRouteContext | null;
   questionEvaluations?: AssessmentResponse["questionEvaluations"];
   respondentUpdatedResponseKeys: ReadonlySet<string>;
   onInputChange: (field: string, value: string | number | number[] | undefined) => void;
   onClearAnswer: (field: string) => void;
-  onEvidenceItemsChange: (
-    field: string,
-    items: AssessmentEvidenceInputItem[]
-  ) => void;
+
 };
 
 export default function AssessmentFeedbackReviewTab({
   readOnly = false,
   practiceSteps,
   formData,
-  evidenceFiles,
+  routeContext = null,
   questionEvaluations,
   respondentUpdatedResponseKeys,
   onInputChange,
   onClearAnswer,
-  onEvidenceItemsChange,
 }: AssessmentFeedbackReviewTabProps) {
   const items = useMemo(
     () =>
@@ -193,15 +188,15 @@ export default function AssessmentFeedbackReviewTab({
                   className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs font-medium text-slate-500"
                   aria-label={`Location of reviewed item ${index + 1}`}
                 >
-                  <span className="font-semibold text-slate-700">
+                  <Link href={`${buildAssessmentOverviewHref({ ...routeContext, tab: "overview" })}#assessment-dimension-${encodeURIComponent(item.step.dimension.id ?? "")}`} className="rounded font-semibold text-slate-700 hover:text-indigo-700 hover:underline focus-visible:outline-indigo-600">
                     {item.step.dimension.name}
-                  </span>
+                  </Link>
                   <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>{item.step.module.name}</span>
+                  <Link href={buildAssessmentModuleHref(item.step.dimension, item.step.module, routeContext)} className="rounded hover:text-indigo-700 hover:underline focus-visible:outline-indigo-600">{item.step.module.name}</Link>
                   <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span className="text-slate-700">
+                  <Link href={buildAssessmentPracticeHref(item.step, routeContext)} className="rounded text-slate-700 hover:text-indigo-700 hover:underline focus-visible:outline-indigo-600">
                     {item.step.practice.name}
-                  </span>
+                  </Link>
                 </nav>
                 <span className="shrink-0 text-xs font-semibold tabular-nums text-slate-400">
                   Item {index + 1} of {items.length}
@@ -222,15 +217,7 @@ export default function AssessmentFeedbackReviewTab({
                 onInputChange={onInputChange}
                 onClearAnswer={onClearAnswer}
               />
-              {item.step.practice.id != null && (
-                <div className="mt-3 rounded-lg border bg-white p-4">
-                  <h3 className="mb-2 text-sm font-semibold">Shared practice evidence</h3>
-                  <EvidenceUpload readOnly={readOnly} practiceId={item.step.practice.id}
-                    items={evidenceFiles.get(getPracticeEvidenceField(item.step.practice.id)) || []}
-                    onItemsChange={(evidence) => onEvidenceItemsChange(
-                      getPracticeEvidenceField(item.step.practice.id), evidence)} />
-                </div>
-              )}
+
             </section>
           );
         })}

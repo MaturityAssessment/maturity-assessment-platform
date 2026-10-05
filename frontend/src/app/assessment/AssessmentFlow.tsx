@@ -1170,6 +1170,7 @@ export default function AssessmentFlow() {
     return (
       <>
         <AssessmentDashboard
+          routeContext={capabilities.canEvaluate ? { ...routeContext, tab: "evaluation" } : routeContext}
           model={maturityModel}
           practiceSteps={practiceSteps}
           formData={formData}
@@ -1177,6 +1178,8 @@ export default function AssessmentFlow() {
           activeTab={visibleDashboardTab}
           readOnly={!capabilities.canEditResponses}
           evaluationActive={capabilities.canEvaluate}
+          evaluation={capabilities.canEvaluate ? evaluation : undefined}
+          onEvaluationQuestion={openEvaluationQuestion}
           evaluationPanel={capabilities.canEvaluate ? <EvaluationPanel assessment={loadedAssessment} model={maturityModel} evaluation={evaluation} onQuestion={openEvaluationQuestion} /> : undefined}
           isLeaving={isSavingAndLeaving}
           isPreparingReview={isPreparingReview}

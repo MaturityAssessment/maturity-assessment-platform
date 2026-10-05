@@ -4,6 +4,7 @@ import type { AssessmentResponse, MaturityModel } from "@/api/types";
 import { TEXT_LIMITS } from "@/config/textLimits";
 import AssessmentSaveIndicator from "../AssessmentSaveIndicator";
 import AgentReportPanel from "./AgentReportPanel";
+import EvaluationReviewQueue from "./EvaluationReviewQueue";
 import EvaluationSummaryPanel from "./EvaluationSummaryPanel";
 import type { EvaluationController } from "./useEvaluation";
 
@@ -20,18 +21,19 @@ export default function EvaluationPanel({
   evaluation,
   onQuestion,
 }: EvaluationPanelProps) {
-  const { progress, outstanding, questions } = evaluation;
-  const outstandingKeys = new Set(outstanding.map(question => question.responseKey));
 
   return (
     <section
       id="assessment-panel-evaluation"
       role="tabpanel"
       aria-labelledby="assessment-tab-evaluation"
-      className="mx-auto max-w-7xl space-y-5 px-4 py-7 sm:px-6"
+      className="mx-auto max-w-7xl space-y-6 px-4 py-7 sm:px-6"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Evaluation</h1>
+        <div className="mr-auto">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Evaluation</h1>
+          <p className="mt-1 text-sm text-slate-500">Review responses, resolve questions and complete your evaluation.</p>
+        </div>
         {evaluation.editable ? (
           <AssessmentSaveIndicator
             status={evaluation.status}
@@ -47,7 +49,7 @@ export default function EvaluationPanel({
           type="button"
           disabled={evaluation.busy || evaluation.agentLoading}
           onClick={() => void evaluation.remove()}
-          className="rounded border border-red-200 px-3 py-2 text-sm text-red-700 disabled:opacity-50"
+          className="rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-red-50 hover:text-red-700 focus-visible:outline-indigo-600 disabled:opacity-50"
         >
           Delete assessment
         </button>
@@ -67,51 +69,7 @@ export default function EvaluationPanel({
         maturityModel={model}
         evidenceCount={evaluation.evidence.length}
       />
-      <section className="space-y-3 rounded-lg border bg-white p-5">
-        <h2 className="font-semibold">Review progress</h2>
-        <p>
-          {progress.total - outstanding.length}/{progress.total} ready · {progress.flagged} flagged
-          {" · "}{progress.missingManualScores} missing scores
-          {" · "}{progress.missingNotes} missing notes
-        </p>
-        {outstanding[0] && (
-          <button
-            type="button"
-            className="rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
-            onClick={() => onQuestion(outstanding[0].responseKey)}
-          >
-            Next question needing review
-          </button>
-        )}
-        <div className="space-y-3">
-          {model.dimensions.map(dimension => {
-            const dimensionQuestions = questions.filter(question => question.dimensionId === dimension.id);
-            if (!dimensionQuestions.length) return null;
-            const remaining = dimensionQuestions.filter(question => outstandingKeys.has(question.responseKey));
-            return (
-              <div key={dimension.id}>
-                <h3 className="font-medium">
-                  {dimension.name} · {dimensionQuestions.length - remaining.length}/{dimensionQuestions.length} ready
-                </h3>
-                <ul className="mt-1 space-y-1">
-                  {dimensionQuestions.map(question => (
-                    <li key={question.responseKey}>
-                      <button
-                        type="button"
-                        className="text-left text-sm text-indigo-700 underline"
-                        onClick={() => onQuestion(question.responseKey)}
-                      >
-                        {question.moduleName} / {question.practiceName} · {question.question.code || question.question.text}
-                        {" — "}{outstandingKeys.has(question.responseKey) ? "Needs review" : "Ready"}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+      <EvaluationReviewQueue model={model} evaluation={evaluation} onQuestion={onQuestion} />
       {evaluation.editable && (
         <fieldset disabled={evaluation.busy}>
           <AgentReportPanel
@@ -127,8 +85,9 @@ export default function EvaluationPanel({
           />
         </fieldset>
       )}
-      <section className="rounded-lg border bg-white p-5">
+      <section className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
         <label htmlFor="evaluation-final-remarks" className="font-semibold">Final remarks</label>
+        <p className="mt-1 text-sm text-slate-500">Summarize your findings and any recommendations for the respondent.</p>
         <textarea
           id="evaluation-final-remarks"
           value={evaluation.finalRemarks}
@@ -136,11 +95,12 @@ export default function EvaluationPanel({
           readOnly={!evaluation.editable || evaluation.busy}
           maxLength={TEXT_LIMITS.description}
           rows={5}
-          className="mt-3 w-full rounded border border-slate-300 p-3"
+          placeholder="Add your overall assessment…"
+          className="mt-4 w-full rounded-lg border border-slate-200 bg-slate-50/50 p-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
         />
       </section>
       {evaluation.editable && (
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
           <button
             type="button"
             disabled={!evaluation.canFinish || evaluation.busy || evaluation.agentLoading}
