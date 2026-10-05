@@ -1503,11 +1503,8 @@ public class AssessmentService {
                 request != null && request.getQuestionEvaluations() != null
                         ? request.getQuestionEvaluations()
                         : Collections.emptyMap();
-        if (requestedEvaluations.isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "At least one question review is required to save evaluation progress."
-            );
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Evaluation progress is required.");
         }
 
         TextLimits.requireAtMost(request.getEvaluatorInsight(),

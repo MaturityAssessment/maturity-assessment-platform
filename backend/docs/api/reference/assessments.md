@@ -217,10 +217,13 @@ returns `403` even though the assessment service alone permits the role.
 Save a partial set of reviewer decisions without completing the assessment.
 
 **Access:** Curator/admin. **Request:** Numeric ID; JSON [ManualEvaluationRequest](#review-request)
-with at least one `questionEvaluations` entry. Existing other reviews are retained.
+with optional `questionEvaluations` entries and `evaluatorInsight`. An empty or omitted
+review map saves remarks only, including when there are no answered questions.
+Existing other reviews are retained. Send the desired insight explicitly; omitting
+it clears the saved insight.
 **Response:** AssessmentResponse remains `PENDING_REVIEW`.
 **Errors:** `409` unless pending review; `400` for auto-evaluated models, invalid
-review keys/status/scores, empty reviews, or text limits.
+review keys/status/scores or text limits.
 
 ## PUT /api/v1/assessments/{id}/evaluation/finish
 

@@ -102,3 +102,13 @@ test("rendering preserves tour targets, zero selection, and bounded percentage v
   assert.ok(percentage.includes("Enter a whole number between 0 and 100%"));
   assert.match(percentage, /type="range"/);
 });
+
+test("evaluation read-only answers stay visible without a misleading dependency warning", () => {
+  for (const type of ["boolean", "likert", "multiple_choice", "multiple_selection", "numeric", "percentage", "open_answer"]) {
+    const element = card({ question: { ...question, type }, value: type === "open_answer" ? "Submitted answer" : 1, readOnly: true });
+    assert.equal(element.props.interactionDisabled, true);
+    assert.equal(element.props.children.props.disabled, true);
+    assert.equal(element.props.onClear, undefined);
+    assert.equal(element.props.disabledMessage, undefined);
+  }
+});

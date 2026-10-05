@@ -832,6 +832,61 @@ class AssessmentServiceLifecycleTest {
     }
 
     @Test
+    void remarksOnlyEvaluationProgressPreservesExistingReview() throws Exception {
+        String key = "D1_M1_101_1001";
+        Assessment assessment = pendingAssessment(new ObjectMapper().writeValueAsString(Map.of(key, "Answer")));
+        QuestionEvaluation persisted = questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID).getFirst();
+        persisted.setValidationStatus(QuestionEvaluationStatus.ACCEPTED);
+        persisted.setManualScore(3.0);
+        persisted.setReviewerNote("Existing review");
+        when(assessmentRepository.findById(ASSESSMENT_ID)).thenReturn(Optional.of(assessment));
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(manualModelWithOpenQuestion()));
+        ManualEvaluationRequest request = new ManualEvaluationRequest();
+        request.setEvaluatorInsight("Updated final remarks");
+
+        AssessmentResponse response = assessmentService.saveEvaluationProgress(ASSESSMENT_ID, request, user);
+
+        assertEquals("PENDING_REVIEW", response.getStatus());
+        assertEquals("Updated final remarks", response.getEvaluatorInsight());
+        assertEquals(QuestionEvaluationStatus.ACCEPTED, persisted.getValidationStatus());
+        assertEquals(3.0, persisted.getManualScore());
+        assertEquals("Existing review", persisted.getReviewerNote());
+    }
+
+    @Test
+    void remarksOnlyEvaluationProgressAllowsNoAnsweredQuestionsAndClearingRemarks() throws Exception {
+        Assessment assessment = pendingAssessment("{}");
+        assessment.setEvaluatorInsight("Previous remarks");
+        when(assessmentRepository.findById(ASSESSMENT_ID)).thenReturn(Optional.of(assessment));
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(manualModelWithOpenQuestion()));
+        ManualEvaluationRequest request = new ManualEvaluationRequest();
+        request.setQuestionEvaluations(Map.of());
+        request.setEvaluatorInsight("New remarks");
+
+        AssessmentResponse response = assessmentService.saveEvaluationProgress(ASSESSMENT_ID, request, user);
+        assertEquals("New remarks", response.getEvaluatorInsight());
+        assertFalse(response.getIsCompleted());
+        request.setEvaluatorInsight("");
+        response = assessmentService.saveEvaluationProgress(ASSESSMENT_ID, request, user);
+        assertNull(response.getEvaluatorInsight());
+    }
+
+    @Test
+    void remarksOnlyProgressRetainsTextAndLifecycleValidation() throws Exception {
+        Assessment assessment = pendingAssessment("{}");
+        when(assessmentRepository.findById(ASSESSMENT_ID)).thenReturn(Optional.of(assessment));
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(manualModelWithOpenQuestion()));
+        ManualEvaluationRequest request = new ManualEvaluationRequest();
+        request.setEvaluatorInsight("x".repeat(2001));
+        assertThrows(IllegalOperationException.class,
+                () -> assessmentService.saveEvaluationProgress(ASSESSMENT_ID, request, user));
+        assessment.setStatus(AssessmentStatus.COMPLETED);
+        request.setEvaluatorInsight("Valid remarks");
+        assertThrows(ResponseStatusException.class,
+                () -> assessmentService.saveEvaluationProgress(ASSESSMENT_ID, request, user));
+    }
+
+    @Test
     void evaluationProgressMatchesExistingRowByCanonicalQuestionId() throws Exception {
         String responseKey = "D1_M1_101_1001";
         MaturityModel model = manualModelWithOpenQuestion();

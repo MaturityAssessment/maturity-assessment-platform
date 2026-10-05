@@ -115,7 +115,7 @@ test("multiple selection preserves option indexes and explicit none through save
 
 test("multiple selection validates indexes and formats selected labels", async () => {
   const { isQuestionResponseValid, isQuestionComplete } = await import("../../../../src/app/assessment/assessmentFlowUtils.ts");
-  const { formatQuestionResponseValue } = await import("../../../../src/app/evaluate/[id]/evaluationModel.ts");
+  const { formatQuestionResponseValue } = await import("../../../../src/app/assessment/evaluation/evaluationModel.ts");
   const question = {
     ...step.practice.questions[0], type: "multiple_selection" as const,
     choices: [

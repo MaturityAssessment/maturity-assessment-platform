@@ -26,6 +26,7 @@ import {
 import { isDependentQuestionDisabled } from "./assessmentFlowUtils";
 
 type AssessmentFeedbackReviewTabProps = {
+  readOnly?: boolean;
   practiceSteps: AssessmentPracticeStep[];
   formData: AssessmentData;
   evidenceFiles: AssessmentEvidenceByField;
@@ -40,6 +41,7 @@ type AssessmentFeedbackReviewTabProps = {
 };
 
 export default function AssessmentFeedbackReviewTab({
+  readOnly = false,
   practiceSteps,
   formData,
   evidenceFiles,
@@ -206,7 +208,7 @@ export default function AssessmentFeedbackReviewTab({
                 </span>
               </div>
 
-              <AssessmentQuestionCard
+              <AssessmentQuestionCard readOnly={readOnly}
                 question={item.question}
                 fieldName={item.fieldName}
                 value={formData[item.fieldName]}
@@ -223,7 +225,7 @@ export default function AssessmentFeedbackReviewTab({
               {item.step.practice.id != null && (
                 <div className="mt-3 rounded-lg border bg-white p-4">
                   <h3 className="mb-2 text-sm font-semibold">Shared practice evidence</h3>
-                  <EvidenceUpload practiceId={item.step.practice.id}
+                  <EvidenceUpload readOnly={readOnly} practiceId={item.step.practice.id}
                     items={evidenceFiles.get(getPracticeEvidenceField(item.step.practice.id)) || []}
                     onItemsChange={(evidence) => onEvidenceItemsChange(
                       getPracticeEvidenceField(item.step.practice.id), evidence)} />

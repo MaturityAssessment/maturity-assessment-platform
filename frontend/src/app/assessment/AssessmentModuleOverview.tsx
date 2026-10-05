@@ -177,8 +177,7 @@ export default function AssessmentModuleOverview({
                       Module progress
                     </span>
                     <span className="font-semibold tabular-nums text-slate-700">
-                      {navigationModule.answeredCount}/
-                      {navigationModule.totalQuestions} answered
+                      {navigationModule.reviewProgress || `${navigationModule.answeredCount}/${navigationModule.totalQuestions} answered`}
                     </span>
                   </div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
@@ -238,8 +237,8 @@ export default function AssessmentModuleOverview({
                           {practice.totalEnabledQuestions === 1
                             ? "question"
                             : "questions"}
-                          {practice.answeredCount > 0 &&
-                            ` · ${practice.answeredCount} answered`}
+                          {practice.reviewProgress ? ` · ${practice.reviewProgress}` : (practice.answeredCount > 0 &&
+                            ` · ${practice.answeredCount} answered`)}
                         </span>
                       </span>
 

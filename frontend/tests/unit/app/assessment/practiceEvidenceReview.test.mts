@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { Evidence, MaturityModel } from "../../../../src/api/types.ts";
-import { buildEvaluationModel } from "../../../../src/app/evaluate/[id]/evaluationModel.ts";
+import { buildEvaluationModel } from "../../../../src/app/assessment/evaluation/evaluationModel.ts";
 
 const model: MaturityModel = {
   id: 1, name: "Model", description: "", isActive: true,

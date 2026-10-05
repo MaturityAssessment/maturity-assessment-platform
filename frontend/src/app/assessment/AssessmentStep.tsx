@@ -17,6 +17,10 @@ import type {
   QuestionEvaluationResponse,
   Question,
 } from "@/api/types";
+import QuestionEvaluationControls from "./evaluation/QuestionEvaluationControls";
+import EvidenceReviewList from "./evaluation/EvidenceReviewList";
+import type { EvaluationController } from "./evaluation/useEvaluation";
+import type { MaturityLevel } from "@/api/types";
 import { AgentChatModal } from "@/components";
 import { cn } from "@/lib/utils";
 import AssessmentNavigationMenu, {
@@ -42,6 +46,9 @@ export interface AssessmentPracticeStep {
 }
 
 interface AssessmentStepProps {
+  readOnly?: boolean;
+  evaluationController?: EvaluationController;
+  maturityLevels?: MaturityLevel[];
   modelName: string;
   modelMaxLevel: number;
   dimensionName: string;
@@ -71,6 +78,9 @@ interface AssessmentStepProps {
 }
 
 export default function AssessmentStep({
+  readOnly = false,
+  evaluationController,
+  maturityLevels = [],
   modelName,
   modelMaxLevel,
   dimensionName,
@@ -222,6 +232,8 @@ export default function AssessmentStep({
               key={step.key}
               ref={(node) => {
                 if (node) {
+                  // React 18 does not serialize the boolean inert attribute.
+                  node.inert = !isVisible;
                   practiceSectionRefs.current.set(step.key, node);
                 } else {
                   practiceSectionRefs.current.delete(step.key);
@@ -239,7 +251,6 @@ export default function AssessmentStep({
               )}
               aria-labelledby={headingId}
               aria-hidden={!isVisible}
-              inert={!isVisible}
             >
               <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col">
                 <header className="pb-4 sm:pb-5">
@@ -353,13 +364,14 @@ export default function AssessmentStep({
                         : undefined;
 
                       return (
+                        <div key={fieldName} id={`evaluation-question-${fieldName}`} tabIndex={-1}>
                         <AssessmentQuestionCard
-                          key={fieldName}
+                          readOnly={readOnly}
                           question={question}
                           fieldName={fieldName}
                           value={formData[fieldName]}
                           disabled={disabled}
-                          evaluation={evaluation}
+                          evaluation={evaluationController ? undefined : evaluation}
                           respondentUpdated={Boolean(
                             evaluation?.respondentUpdated ||
                               respondentUpdatedResponseKeys.has(fieldName)
@@ -373,6 +385,13 @@ export default function AssessmentStep({
                           onInputChange={onInputChange}
                           onClearAnswer={onClearAnswer}
                         />
+                        {evaluationController?.questions.find(q => q.responseKey === fieldName) && <fieldset className="mt-2" disabled={!evaluationController.editable || evaluationController.busy}>
+                          <QuestionEvaluationControls question={evaluationController.questions.find(q => q.responseKey === fieldName)!}
+                            review={evaluationController.reviews[fieldName] || { reviewerNote: "" }}
+                            scoreOptions={Array.from({ length: modelMaxLevel }, (_, i) => ({ value: i + 1, label: `Level ${i + 1}${maturityLevels.find(l => l.number === i + 1)?.name ? `: ${maturityLevels.find(l => l.number === i + 1)!.name}` : ""}` }))}
+                            onChange={evaluationController.updateReview} />
+                        </fieldset>}
+                        </div>
                       );
                     })
                   )}
@@ -381,10 +400,10 @@ export default function AssessmentStep({
                 {step.practice.id != null && (
                   <div className="mt-4 rounded-xl border bg-white p-5">
                     <h3 className="mb-3 font-semibold">Practice evidence {evidenceRequired ? "(required)" : "(optional)"}</h3>
-                    <EvidenceUpload practiceId={step.practice.id}
+                    {evaluationController ? <EvidenceReviewList evidence={evaluationController.evidence.filter(item => item.practiceId === step.practice.id)} onDownload={evaluationController.download} /> : <EvidenceUpload readOnly={readOnly} practiceId={step.practice.id}
                       items={evidenceFiles.get(getPracticeEvidenceField(step.practice.id)) || []}
                       required={evidenceRequired}
-                      onItemsChange={(items) => onEvidenceItemsChange(getPracticeEvidenceField(step.practice.id), items)} />
+                      onItemsChange={(items) => onEvidenceItemsChange(getPracticeEvidenceField(step.practice.id), items)} />}
                   </div>
                 )}
                 <div className="mt-auto flex justify-center pb-1 pt-8 sm:pt-10">

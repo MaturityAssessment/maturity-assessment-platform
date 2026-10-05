@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { getAssessmentPracticeRailState } from "./assessmentFlowUtils";
 
 export type AssessmentNavigationPractice = {
+  reviewProgress?: string;
   key: string;
   name: string;
   description?: string;
@@ -17,6 +18,7 @@ export type AssessmentNavigationPractice = {
 };
 
 export type AssessmentNavigationModule = {
+  reviewProgress?: string;
   key: string;
   name: string;
   number: number;
@@ -170,7 +172,7 @@ function ModuleButton({
       type="button"
       onClick={() => onSelect(module.key)}
       aria-expanded={active}
-      aria-label={`Module ${module.number}, ${module.name}, ${supportingLabel}`}
+      aria-label={`Module ${module.number}, ${module.name}{module.reviewProgress && <span className="block text-xs font-normal text-indigo-600">{module.reviewProgress}</span>}, ${supportingLabel}`}
       className={cn(
         "group flex min-w-0 items-center text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400",
         compact
@@ -212,7 +214,7 @@ function ModuleButton({
             active ? "font-bold" : "font-semibold"
           )}
         >
-          {module.name}
+          {module.name}{module.reviewProgress && <span className="block text-xs font-normal text-indigo-600">{module.reviewProgress}</span>}
         </span>
         <span
           className={cn(
@@ -275,7 +277,7 @@ function PracticeList({
         const active = state === "current";
         const complete = state === "completed";
         const behindIncomplete = state === "behind-incomplete";
-        const progressLabel = `${practice.answeredCount}/${practice.totalEnabledQuestions} answered`;
+        const progressLabel = practice.reviewProgress || `${practice.answeredCount}/${practice.totalEnabledQuestions} answered`;
         const supportingLabel =
           practice.outstandingFlaggedCount > 0
             ? `${practice.outstandingFlaggedCount} change${

@@ -9,8 +9,6 @@ import type {
 
 export type AssessmentDetail = AssessmentResponse;
 
-export type EvaluationTab = "general" | `dimension:${string}` | "results";
-
 export interface AgentWarning {
   severity: "low" | "medium" | "high";
   questionId?: number;

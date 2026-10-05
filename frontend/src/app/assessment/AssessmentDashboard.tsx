@@ -50,6 +50,7 @@ import AssessmentFeedbackReviewTab from "./AssessmentFeedbackReviewTab";
 import AssessmentResultsTab from "./AssessmentResultsTab";
 
 export type AssessmentDashboardTab =
+  | "evaluation"
   | "overview"
   | "review"
   | "results"
@@ -57,6 +58,9 @@ export type AssessmentDashboardTab =
   | "logs";
 
 type AssessmentDashboardProps = {
+  evaluationPanel?: React.ReactNode;
+  evaluationActive?: boolean;
+  readOnly?: boolean;
   model: MaturityModel;
   practiceSteps: AssessmentPracticeStep[];
   formData: AssessmentData;
@@ -101,6 +105,9 @@ const dimensionIcons = [
 ];
 
 export default function AssessmentDashboard({
+  evaluationPanel,
+  evaluationActive = false,
+  readOnly = false,
   model,
   practiceSteps,
   formData,
@@ -178,7 +185,7 @@ export default function AssessmentDashboard({
                 />
               </div>
             )}
-            <Button
+            {!evaluationActive && <Button
               type="button"
               variant="ghost"
               onClick={onStartTour}
@@ -188,7 +195,7 @@ export default function AssessmentDashboard({
             >
               <CircleHelp className="h-4 w-4" aria-hidden="true" />
               Guide me
-            </Button>
+            </Button>}
             {showLeaveAction && (
               <Button
                 type="button"
@@ -198,7 +205,7 @@ export default function AssessmentDashboard({
                 data-help-tour="assessment-dashboard-leave"
                 className="border-slate-200 bg-white text-slate-700"
               >
-                {completed || changesRequested
+                {evaluationActive ? "Back to evaluations" : completed || changesRequested
                   ? "Back to assessments"
                   : isLeaving
                     ? "Saving..."
@@ -216,6 +223,7 @@ export default function AssessmentDashboard({
               activeTab={activeTab}
               onSelect={onTabChange}
             />
+            {evaluationPanel && <DashboardTab label="Evaluation" tab="evaluation" activeTab={activeTab} onSelect={onTabChange} />}
             {!completed && feedbackItemCount > 0 && (
               <DashboardTab
                 label="Review"
@@ -271,9 +279,11 @@ export default function AssessmentDashboard({
         </div>
       )}
 
-      {activeTab === "overview" ? (
+      {activeTab === "evaluation" ? evaluationPanel : activeTab === "overview" ? (
         <OverviewTab
           summary={summary}
+          evaluationActive={evaluationActive}
+          readOnly={readOnly}
           changesRequested={changesRequested}
           completed={completed}
           evaluatorInsight={evaluatorInsight}
@@ -285,6 +295,7 @@ export default function AssessmentDashboard({
       ) : activeTab === "review" ? (
         feedbackItemCount > 0 ? (
           <AssessmentFeedbackReviewTab
+            readOnly={readOnly}
             practiceSteps={practiceSteps}
             formData={formData}
             evidenceFiles={evidenceFiles}
@@ -360,6 +371,8 @@ function DashboardTab({
 }
 
 function OverviewTab({
+  evaluationActive,
+  readOnly,
   summary,
   changesRequested,
   completed,
@@ -369,6 +382,8 @@ function OverviewTab({
   onDimensionSelect,
   onReview,
 }: {
+  evaluationActive: boolean;
+  readOnly: boolean;
   summary: ReturnType<typeof buildAssessmentDashboardSummary>;
   changesRequested: boolean;
   completed: boolean;
@@ -423,7 +438,7 @@ function OverviewTab({
             <div className="space-y-3">
               {summary.dimensions.map((dimension, index) => {
                 const Icon = dimensionIcons[index % dimensionIcons.length];
-                const canOpen = dimension.practiceCount > 0 && !completed;
+                const canOpen = dimension.practiceCount > 0 && (!completed || evaluationActive);
                 return (
                   <div
                     key={dimension.key}
@@ -564,7 +579,7 @@ function OverviewTab({
         </aside>
       </div>
 
-      {!changesRequested && !completed && (
+      {!readOnly && !changesRequested && !completed && (
         <AssessmentJourney
           summary={summary}
           canReview={canReview}

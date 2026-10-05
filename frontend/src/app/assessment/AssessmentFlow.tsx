@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CircleHelp } from "lucide-react";
 import {
   AssessmentData,
@@ -19,6 +19,9 @@ import GuidedTour from "@/components/guided-tour/GuidedTour";
 import TourInvitation from "@/components/guided-tour/TourInvitation";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context";
+import useEvaluation from "./evaluation/useEvaluation";
+import EvaluationPanel from "./evaluation/EvaluationPanel";
+import { assessmentCapabilities, reviewNeedsAttention } from "./evaluation/evaluationState";
 import AssessmentDashboard from "./AssessmentDashboard";
 import type { AssessmentDashboardTab } from "./AssessmentDashboard";
 import AssessmentModuleOverview from "./AssessmentModuleOverview";
@@ -96,10 +99,12 @@ type ActiveAssessmentTour = {
 export default function AssessmentFlow() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user, completeHelpTour, dismissHelpTourPrompt } = useAuth();
   const [assessmentStep, setAssessmentStep] = useState<
     "intro" | "dashboard" | "review"
   >("intro");
+  const [evaluationFocus, setEvaluationFocus] = useState<{ responseKey: string } | null>(null);
   const [dashboardTab, setDashboardTab] =
     useState<AssessmentDashboardTab>("overview");
   const [reviewOrigin, setReviewOrigin] =
@@ -147,6 +152,17 @@ export default function AssessmentFlow() {
   const completedAssessment =
     loadedAssessment?.status === "COMPLETED" ||
     Boolean(loadedAssessment?.isCompleted);
+  const capabilities = assessmentCapabilities(loadedAssessment, user, campaignToken);
+  const evaluation = useEvaluation(loadedAssessment, maturityModel, capabilities.canEvaluate, capabilities.canEditEvaluation);
+  const visibleDashboardTab = dashboardTab === "evaluation" && !capabilities.canEvaluate ? "overview" : dashboardTab;
+  useEffect(() => {
+    const context = readAssessmentRouteContext(searchParams.toString());
+    if (context) {
+      setRouteContext(current => ({ ...context, draftId: context.draftId ?? current?.draftId }));
+      setDashboardTab(context.tab || (loadedAssessment?.isCompleted ? "results" : "overview"));
+    }
+  }, [searchParams, loadedAssessment?.isCompleted]);
+
   const reviewCounts = useMemo(
     () =>
       getAssessmentReviewCounts(
@@ -213,7 +229,7 @@ export default function AssessmentFlow() {
         : [],
     [activeDimension, activeModule, practiceSteps]
   );
-  const navigationModules = useMemo(
+  const responseNavigationModules = useMemo(
     () =>
       buildDimensionNavigationModules(
         activeDimension,
@@ -239,6 +255,29 @@ export default function AssessmentFlow() {
       ? activeDimension.modules[activeModuleIndex + 1] ?? null
       : null;
 
+  const navigationModules = responseNavigationModules.map(module => {
+    if (!capabilities.canEvaluate) return module;
+    const practices = module.practices.map(practice => {
+      const step = practiceSteps.find(step => step.key === practice.key);
+      const keys = new Set(step?.practice.questions.map(q => getFieldName(step, q)) || []);
+      const questions = evaluation.questions.filter(q => keys.has(q.responseKey));
+      const ready = questions.filter(q => !reviewNeedsAttention(q, evaluation.reviews[q.responseKey])).length;
+      return { ...practice, reviewProgress: `${ready}/${questions.length} ready`, answeredCount: ready, totalEnabledQuestions: questions.length,
+        isRequiredComplete: ready === questions.length, isFullyAnswered: ready === questions.length,
+        outstandingFlaggedCount: questions.filter(q => evaluation.reviews[q.responseKey]?.validationStatus === "FLAGGED").length };
+    });
+    const keys = new Set(practices.flatMap(practice => {
+      const step = practiceSteps.find(step => step.key === practice.key);
+      return step?.practice.questions.map(q => getFieldName(step, q)) || [];
+    }));
+    const questions = evaluation.questions.filter(q => keys.has(q.responseKey));
+    const ready = questions.filter(q => !reviewNeedsAttention(q, evaluation.reviews[q.responseKey])).length;
+    return { ...module, practices, reviewProgress: `${ready}/${questions.length} ready`, answeredCount: ready, totalQuestions: questions.length,
+      isRequiredComplete: ready === questions.length, isFullyAnswered: ready === questions.length,
+      completedPracticeCount: practices.filter(p => p.isRequiredComplete).length,
+      outstandingFlaggedCount: practices.reduce((sum, p) => sum + p.outstandingFlaggedCount, 0) };
+  });
+
   const isPracticeWorkspace =
     !isLoadingDraft &&
     isAssessmentPracticePath(pathname) &&
@@ -253,7 +292,7 @@ export default function AssessmentFlow() {
     assessmentStep === "dashboard" &&
     Boolean(maturityModel && loadedAssessment) &&
     !isLoadingDraft;
-  const currentTourView: AssessmentTourView | null = isDashboardWorkspace
+  const currentTourView: AssessmentTourView | null = capabilities.canEvaluate ? null : isDashboardWorkspace
     ? "dashboard"
     : isPracticeWorkspace
       ? "questions"
@@ -267,11 +306,10 @@ export default function AssessmentFlow() {
       isPracticeRequiredComplete(step, formData, evidenceFiles)
     );
   const canReviewAssessment =
-    allRequiredItemsComplete &&
+    capabilities.canEditResponses && allRequiredItemsComplete &&
     (!changesRequested || reviewCounts.outstandingFlaggedCount === 0);
   const assessmentAutosaveAvailable =
-    loadedAssessment?.status === "DRAFT" ||
-    loadedAssessment?.status === "CHANGES_REQUESTED";
+    capabilities.canEditResponses;
 
   const dashboardTourSteps = useMemo(
     () =>
@@ -459,7 +497,7 @@ export default function AssessmentFlow() {
   useEffect(() => {
     if (isLoadingDraft || !maturityModel || pathname === "/assessment") return;
 
-    if (completedAssessment) {
+    if (completedAssessment && !capabilities.canEvaluate && (user || campaignToken)) {
       router.replace(buildAssessmentOverviewHref(routeContext), {
         scroll: false,
       });
@@ -491,6 +529,9 @@ export default function AssessmentFlow() {
     activeModuleLocation,
     activePracticeLocation,
     completedAssessment,
+    capabilities.canEvaluate,
+    user,
+    campaignToken,
     isLoadingDraft,
     maturityModel,
     pathname,
@@ -502,6 +543,7 @@ export default function AssessmentFlow() {
     if (!maturityModel) return;
 
     const handleHistoryNavigation = () => {
+      setEvaluationFocus(null);
       const nextPathname = window.location.pathname;
       const nextContext = readAssessmentRouteContext(
         window.location.search
@@ -517,7 +559,7 @@ export default function AssessmentFlow() {
         }
         if (
           !routeContext ||
-          nextContext.draftId !== routeContext.draftId
+          (nextContext.campaignToken ? nextContext.campaignToken !== routeContext.campaignToken : nextContext.draftId !== routeContext.draftId)
         ) {
           window.location.reload();
           return;
@@ -554,7 +596,7 @@ export default function AssessmentFlow() {
   };
 
   const handleInputChange = (field: string, value: string | number | number[] | undefined) => {
-    if (acceptedResponseKeys.has(field)) return;
+    if (!capabilities.canEditResponses || acceptedResponseKeys.has(field)) return;
 
     const { formData: nextFormData, removedFields } = pruneDisabledQuestionData(
       practiceSteps,
@@ -592,6 +634,7 @@ export default function AssessmentFlow() {
     field: string,
     items: AssessmentEvidenceInputItem[]
   ) => {
+    if (!capabilities.canEditResponses) return;
     setReviewError(null);
     const practiceStep = practiceSteps.find((step) => getPracticeEvidenceField(step.practice.id) === field);
     markReviewedFieldsUpdated(new Set(practiceStep
@@ -611,7 +654,7 @@ export default function AssessmentFlow() {
   };
 
   const handleClearAnswer = (field: string) => {
-    if (acceptedResponseKeys.has(field)) return;
+    if (!capabilities.canEditResponses || acceptedResponseKeys.has(field)) return;
     const next = { ...formData };
     delete next[field];
     delete next[`${field}_justification`];
@@ -651,11 +694,36 @@ export default function AssessmentFlow() {
   const openPractice = (nextStep: AssessmentPracticeStep) => {
     if (nextStep.key === activePracticeStep?.key) return;
 
+    setEvaluationFocus(null);
     setReviewError(null);
-    router.push(buildAssessmentPracticeHref(nextStep, routeContext), {
+    router.push(buildAssessmentPracticeHref(nextStep, capabilities.canEvaluate ? { ...routeContext, tab: "evaluation" } : routeContext), {
       scroll: false,
     });
   };
+
+  const openEvaluationQuestion = (responseKey: string) => {
+    const step = practiceSteps.find(step => step.practice.questions.some(q => getFieldName(step, q) === responseKey));
+    if (!step) return;
+    setEvaluationFocus({ responseKey });
+    router.push(`${buildAssessmentPracticeHref(step, { ...routeContext, tab: "evaluation" })}#evaluation-question-${encodeURIComponent(responseKey)}`, { scroll: false });
+  };
+  useEffect(() => {
+    if (!capabilities.canEvaluate || !activePracticeStep) return;
+    let frame = 0;
+    let attempts = 0;
+    const focusQuestion = () => {
+      let id: string;
+      try { id = evaluationFocus ? `evaluation-question-${evaluationFocus.responseKey}` : decodeURIComponent(window.location.hash.slice(1)); } catch { return; }
+      if (!id.startsWith("evaluation-question-")) return;
+      const element = document.getElementById(id);
+      if (element && !element.closest('[aria-hidden="true"]')) {
+        element.scrollIntoView({ block: "start" }); element.focus({ preventScroll: true });
+      } else if (attempts++ < 30) frame = requestAnimationFrame(focusQuestion);
+    };
+    frame = requestAnimationFrame(focusQuestion);
+    window.addEventListener("hashchange", focusQuestion);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener("hashchange", focusQuestion); };
+  }, [pathname, searchParams, activePracticeStep, capabilities.canEvaluate, evaluationFocus]);
 
   const openPracticeByKey = (practiceKey: string) => {
     const nextStep = modulePracticeSteps.find(
@@ -665,9 +733,10 @@ export default function AssessmentFlow() {
   };
 
   const openModule = (dimension: Dimension, module: Module) => {
+    setEvaluationFocus(null);
     setReviewError(null);
     router.push(
-      buildAssessmentModuleHref(dimension, module, routeContext),
+      buildAssessmentModuleHref(dimension, module, capabilities.canEvaluate ? { ...routeContext, tab: "evaluation" } : routeContext),
       { scroll: false }
     );
   };
@@ -684,13 +753,14 @@ export default function AssessmentFlow() {
   };
 
   const openOverview = () => {
-    setDashboardTab("overview");
+    setEvaluationFocus(null);
+    setDashboardTab(capabilities.canEvaluate ? "evaluation" : "overview");
     setAssessmentStep("dashboard");
-    router.push(buildAssessmentOverviewHref(routeContext), { scroll: false });
+    router.push(buildAssessmentOverviewHref({ ...routeContext, tab: capabilities.canEvaluate ? "evaluation" : "overview" }), { scroll: false });
   };
 
   const openDimension = (dimension: AssessmentDimensionSummary) => {
-    if (completedAssessment) return;
+    if (completedAssessment && !capabilities.canEvaluate) return;
 
     const returnedStep = changesRequested
       ? practiceSteps
@@ -742,9 +812,9 @@ export default function AssessmentFlow() {
     setDraftLoadError(null);
     setReviewError(null);
     setDashboardTab(
-      draft.status === "COMPLETED" || draft.isCompleted
+      readAssessmentRouteContext(window.location.search)?.tab || (draft.status === "COMPLETED" || draft.isCompleted
         ? "results"
-        : "overview"
+        : "overview")
     );
     setAssessmentStep("dashboard");
   };
@@ -752,6 +822,11 @@ export default function AssessmentFlow() {
   const handleSaveAndLeave = async () => {
     if (isSavingAndLeaving || isPreparingReview) return;
 
+    if (capabilities.canEvaluate) {
+      if (capabilities.canEditResponses && !await autosave.flush()) return;
+      if (await evaluation.flush()) router.push("/evaluate");
+      return;
+    }
     if (completedAssessment) {
       router.push(
         campaignToken
@@ -1099,13 +1174,16 @@ export default function AssessmentFlow() {
           practiceSteps={practiceSteps}
           formData={formData}
           evidenceFiles={evidenceFiles}
-          activeTab={dashboardTab}
+          activeTab={visibleDashboardTab}
+          readOnly={!capabilities.canEditResponses}
+          evaluationActive={capabilities.canEvaluate}
+          evaluationPanel={capabilities.canEvaluate ? <EvaluationPanel assessment={loadedAssessment} model={maturityModel} evaluation={evaluation} onQuestion={openEvaluationQuestion} /> : undefined}
           isLeaving={isSavingAndLeaving}
           isPreparingReview={isPreparingReview}
           canReview={canReviewAssessment}
           error={reviewError}
-          saveStatus={autosave.status}
-          saveError={autosave.error}
+          saveStatus={capabilities.canEditEvaluation ? evaluation.status : autosave.status}
+          saveError={capabilities.canEditEvaluation ? evaluation.error : autosave.error}
           changesRequested={
             loadedAssessment?.status === "CHANGES_REQUESTED"
           }
@@ -1121,7 +1199,10 @@ export default function AssessmentFlow() {
           }
           onStartTour={() => startAssessmentTour("dashboard")}
           onDismissTourInvitation={dismissAssessmentTourInvitation}
-          onTabChange={setDashboardTab}
+          onTabChange={(tab) => {
+            setDashboardTab(tab);
+            router.push(buildAssessmentOverviewHref({ ...routeContext, tab }), { scroll: false });
+          }}
           onDimensionSelect={openDimension}
           onLeave={handleSaveAndLeave}
           showLeaveAction={!campaignToken}
@@ -1130,7 +1211,7 @@ export default function AssessmentFlow() {
           onClearAnswer={handleClearAnswer}
           onEvidenceItemsChange={handleEvidenceItemsChange}
           onRetrySave={() => {
-            void autosave.retry();
+            void (capabilities.canEditEvaluation ? evaluation.flush() : autosave.retry());
           }}
         />
         <GuidedTour
@@ -1168,7 +1249,9 @@ export default function AssessmentFlow() {
       <TopNavbar
         title={maturityModel?.name || "Maturity Assessment Platform"}
         subtitle={
-          assessmentStep === "intro"
+          capabilities.canEvaluate
+            ? "Review submitted answers, evidence, and evaluation decisions."
+            : assessmentStep === "intro"
             ? "Assess your organization's maturity across various domains and dimensions."
             : assessmentStep === "review"
               ? "Review your responses before submitting the assessment."
@@ -1186,13 +1269,13 @@ export default function AssessmentFlow() {
           !isLoadingDraft && maturityModel ? (
             <div className="flex items-center gap-2">
               <AssessmentSaveIndicator
-                status={autosave.status}
-                error={autosave.error}
+                status={capabilities.canEditEvaluation ? evaluation.status : autosave.status}
+                error={capabilities.canEditEvaluation ? evaluation.error : autosave.error}
                 onRetry={() => {
-                  void autosave.retry();
+                  void (capabilities.canEditEvaluation ? evaluation.flush() : autosave.retry());
                 }}
               />
-              {(isModuleWorkspace || isPracticeWorkspace) && (
+              {!capabilities.canEvaluate && (isModuleWorkspace || isPracticeWorkspace) && (
                 <Button
                   type="button"
                   variant="ghost"
@@ -1231,6 +1314,17 @@ export default function AssessmentFlow() {
           isAssessmentModulePath(pathname)
         }
       />
+
+      {capabilities.canEvaluate && isAssessmentWorkspace && <div className="flex shrink-0 flex-wrap items-center gap-3 border-b bg-white px-6 py-2 text-sm">
+        <button className="font-semibold text-indigo-700" onClick={openOverview}>Evaluation summary</button>
+        <span>{evaluation.progress.total - evaluation.outstanding.length}/{evaluation.progress.total} ready</span>
+        {evaluation.outstanding[0] && <button className="text-indigo-700 underline" onClick={() => {
+          const currentIndex = evaluation.questions.findIndex(q => `#evaluation-question-${encodeURIComponent(q.responseKey)}` === window.location.hash);
+          const next = evaluation.outstanding.find(q => evaluation.questions.indexOf(q) > currentIndex) || evaluation.outstanding[0];
+          openEvaluationQuestion(next.responseKey);
+        }}>Next question needing review</button>}
+        {evaluation.error && <span role="alert" className="text-red-700">{evaluation.error}</span>}
+      </div>}
 
       {tourInvitationView &&
         tourInvitationView !== "dashboard" &&
@@ -1318,6 +1412,9 @@ export default function AssessmentFlow() {
         activePracticeStep && (
           <div className="min-h-0 w-full flex-1 overflow-hidden px-4 pb-4 pt-4 sm:px-6 lg:px-6 lg:pb-5 lg:pt-5 xl:px-8">
             <AssessmentStep
+              readOnly={!capabilities.canEditResponses}
+              evaluationController={capabilities.canEvaluate ? evaluation : undefined}
+              maturityLevels={maturityModel?.levels}
               modelName={maturityModel?.name || "Assessment"}
               modelMaxLevel={Math.max(2, maturityModel?.levels?.length || 5)}
               dimensionName={activePracticeStep.dimension.name}
@@ -1349,9 +1446,9 @@ export default function AssessmentFlow() {
                 respondentUpdatedResponseKeys
               }
               outstandingFlaggedCount={
-                reviewCounts.outstandingFlaggedCount
+                capabilities.canEvaluate ? 0 : reviewCounts.outstandingFlaggedCount
               }
-              assistantEnabled={!campaignToken}
+              assistantEnabled={!campaignToken && capabilities.canEditResponses}
               questionTourTargetIndexes={
                 questionTourModel.targetIndexes
               }

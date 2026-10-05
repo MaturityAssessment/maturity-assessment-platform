@@ -314,7 +314,7 @@ test("practice pages isolate question scrolling from animated practice navigatio
   assert.match(source, /practiceIndex < visiblePracticeIndex/);
   assert.match(source, /practiceIndex > visiblePracticeIndex/);
   assert.doesNotMatch(source, /pager\.(scrollTop|scrollTo)/);
-  assert.match(source, /inert=\{!isVisible\}/);
+  assert.match(source, /node\.inert = !isVisible/);
   assert.doesNotMatch(source, /\bsnap-(start|always|end|proximity|mandatory)\b/);
   assert.match(source, /Previous Practice/);
   assert.ok(

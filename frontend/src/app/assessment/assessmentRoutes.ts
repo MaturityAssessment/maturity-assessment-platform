@@ -6,6 +6,7 @@ const ASSESSMENT_ROOT = "/assessment";
 export type AssessmentRouteContext = {
   draftId?: number;
   campaignToken?: string;
+  tab?: "overview" | "review" | "results" | "discussion" | "logs" | "evaluation";
 };
 
 export type ResolvedAssessmentPractice = {
@@ -166,6 +167,7 @@ export function replaceAssessmentPathContext(
     search.set("draftId", String(context.draftId));
   }
 
+  if (context?.tab) search.set("tab", context.tab);
   const query = search.toString();
   return query ? `${pathname}?${query}` : pathname;
 }
@@ -176,13 +178,16 @@ export function readAssessmentRouteContext(
   const params = new URLSearchParams(search);
   if (params.has("modelId")) return null;
 
+  const tabValue = params.get("tab");
+  const tab = ["overview", "review", "results", "discussion", "logs", "evaluation"].includes(tabValue || "") ? tabValue as AssessmentRouteContext["tab"] : undefined;
+  const tabContext = tab ? { tab } : {};
   const campaignToken = params.get("campaignToken")?.trim();
   if (campaignToken && /^[A-Za-z0-9_-]{43}$/.test(campaignToken)) {
-    return { campaignToken };
+    return { campaignToken, ...tabContext };
   }
 
   const draftId = readPositiveInteger(params.get("draftId"));
-  return draftId ? { draftId } : null;
+  return draftId ? { draftId, ...tabContext } : null;
 }
 
 export function isAssessmentPracticePath(pathname: string) {

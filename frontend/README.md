@@ -162,7 +162,7 @@ coverage thresholds, and test-writing conventions.
 | `/assessment`        | Create assessment  | Authenticated  |
 | `/assessments`       | My assessments     | Authenticated  |
 | `/evaluate`          | Evaluation list    | CURATOR+       |
-| `/evaluate/[id]`     | Evaluate assessment| CURATOR+       |
+| `/evaluate/[id]`     | Redirect to assessment Evaluation tab | CURATOR+ |
 | `/results`           | Results & export   | Authenticated  |
 
 ## Key Components

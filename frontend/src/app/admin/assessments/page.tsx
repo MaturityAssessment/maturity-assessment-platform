@@ -144,7 +144,7 @@ export default function AssessmentManagementPage() {
                 router.push(`/assessment?draftId=${assessmentId}`)
               }
               onReview={(assessmentId) =>
-                router.push(`/evaluate/${assessmentId}`)
+                router.push(`/assessment?draftId=${assessmentId}&tab=evaluation`)
               }
               onDelete={setAssessmentToDelete}
             />

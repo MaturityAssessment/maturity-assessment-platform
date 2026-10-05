@@ -34,6 +34,7 @@ interface AssessmentQuestionCardProps {
   fieldName: string;
   value: unknown;
   disabled: boolean;
+  readOnly?: boolean;
   evaluation?: QuestionEvaluationResponse;
   respondentUpdated: boolean;
   helpTourTargets?: {
@@ -55,6 +56,7 @@ export default function AssessmentQuestionCard({
   fieldName,
   value,
   disabled,
+  readOnly = false,
   evaluation,
   respondentUpdated,
   helpTourTargets,
@@ -66,7 +68,7 @@ export default function AssessmentQuestionCard({
 
   const reviewStatus = evaluation?.validationStatus;
   const interactionDisabled =
-    disabled || reviewStatus === "ACCEPTED" || reviewStatus === "ADJUSTED";
+    readOnly || disabled || reviewStatus === "ACCEPTED" || reviewStatus === "ADJUSTED";
   const hasContent = isAnswered(value);
   const complete =
     isQuestionComplete(value) && isQuestionResponseValid(question, value);

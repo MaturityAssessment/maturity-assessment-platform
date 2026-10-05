@@ -120,7 +120,7 @@ export default function Evaluate() {
                 models={models}
                 deletingAssessmentId={deletingAssessmentId}
                 onReview={(assessmentId) =>
-                  router.push(`/evaluate/${assessmentId}`)
+                  router.push(`/assessment?draftId=${assessmentId}&tab=evaluation`)
                 }
                 onDelete={(assessmentId) => {
                   setDeleteError(null);

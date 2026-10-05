@@ -8,30 +8,24 @@ import {
   MessageSquarePlus,
 } from "lucide-react";
 import Tippy from "@tippyjs/react";
-import type { MaturityLevel, QuestionEvaluationStatus } from "@/api/types";
+import type { QuestionEvaluationStatus } from "@/api/types";
 import { TEXT_LIMITS } from "@/config/textLimits";
 import { cn } from "@/lib/utils";
-import {
-  formatQuestionResponseValue,
-  questionTypeLabel,
-} from "./evaluationModel";
 import type { EvaluationQuestion, QuestionReviewDraft } from "./types";
 
-interface QuestionReviewCardProps {
+interface QuestionEvaluationControlsProps {
   question: EvaluationQuestion;
   review: QuestionReviewDraft;
-  maturityLevels: MaturityLevel[];
   scoreOptions: Array<{ value: number; label: string }>;
   onChange: (responseKey: string, review: QuestionReviewDraft) => void;
 }
 
-export default function QuestionReviewCard({
+export default function QuestionEvaluationControls({
   question,
   review,
-  maturityLevels,
   scoreOptions,
   onChange,
-}: QuestionReviewCardProps) {
+}: QuestionEvaluationControlsProps) {
   const [noteExpanded, setNoteExpanded] = useState(
     Boolean(review.reviewerNote)
   );
@@ -41,7 +35,6 @@ export default function QuestionReviewCard({
     review.validationStatus === "ADJUSTED" ||
     review.validationStatus === "FLAGGED";
   const showNote = noteExpanded || needsNote || Boolean(review.reviewerNote);
-  const questionLabel = question.question.code || `Question ${question.questionId}`;
   const isBoolean = question.question.type === "boolean";
   const isScale = question.question.type === "likert";
   const isMultipleChoice = question.question.type === "multiple_choice";
@@ -102,20 +95,7 @@ export default function QuestionReviewCard({
     <article className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <p className="text-xs font-medium uppercase text-gray-500">
-            {question.moduleName} / {question.practiceName}
-          </p>
-          <h3 className="mt-1 text-sm font-semibold leading-6 text-gray-950">
-            {question.question.text}
-          </h3>
-          <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
-            <span>{questionLabel}</span>
-            <span>{questionTypeLabel(question.question)}</span>
-          </div>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={() => toggleStatus("ACCEPTED")}
@@ -127,7 +107,7 @@ export default function QuestionReviewCard({
             )}
           >
             <Check className="h-3.5 w-3.5" />
-            Accepted
+            Accept
           </button>
           <button
             type="button"
@@ -140,14 +120,14 @@ export default function QuestionReviewCard({
             )}
           >
             <Edit3 className="h-3.5 w-3.5" />
-            Adjusted
+            Adjust
           </button>
           <Tippy content="Flag this answer using the shared practice evidence for follow-up. A reviewer note is required.">
             <button
               type="button"
               onClick={() => toggleStatus("FLAGGED")}
               className={cn(
-                "inline-flex h-9 w-9 items-center justify-center rounded-md border text-xs font-semibold",
+                "inline-flex h-9 items-center justify-center gap-1 rounded-md border px-3 text-xs font-semibold",
                 review.validationStatus === "FLAGGED"
                   ? "border-red-600 bg-red-600 text-white"
                   : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
@@ -155,22 +135,12 @@ export default function QuestionReviewCard({
               aria-label="Flag answer or evidence"
             >
               <Flag className="h-4 w-4" />
+              Flag
             </button>
           </Tippy>
         </div>
       </div>
 
-      <section className="mt-4 rounded-md border border-gray-200 bg-gray-50 p-3">
-        <p className="mb-2 text-xs font-semibold uppercase text-gray-500">
-          Submitted answer
-        </p>
-        <pre className="whitespace-pre-wrap font-sans text-sm leading-6 text-gray-800">
-          {formatQuestionResponseValue(
-            question.question,
-            question.responseValue,
-            maturityLevels
-          )}
-        </pre>
         <p className="mt-2 text-xs font-medium text-gray-600">
           {question.initialScore != null
             ? isBoolean
@@ -186,8 +156,6 @@ export default function QuestionReviewCard({
               : `Initial automated score: ${question.initialScore}`
             : "Not automatically scored"}
         </p>
-      </section>
-
       <div className="mt-4 flex flex-col gap-3 border-t border-gray-100 pt-4">
         <div className="grid gap-4 lg:grid-cols-[minmax(220px,320px)_1fr]">
           {needsScore && (

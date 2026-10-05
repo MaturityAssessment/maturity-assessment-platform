@@ -214,3 +214,15 @@ test("scopes progression to the active module and never crosses its boundary", (
     null
   );
 });
+
+test("evaluation context survives overview, practice and module navigation and refresh", () => {
+  const context = readAssessmentRouteContext("?draftId=41&tab=evaluation");
+  assert.deepEqual(context, { draftId: 41, tab: "evaluation" });
+  const steps = buildPracticeSteps(model);
+  for (const href of [buildAssessmentOverviewHref(context), buildAssessmentPracticeHref(steps[0], context), buildAssessmentModuleHref(steps[0].dimension, steps[0].module, context)]) {
+    assert.deepEqual(readAssessmentRouteContext(href.split("?")[1]), context);
+  }
+  assert.deepEqual(readAssessmentRouteContext("?draftId=41&tab=unknown"), { draftId: 41 });
+  const token = "a".repeat(43);
+  assert.deepEqual(readAssessmentRouteContext(`?campaignToken=${token}&tab=review`), { campaignToken: token, tab: "review" });
+});

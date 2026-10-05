@@ -50,7 +50,7 @@ status before retrying. A submitted row rejects duplicate submission with `409`.
    `ADJUSTED`, or `FLAGGED`. Use the response keys and the
    [review score rules](../reference/assessments.md#review-request).
 3. Save decisions with `PUT /api/v1/assessments/{id}/evaluation/reviews`. Partial
-   review maps are supported; the assessment remains pending.
+   review maps and remarks-only updates are supported; the assessment remains pending.
 4. If corrections are needed, save flagged decisions with reviewer notes, then
    call `PUT /api/v1/assessments/{id}/evaluation/send-back`.
 5. Otherwise, classify all reviewable content and supply required scores/notes,
