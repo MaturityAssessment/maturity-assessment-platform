@@ -138,3 +138,17 @@ test("feedback breadcrumbs link to assessment locations without repeating eviden
   assert.doesNotMatch(html, /Shared practice evidence|type="file"/);
   assert.match(html, /Check policy/);
 });
+
+test("evaluation navigation shows reviewed progress, flagged segment and completion state", () => {
+  const Navigation = load(resolve(sourceRoot, "app/assessment/evaluation/EvaluationNavigation.tsx")).default;
+  const html = renderToStaticMarkup(createElement(Navigation, { evaluation: { ...evaluation, progress: { ...evaluation.progress, total: 4, reviewed: 3, flagged: 1 }, error: "Could not save" }, onSummary: noOp, onNext: noOp }));
+  assert.match(html, /aria-label="Evaluation navigation"/);
+  assert.match(html, /Evaluation summary/);
+  assert.match(html, /Next to review/);
+  assert.match(html, /aria-valuetext="3 of 4 reviewed, 1 flagged"/);
+  assert.match(html, /bg-amber-500 transition-all" style="width:25%"/);
+  assert.match(html, /role="alert"[^>]*>Could not save/);
+  const completed = renderToStaticMarkup(createElement(Navigation, { evaluation: { ...evaluation, outstanding: [], progress: { ...evaluation.progress, reviewed: 1 } }, onSummary: noOp, onNext: noOp }));
+  assert.match(completed, /All questions ready/);
+  assert.doesNotMatch(completed, /Next to review/);
+});

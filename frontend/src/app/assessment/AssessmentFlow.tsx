@@ -22,6 +22,7 @@ import { useAuth } from "@/context";
 import useEvaluation from "./evaluation/useEvaluation";
 import EvaluationPanel from "./evaluation/EvaluationPanel";
 import { assessmentCapabilities, reviewNeedsAttention } from "./evaluation/evaluationState";
+import EvaluationNavigation from "./evaluation/EvaluationNavigation";
 import AssessmentDashboard from "./AssessmentDashboard";
 import type { AssessmentDashboardTab } from "./AssessmentDashboard";
 import AssessmentModuleOverview from "./AssessmentModuleOverview";
@@ -1318,16 +1319,7 @@ export default function AssessmentFlow() {
         }
       />
 
-      {capabilities.canEvaluate && isAssessmentWorkspace && <div className="flex shrink-0 flex-wrap items-center gap-3 border-b bg-white px-6 py-2 text-sm">
-        <button className="font-semibold text-indigo-700" onClick={openOverview}>Evaluation summary</button>
-        <span>{evaluation.progress.total - evaluation.outstanding.length}/{evaluation.progress.total} ready</span>
-        {evaluation.outstanding[0] && <button className="text-indigo-700 underline" onClick={() => {
-          const currentIndex = evaluation.questions.findIndex(q => `#evaluation-question-${encodeURIComponent(q.responseKey)}` === window.location.hash);
-          const next = evaluation.outstanding.find(q => evaluation.questions.indexOf(q) > currentIndex) || evaluation.outstanding[0];
-          openEvaluationQuestion(next.responseKey);
-        }}>Next question needing review</button>}
-        {evaluation.error && <span role="alert" className="text-red-700">{evaluation.error}</span>}
-      </div>}
+
 
       {tourInvitationView &&
         tourInvitationView !== "dashboard" &&
@@ -1459,6 +1451,14 @@ export default function AssessmentFlow() {
             />
           </div>
         )}
+
+      {capabilities.canEvaluate && isAssessmentWorkspace && !isLoadingDraft && (
+        <EvaluationNavigation evaluation={evaluation} onSummary={openOverview} onNext={() => {
+          const currentIndex = evaluation.questions.findIndex(q => `#evaluation-question-${encodeURIComponent(q.responseKey)}` === window.location.hash);
+          const next = evaluation.outstanding.find(q => evaluation.questions.indexOf(q) > currentIndex) || evaluation.outstanding[0];
+          if (next) openEvaluationQuestion(next.responseKey);
+        }} />
+      )}
 
       {pathname === "/assessment" &&
         assessmentStep === "review" &&
