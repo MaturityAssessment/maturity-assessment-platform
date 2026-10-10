@@ -9,6 +9,7 @@ import {
   FileText,
   Flag,
   Link2,
+  StickyNote,
   LockKeyhole,
   PencilLine,
   Send,
@@ -260,6 +261,8 @@ function QuestionReviewRow({
             >
               {item.type === "file" ? (
                 <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              ) : item.type === "text" ? (
+                <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               ) : (
                 <Link2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               )}
@@ -268,7 +271,7 @@ function QuestionReviewRow({
                   <p className="truncate font-medium">
                     {item.fileName || item.file?.name || "Evidence file"}
                   </p>
-                ) : (
+                ) : item.type === "text" ? <p className="font-medium">Respondent note</p> : (
                   <a
                     href={item.url}
                     target="_blank"
@@ -280,7 +283,7 @@ function QuestionReviewRow({
                   </a>
                 )}
                 {item.description && (
-                  <p className="mt-0.5 text-blue-700">{item.description}</p>
+                  <p className="mt-0.5 whitespace-pre-wrap break-words text-blue-700">{item.description}</p>
                 )}
               </div>
             </div>

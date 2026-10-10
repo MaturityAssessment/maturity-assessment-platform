@@ -34,6 +34,17 @@ public class EvidenceTextExtractionService {
                 : EvidenceType.FILE;
         summary.setEvidenceType(evidenceType.name());
 
+        if (evidenceType == EvidenceType.TEXT) {
+            String text = normalizeText(evidence.getDescription());
+            boolean truncated = text.length() > properties.getMaxEvidenceChars();
+            String snippet = truncated ? text.substring(0, properties.getMaxEvidenceChars()) : text;
+            summary.setSummary("Respondent-provided evidence note included for review.");
+            summary.setExtractedCharacters(snippet.length());
+            summary.setTruncated(truncated);
+            if (truncated) summary.setWarning("Note text was truncated to the configured character limit.");
+            return new ExtractedEvidence(summary, snippet);
+        }
+
         if (evidenceType == EvidenceType.URL) {
             summarizeUrl(evidence, summary);
             return new ExtractedEvidence(summary, "");

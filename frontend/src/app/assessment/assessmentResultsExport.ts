@@ -196,7 +196,7 @@ function formatEvidence(evidenceItems: Evidence[]) {
       const source =
         evidence.evidenceType === "URL"
           ? evidence.url || "URL evidence"
-          : evidence.fileName || "File evidence";
+          : evidence.evidenceType === "TEXT" ? "Respondent note" : evidence.fileName || "File evidence";
       const description = evidence.description?.trim();
       return description ? `${source} — ${description}` : source;
     })

@@ -121,3 +121,32 @@ test("retains over-limit migrated evidence but rejects new additions", () => {
   assert.match(validateEvidenceForSave(new Map([["practice_10_evidence",
     [...items, { ...items[0], id: "new", evidenceId: undefined }]]]))!, /five evidence items/);
 });
+
+
+test("respondent notes count as evidence and serialize without a file or URL", async () => {
+  const note = { id: "note", practiceId: 10, type: "text" as const,
+    description: "Policy reviewed annually.\n\tOwner: Governance team.", file: null, url: "" };
+  const evidence = new Map([["practice_10_evidence", [note]]]);
+  assert.equal(hasValidEvidenceItems([note]), true);
+  assert.equal(validateEvidenceForSave(evidence), null);
+  const payload = buildEvidencePayload(evidence);
+  assert.equal(payload.metadata[0].type, "TEXT");
+  assert.equal(payload.metadata[0].description, note.description);
+  assert.equal(payload.metadata[0].url, undefined);
+  assert.deepEqual(payload.uploads, []);
+  assert.equal(hasValidEvidenceItems([{ ...note, description: " \n\t" }]), false);
+  assert.match(validateEvidenceForSave(new Map([["practice_10_evidence", [{ ...note, description: "" }]]]))!, /Enter text/);
+  assert.match(validateEvidenceForSave(new Map([["practice_10_evidence", [{ ...note, description: "a".repeat(10001) }]]]))!, /10,000/);
+  assert.match(validateEvidenceForSave(new Map([["practice_10_evidence", Array.from({ length: 6 }, (_, index) => ({ ...note, id: String(index) }))]]))!, /five/);
+  const steps = [{ key: "practice-10", dimension: { id: "D", name: "Dimension", modules: [] },
+    module: { code: "M", name: "Module", practices: [] }, practice: { id: 10, name: "Practice", questions: [] } }];
+  const hydrated = hydrateEvidenceByField([{ id: 3, clientKey: "note", practiceId: 10, assessmentId: 2,
+    evidenceType: "TEXT", description: note.description, createdAt: "" }], steps);
+  assert.equal(hydrated.get("practice_10_evidence")![0].type, "text");
+  assert.equal(hydrated.get("practice_10_evidence")![0].description, note.description);
+  const { isPracticeRequiredComplete } = await import("../../../../src/app/assessment/assessmentFlowUtils.ts");
+  const requiredStep = { ...steps[0], practice: { ...steps[0].practice, requiresEvidence: true,
+    questions: [{ id: 100, text: "Question", type: "boolean" as const, weight: 1, help: "", required: true }] } };
+  assert.equal(isPracticeRequiredComplete(requiredStep, { D_M_10_100: 1 }, evidence), true);
+  assert.equal(isPracticeRequiredComplete(requiredStep, { D_M_10_100: 1 }, new Map()), false);
+});

@@ -262,7 +262,8 @@ function sanitizeEvidenceForExport(items: Evidence[]) {
     note:
       item.evidenceType === "FILE"
         ? "File content is not included in this export."
-        : "External URL is included as respondent-provided evidence metadata.",
+        : item.evidenceType === "TEXT" ? "Respondent-provided note text is included in the description."
+          : "External URL is included as respondent-provided evidence metadata.",
   }));
 }
 

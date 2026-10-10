@@ -219,3 +219,16 @@ async function waitFor(predicate: () => boolean) {
   }
   assert.fail("Timed out waiting for asynchronous autosave work");
 }
+
+
+test("autosave preserves respondent note edits made while saving", () => {
+  const note: AssessmentEvidenceInputItem = { id: "note", practiceId: 10, type: "text", description: "Sent text", file: null, url: "" };
+  const sent = new Map([["practice_10_evidence", [note]]]);
+  const current = new Map([["practice_10_evidence", [{ ...note, description: "Changed while saving\nMore detail" }]]]);
+  const saved: Evidence[] = [{ id: 42, assessmentId: 1, practiceId: 10, clientKey: "note", evidenceType: "TEXT", description: "Sent text", createdAt: "" }];
+  const result = reconcileSavedEvidence(sent, current, saved).get("practice_10_evidence")![0];
+  assert.equal(result.evidenceId, 42);
+  assert.equal(result.description, "Changed while saving\nMore detail");
+  assert.equal(result.type, "text");
+  assert.equal(result.file, null);
+});

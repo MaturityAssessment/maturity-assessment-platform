@@ -152,3 +152,23 @@ test("evaluation navigation shows reviewed progress, flagged segment and complet
   assert.match(completed, /All questions ready/);
   assert.doesNotMatch(completed, /Next to review/);
 });
+
+
+test("respondent note evidence renders as editable text and reviewer text without link or download actions", () => {
+  const Upload = load(resolve(sourceRoot, "components/assessment/EvidenceUpload.tsx")).default;
+  const Review = load(resolve(sourceRoot, "app/assessment/evaluation/EvidenceReviewList.tsx")).default;
+  const text = "Annual review\n\tGovernance owner";
+  const note = { id: "note", practiceId: 10, type: "text", description: text, file: null, url: "" };
+  const editable = renderToStaticMarkup(createElement(Upload, { practiceId: 10, items: [note], onItemsChange: noOp }));
+  assert.match(editable, /<textarea/);
+  assert.match(editable, /maxLength="10000"/);
+  assert.match(editable, /Add note/);
+  const readonly = renderToStaticMarkup(createElement(Upload, { practiceId: 10, items: [note], onItemsChange: noOp, readOnly: true }));
+  assert.match(readonly, /Respondent note/);
+  assert.ok(readonly.includes(text));
+  assert.doesNotMatch(readonly, /<textarea|Download|href=/);
+  const reviewed = renderToStaticMarkup(createElement(Review, { evidence: [{ id: 42, evidenceType: "TEXT", description: text }], onDownload: noOp }));
+  assert.match(reviewed, /Respondent note/);
+  assert.ok(reviewed.includes(text));
+  assert.doesNotMatch(reviewed, /Download|href=/);
+});

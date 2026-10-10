@@ -6,6 +6,7 @@ export const TEXT_LIMITS = {
   description: 2_000,
   changelog: 50_000,
   evidenceDescription: 500,
+  evidenceNote: 10_000,
   url: 1_000,
   openAnswer: 10_000,
   scaleLabel: 50,

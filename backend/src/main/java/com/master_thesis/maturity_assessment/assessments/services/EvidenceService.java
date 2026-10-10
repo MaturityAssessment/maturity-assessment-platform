@@ -241,6 +241,23 @@ public class EvidenceService {
                     synchronizedItem.setDescription(normalizeOptionalDescription(item.getDescription()));
                     synchronizedItem.setExternalUrl(normalizeAndValidateUrl(item.getUrl()));
                 }
+            } else if (item.getType() == EvidenceType.TEXT) {
+                if ((item.getItemKey() != null && !item.getItemKey().isBlank())
+                        || (item.getUrl() != null && !item.getUrl().isBlank())) {
+                    throw badRequest("Text evidence cannot reference a file or URL.");
+                }
+                String text = item.getDescription();
+                TextLimits.requireAtMost(text, TextLimits.OPEN_ANSWER, "Evidence note");
+                if (text == null || text.isBlank()) {
+                    throw badRequest("Evidence note must contain text.");
+                }
+                synchronizedItem = persisted != null ? persisted : new Evidence();
+                synchronizedItem.setAssessment(assessment);
+                synchronizedItem.setPractice(practice);
+                synchronizedItem.setUploadedBy(user);
+                synchronizedItem.setUploadedByCampaignParticipant(campaignParticipant);
+                synchronizedItem.setEvidenceType(EvidenceType.TEXT);
+                synchronizedItem.setDescription(text.trim());
             } else {
                 throw badRequest("Unsupported evidence type.");
             }
@@ -310,8 +327,8 @@ public class EvidenceService {
                 .orElseThrow(() -> new ResourceNotFoundException("Evidence not found"));
         requireViewableAssessment(evidence.getAssessment().getId(), user);
 
-        if (effectiveType(evidence) == EvidenceType.URL) {
-            throw badRequest("URL evidence cannot be downloaded as a file.");
+        if (effectiveType(evidence) != EvidenceType.FILE) {
+            throw badRequest("Only file evidence can be downloaded.");
         }
         return fileStorageService.loadFileAsResource(evidence.getFilePath());
     }
@@ -324,8 +341,8 @@ public class EvidenceService {
         Evidence evidence = evidenceRepository.findById(evidenceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Evidence not found"));
         requireOwnedAssessment(evidence.getAssessment().getId(), null, participant);
-        if (effectiveType(evidence) == EvidenceType.URL) {
-            throw badRequest("URL evidence cannot be downloaded as a file.");
+        if (effectiveType(evidence) != EvidenceType.FILE) {
+            throw badRequest("Only file evidence can be downloaded.");
         }
         return fileStorageService.loadFileAsResource(evidence.getFilePath());
     }

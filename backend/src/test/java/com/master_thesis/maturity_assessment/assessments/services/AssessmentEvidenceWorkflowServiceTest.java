@@ -427,6 +427,13 @@ class AssessmentEvidenceWorkflowServiceTest {
                 request, participant, List.of(), List.of(), List.of()));
     }
 
+    @Test
+    void respondentNoteSatisfiesRequiredPracticeEvidence() throws Exception {
+        EvidenceDTO note = EvidenceDTO.builder().id(5L).assessmentId(ASSESSMENT_ID)
+                .practiceId(40L).evidenceType(EvidenceType.TEXT).description("Reviewed annually").build();
+        assertEquals(List.of(note), submitModel(requiredEvidenceModel(), List.of(note)).getEvidence());
+    }
+
     private AssessmentResponse submitModel(MaturityModel model, List<EvidenceDTO> items) throws Exception {
         AssessmentRequest request = request(Map.of());
         when(assessmentService.createAssessment(request, user)).thenReturn(savedAssessment);

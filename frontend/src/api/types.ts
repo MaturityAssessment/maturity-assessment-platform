@@ -94,7 +94,7 @@ export interface Evidence {
   /** Ephemeral client identity echoed by draft saves for safe reconciliation. */
   clientKey?: string | null;
   description: string;
-  evidenceType: "FILE" | "URL";
+  evidenceType: "FILE" | "URL" | "TEXT";
   fileName?: string | null;
   fileSize?: number | null;
   fileType?: string | null;
@@ -107,7 +107,7 @@ export interface AssessmentEvidenceInputItem {
   id: string;
   evidenceId?: number;
   practiceId: number;
-  type: "file" | "link";
+  type: "file" | "link" | "text";
   description: string;
   file: File | null;
   fileName?: string | null;
@@ -122,7 +122,7 @@ export interface AssessmentEvidenceMetadataItem {
   itemKey?: string;
   clientKey?: string;
   practiceId: number;
-  type: "FILE" | "URL";
+  type: "FILE" | "URL" | "TEXT";
   description: string;
   url?: string;
 }

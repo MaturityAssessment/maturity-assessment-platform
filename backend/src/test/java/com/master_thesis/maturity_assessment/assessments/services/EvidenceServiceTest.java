@@ -364,6 +364,67 @@ class EvidenceServiceTest {
                 ASSESSMENT_ID, MODEL_ID, owner, List.of(legacy), List.of(), List.of(), true));
     }
 
+    @Test
+    void textEvidenceCreatesAndUpdatesNotesWithoutFileStorage() throws Exception {
+        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of());
+        EvidenceSubmissionItemRequest item = textItem("  Respondent note\n\tSecond line  ");
+        item.setClientKey("note-client");
+        List<EvidenceDTO> created = evidenceService.synchronizeEvidence(
+                ASSESSMENT_ID, MODEL_ID, owner, List.of(item), List.of(), List.of(), true);
+        assertEquals(EvidenceType.TEXT, created.getFirst().getEvidenceType());
+        assertEquals("Respondent note\n\tSecond line", created.getFirst().getDescription());
+        assertEquals("note-client", created.getFirst().getClientKey());
+        org.junit.jupiter.api.Assertions.assertNull(created.getFirst().getDownloadUrl());
+        org.junit.jupiter.api.Assertions.assertNull(created.getFirst().getUrl());
+        ArgumentCaptor<Evidence> captor = ArgumentCaptor.forClass(Evidence.class);
+        verify(evidenceRepository).save(captor.capture());
+        Evidence persisted = captor.getValue();
+        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of(persisted));
+        item.setEvidenceId(persisted.getId());
+        item.setDescription("Updated note");
+        List<EvidenceDTO> updated = evidenceService.synchronizeEvidence(
+                ASSESSMENT_ID, MODEL_ID, owner, List.of(item), List.of(), List.of(), true);
+        assertEquals(persisted.getId(), updated.getFirst().getId());
+        assertEquals("Updated note", updated.getFirst().getDescription());
+        org.mockito.Mockito.verifyNoInteractions(fileStorageService);
+    }
+
+    @Test
+    void textEvidenceRejectsBlankOversizedOrFileAndUrlReferences() throws Exception {
+        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of());
+        for (String text : List.of("", " \n\t", "a".repeat(10001))) {
+            assertThrows(RuntimeException.class, () -> evidenceService.synchronizeEvidence(
+                    ASSESSMENT_ID, MODEL_ID, owner, List.of(textItem(text)), List.of(), List.of(), true));
+        }
+        EvidenceSubmissionItemRequest item = textItem("Note");
+        item.setUrl("https://example.com");
+        assertThrows(ResponseStatusException.class, () -> evidenceService.synchronizeEvidence(
+                ASSESSMENT_ID, MODEL_ID, owner, List.of(item), List.of(), List.of(), true));
+        item.setUrl(null);
+        item.setItemKey("upload-key");
+        assertThrows(ResponseStatusException.class, () -> evidenceService.synchronizeEvidence(
+                ASSESSMENT_ID, MODEL_ID, owner, List.of(item), List.of(), List.of(), true));
+    }
+
+    @Test
+    void textEvidenceCannotBeDownloadedAsFile() throws Exception {
+        Evidence note = urlEvidence(1L, null);
+        note.setEvidenceType(EvidenceType.TEXT);
+        when(evidenceRepository.findById(1L)).thenReturn(Optional.of(note));
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> evidenceService.downloadEvidence(1L, owner));
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        org.mockito.Mockito.verifyNoInteractions(fileStorageService);
+    }
+
+    private EvidenceSubmissionItemRequest textItem(String text) {
+        EvidenceSubmissionItemRequest item = new EvidenceSubmissionItemRequest();
+        item.setPracticeId(PRACTICE_ID);
+        item.setType(EvidenceType.TEXT);
+        item.setDescription(text);
+        return item;
+    }
+
     private EvidenceSubmissionItemRequest urlItem(Long evidenceId, String description, String url) {
         EvidenceSubmissionItemRequest item = new EvidenceSubmissionItemRequest();
         item.setEvidenceId(evidenceId);

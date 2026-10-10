@@ -6,6 +6,7 @@ import {
   ExternalLink,
   FilePlus2,
   Link2,
+  StickyNote,
   ShieldCheck,
   Trash2,
 } from "lucide-react";
@@ -106,6 +107,15 @@ export default function EvidenceUpload({
     ]);
   };
 
+  const addNote = () => {
+    if (remainingSlots <= 0) return;
+    setError(null);
+    onItemsChange([...items, {
+      id: createEvidenceClientId(), practiceId, type: "text",
+      description: "", file: null, url: "",
+    }]);
+  };
+
   const updateItem = (
     itemId: string,
     update: Partial<AssessmentEvidenceInputItem>
@@ -191,7 +201,7 @@ export default function EvidenceUpload({
               ? "PDF, Office, image, or text files up to 50MB each."
               : allowedType === "link"
                 ? "Use a complete HTTPS link your reviewer can access."
-                : "Upload a file or add a secure HTTPS link."}
+                : "Upload a file, add a secure HTTPS link, or write a note."}
           </p>
         </div>
       )}
@@ -206,7 +216,7 @@ export default function EvidenceUpload({
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-indigo-600">
-                    {item.type === "file" ? "File" : "Secure link"} {index + 1}
+                    {item.type === "file" ? "File" : item.type === "text" ? "Respondent note" : "Secure link"} {index + 1}
                   </p>
                   {item.type === "file" && (
                     <p className="mt-1 truncate text-sm font-medium text-gray-900">
@@ -261,7 +271,7 @@ export default function EvidenceUpload({
                     )}
                   </div>
                 </div>
-              ) : (
+              ) : item.type === "link" ? (
                 <div className="mt-3 flex gap-2">
                   {readOnly ? (
                     <a
@@ -291,9 +301,23 @@ export default function EvidenceUpload({
                     </Button>
                   )}
                 </div>
-              )}
+              ) : null}
 
-              {readOnly ? (
+              {item.type === "text" ? (
+                readOnly ? <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">{item.description}</p> : (
+                  <label className="mt-3 block text-xs font-medium text-slate-600">
+                    Note text
+                    <textarea
+                      className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      rows={4}
+                      value={item.description}
+                      maxLength={TEXT_LIMITS.evidenceNote}
+                      onChange={(event) => updateItem(item.id, { description: event.target.value })}
+                      placeholder="Describe the evidence or provide context for your answers."
+                    />
+                  </label>
+                )
+              ) : readOnly ? (
                 item.description && (
                   <p className="mt-3 text-xs leading-5 text-slate-600">
                     {item.description}
@@ -349,6 +373,12 @@ export default function EvidenceUpload({
             Add secure link
           </Button>
         )}
+        {allowedType === "both" && (
+          <Button type="button" variant="outline" size="sm" onClick={addNote} disabled={remainingSlots <= 0}>
+            <StickyNote className="h-4 w-4" />
+            Add note
+          </Button>
+        )}
         <span className="text-xs text-gray-500">
           {items.length}/{MAX_EVIDENCE_ITEMS_PER_PRACTICE} items
         </span>
@@ -368,7 +398,7 @@ export default function EvidenceUpload({
             ? "At least one file is required."
             : allowedType === "link"
               ? "At least one secure link is required."
-              : "Add at least one file or secure link."}
+              : "Add at least one file, secure link, or note."}
         </div>
       )}
 
@@ -377,6 +407,7 @@ export default function EvidenceUpload({
           Up to five items.
           {allowedType !== "link" && " Files may be at most 50MB each."}
           {allowedType !== "file" && " Links must use HTTPS."}
+          {allowedType === "both" && " Notes may contain up to 10,000 characters."}
         </p>
       )}
     </div>

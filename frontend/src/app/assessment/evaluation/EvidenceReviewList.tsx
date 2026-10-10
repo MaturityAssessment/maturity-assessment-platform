@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, FileDown, Paperclip } from "lucide-react";
+import { ExternalLink, FileDown, Paperclip, StickyNote } from "lucide-react";
 import type { Evidence } from "@/api/types";
 
 interface EvidenceReviewListProps {
@@ -24,15 +24,15 @@ export default function EvidenceReviewList({
           className="flex items-start justify-between gap-3 rounded-md border border-gray-200 bg-white px-3 py-2"
         >
           <div className="flex min-w-0 items-start gap-2">
-            <Paperclip className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+            {item.evidenceType === "TEXT" ? <StickyNote className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" /> : <Paperclip className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />}
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-gray-900">
                 {item.evidenceType === "URL"
                   ? item.url || "External link"
-                  : item.fileName || "Evidence file"}
+                  : item.evidenceType === "TEXT" ? "Respondent note" : item.fileName || "Evidence file"}
               </p>
               {item.description && (
-                <p className="mt-0.5 text-xs text-gray-500">
+                <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-5 text-gray-500">
                   {item.description}
                 </p>
               )}

@@ -5,6 +5,7 @@ import type {
   AssessmentEvidenceMetadataItem,
   Evidence,
 } from "@/api/types";
+import { TEXT_LIMITS } from "../../config/textLimits.ts";
 import type { AssessmentPracticeStep } from "./AssessmentStep";
 
 export type AssessmentEvidenceByField = Map<
@@ -36,6 +37,7 @@ export function createEvidenceClientId() {
 }
 
 export function isValidEvidenceItem(item: AssessmentEvidenceInputItem) {
+  if (item.type === "text") return item.description.trim().length > 0;
   if (item.type === "link") {
     try {
       const parsed = new URL(item.url.trim());
@@ -62,8 +64,13 @@ export function validateEvidenceForSave(evidence: AssessmentEvidenceByField) {
     }
 
     for (const item of items) {
+      const descriptionLimit = item.type === "text" ? TEXT_LIMITS.evidenceNote : TEXT_LIMITS.evidenceDescription;
+      if (item.description.length > descriptionLimit) {
+        return item.type === "text" ? "Evidence notes cannot exceed 10,000 characters."
+          : "Evidence descriptions cannot exceed 500 characters.";
+      }
       if (!isValidEvidenceItem(item)) {
-        return item.type === "link"
+        return item.type === "text" ? "Enter text for every evidence note." : item.type === "link"
           ? "Evidence links must use a complete https:// URL."
           : "Select a file for every file evidence item.";
       }
@@ -97,7 +104,7 @@ export function buildEvidencePayload(evidence: AssessmentEvidenceByField) {
         itemKey,
         clientKey: item.id,
         practiceId: item.practiceId,
-        type: item.type === "file" ? "FILE" : "URL",
+        type: item.type === "file" ? "FILE" : item.type === "text" ? "TEXT" : "URL",
         description: item.description.trim(),
         ...(item.type === "link" ? { url: item.url.trim() } : {}),
       });
@@ -138,7 +145,7 @@ export function hydrateEvidenceByField(
       id: evidence.clientKey || `persisted-evidence-${evidence.id}`,
       evidenceId: evidence.id,
       practiceId: evidence.practiceId,
-      type: evidence.evidenceType === "FILE" ? "file" : "link",
+      type: evidence.evidenceType === "FILE" ? "file" : evidence.evidenceType === "TEXT" ? "text" : "link",
       description: evidence.description || "",
       file: null,
       fileName: evidence.fileName,

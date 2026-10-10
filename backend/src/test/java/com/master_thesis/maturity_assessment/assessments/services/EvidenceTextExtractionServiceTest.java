@@ -59,6 +59,22 @@ class EvidenceTextExtractionServiceTest {
         assertEquals("/path/to/evidence", extracted.summary().getUrlPath());
     }
 
+    @Test
+    void respondentNoteIsIncludedWithoutLoadingFileAndRespectsExtractionLimit() {
+        LocalAgentProperties properties = new LocalAgentProperties();
+        properties.setMaxEvidenceChars(5);
+        Evidence evidence = fileEvidence();
+        evidence.setEvidenceType(EvidenceType.TEXT);
+        evidence.setDescription("abcdefghij");
+        EvidenceTextExtractionService service = new EvidenceTextExtractionService(fileStorageService, properties);
+        var extracted = service.extract(evidence);
+        assertEquals("abcde", extracted.extractedText());
+        assertEquals("TEXT", extracted.summary().getEvidenceType());
+        assertEquals(5, extracted.summary().getExtractedCharacters());
+        assertTrue(extracted.summary().getTruncated());
+        org.mockito.Mockito.verifyNoInteractions(fileStorageService);
+    }
+
     private Evidence fileEvidence() {
         Assessment assessment = new Assessment();
         assessment.setId(23L);

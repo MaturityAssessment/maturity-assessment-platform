@@ -138,6 +138,10 @@ function reconcileEvidenceItem(
       ? persisted.description || ""
       : current.description;
 
+  if (current.type === "text") {
+    return { ...current, evidenceId: persisted.id, description };
+  }
+
   if (current.type === "link") {
     return {
       ...current,
