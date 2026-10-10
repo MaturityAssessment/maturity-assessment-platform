@@ -77,6 +77,7 @@ public class AssessmentService {
     // Inner class to store question metadata
     private static class QuestionInfo {
         private List<QuestionChoiceDTO> selectionOptions;
+        private List<QuestionChoiceDTO> choiceOptions;
         private final String type;
         private final Double weight;
         private final Double practiceWeight;
@@ -349,6 +350,14 @@ public class AssessmentService {
                                                         new TypeReference<List<QuestionChoiceDTO>>() {});
                                             } catch (Exception e) {
                                                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid selection configuration.");
+                                            }
+                                        }
+                                        if ("multiple_choice".equals(question.getType())) {
+                                            try {
+                                                info.choiceOptions = objectMapper.readValue(question.getChoiceOptions(),
+                                                        new TypeReference<List<QuestionChoiceDTO>>() {});
+                                            } catch (Exception e) {
+                                                info.choiceOptions = Collections.emptyList();
                                             }
                                         }
                                         metadataMap.put(responseKey, info);
@@ -863,6 +872,16 @@ public class AssessmentService {
                         "Question response must contain an answer: " + responseKey
                 );
             }
+            if (submitted.getChoiceIndex() != null) {
+                int index = submitted.getChoiceIndex();
+                Double score = convertResponseToScore(submitted.getResponse(), question);
+                if (!"multiple_choice".equals(question.getType()) || question.choiceOptions == null
+                        || index < 0 || index >= question.choiceOptions.size()
+                        || score == null || question.choiceOptions.get(index).getScore() == null
+                        || Math.abs(score - question.choiceOptions.get(index).getScore()) > 1e-9) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid selected choice: " + responseKey);
+                }
+            }
             if ("multiple_selection".equals(question.getType())) {
                 convertResponseToScore(submitted.getResponse(), question);
             }
@@ -951,6 +970,7 @@ public class AssessmentService {
             row.setResponseKey(responseKey);
             row.setQuestionId(question.getQuestionId());
             row.setResponse(objectMapper.valueToTree(submittedResponse.getResponse()));
+            row.setChoiceIndex(submittedResponse.getChoiceIndex());
             row.setRespondentJustification(normalizeRespondentJustification(
                     submittedResponse.getRespondentJustification()
             ));
@@ -976,6 +996,7 @@ public class AssessmentService {
                                 && row.getValidationStatus()
                                 != QuestionEvaluationStatus.ACCEPTED) {
                             row.setResponse(null);
+                            row.setChoiceIndex(null);
                             row.setRespondentJustification(null);
                             synchronizedRows.add(row);
                         }
@@ -1088,7 +1109,9 @@ public class AssessmentService {
                             normalizeRespondentJustification(row.getRespondentJustification()),
                             normalizeRespondentJustification(candidate.getRespondentJustification())
                     );
-            if (!sameResponse || !sameJustification) {
+            boolean sameChoice = candidate == null ? row.getChoiceIndex() == null
+                    : Objects.equals(row.getChoiceIndex(), candidate.getChoiceIndex());
+            if (!sameResponse || !sameJustification || !sameChoice) {
                 throw new ResponseStatusException(
                         HttpStatus.CONFLICT,
                         "Accepted responses cannot be changed: " + row.getResponseKey()
@@ -2493,6 +2516,7 @@ public class AssessmentService {
                         ? objectMapper.convertValue(evaluation.getResponse(), Object.class)
                         : null
         );
+        response.setChoiceIndex(evaluation.getChoiceIndex());
         response.setInitialScore(evaluation.getInitialScore());
         response.setRespondentJustification(evaluation.getRespondentJustification());
         response.setValidationStatus(

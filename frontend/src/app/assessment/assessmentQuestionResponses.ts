@@ -10,6 +10,8 @@ import {
   isDependentQuestionDisabled,
 } from "./assessmentFlowUtils.ts";
 
+import { getSingleChoiceIndex, singleChoiceValue } from "./singleChoiceResponse.ts";
+
 export function collectQuestionResponses(
   practiceSteps: AssessmentPracticeStep[],
   formData: AssessmentData
@@ -29,9 +31,12 @@ export function collectQuestionResponses(
       const value = formData[fieldName];
       if (isAnswered(value)) {
         const justification = formData[`${fieldName}_justification`];
+        const choiceIndex = question.type === "multiple_choice" && typeof value === "string" && value.startsWith("choice:")
+          ? getSingleChoiceIndex(question, value) : undefined;
         responses[fieldName] = {
           questionId: question.id,
-          response:
+          ...(choiceIndex !== undefined ? { choiceIndex } : {}),
+          response: choiceIndex !== undefined ? question.choices![choiceIndex].score :
             question.type === "open_answer" || question.type === "multiple_selection"
               ? value
               : Number(value) || 0,
@@ -55,7 +60,8 @@ export function hydrateQuestionResponses(
   const formData: AssessmentData = {};
   Object.values(evaluations || {}).forEach((evaluation) => {
     if (isAnswered(evaluation.response)) {
-      formData[evaluation.responseKey] = evaluation.response;
+      formData[evaluation.responseKey] = evaluation.choiceIndex != null
+        ? singleChoiceValue(evaluation.choiceIndex) : evaluation.response;
     }
     if (isAnswered(evaluation.respondentJustification)) {
       formData[`${evaluation.responseKey}_justification`] =

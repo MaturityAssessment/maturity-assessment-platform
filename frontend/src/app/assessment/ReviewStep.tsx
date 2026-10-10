@@ -1,5 +1,7 @@
 "use client";
 
+import { getSingleChoiceIndex } from "./singleChoiceResponse";
+
 import {
   ArrowLeft,
   CheckCircle2,
@@ -348,9 +350,7 @@ function formatAnswer(question: Question, value: unknown) {
   }
   if (question.type === "multiple_choice") {
     return (
-      question.choices?.find(
-        (choice) => Math.abs(choice.score - Number(value)) <= 1e-9
-      )?.label ||
+      question.choices?.[getSingleChoiceIndex(question, value) ?? -1]?.label ||
       String(value)
     );
   }

@@ -8,6 +8,8 @@ import {
 } from "./assessmentEvidence.ts";
 import type { AssessmentEvidenceByField } from "./assessmentEvidence.ts";
 
+import { getSingleChoiceIndex } from "./singleChoiceResponse.ts";
+
 export function getFieldName(step: AssessmentPracticeStep, question: Question) {
   return `${step.dimension.id}_${step.module.code}_${String(
     step.practice.id || step.practice.name
@@ -39,6 +41,7 @@ export function getQuestionResponseBounds(question: Question) {
 
 export function isQuestionResponseValid(question: Question, value: unknown) {
   if (!isAnswered(value)) return true;
+  if (question.type === "multiple_choice") return getSingleChoiceIndex(question, value) !== undefined;
   if (question.type === "multiple_selection") {
     return Array.isArray(value) && new Set(value).size === value.length && value.every(
       (index) => Number.isInteger(index) && index >= 0 && index < (question.choices?.length ?? 0)

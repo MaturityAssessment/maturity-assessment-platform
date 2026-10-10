@@ -132,3 +132,26 @@ test("multiple selection validates indexes and formats selected labels", async (
   assert.equal(formatQuestionResponseValue(question, [0, 1], []), "Policy; Training");
   assert.equal(formatQuestionResponseValue(question, [], []), "None of the above");
 });
+
+
+test("single-choice identity survives saving and hydration without changing equal scores", () => {
+  const choiceStep = { ...step, practice: { ...step.practice, questions: [{ ...step.practice.questions[0],
+    type: "multiple_choice" as const, choices: [{ label: "Yes", score: 1 }, { label: "No", score: 0 }, { label: "Not Applicable", score: 1 }] }] } };
+  for (const choiceIndex of [0, 2]) {
+    const formData = { D1_M1_10_100: `choice:${choiceIndex}` };
+    const responses = collectQuestionResponses([choiceStep], formData);
+    assert.deepEqual(responses.D1_M1_10_100, { questionId: 100, response: 1, choiceIndex });
+    assert.deepEqual(hydrateQuestionResponses({ answer: { responseKey: "D1_M1_10_100", ...responses.D1_M1_10_100 } }), formData);
+  }
+  assert.deepEqual(collectQuestionResponses([choiceStep], { D1_M1_10_100: 1 }).D1_M1_10_100,
+    { questionId: 100, response: 1 });
+});
+
+
+test("review labels distinguish single-choice options with the same score", async () => {
+  const { formatQuestionResponseValue } = await import("../../../../src/app/assessment/evaluation/evaluationModel.ts");
+  const question = { ...step.practice.questions[0], type: "multiple_choice" as const,
+    choices: [{ label: "Yes", score: 1 }, { label: "Not Applicable", score: 1 }] };
+  assert.equal(formatQuestionResponseValue(question, "choice:0", []), "Yes");
+  assert.equal(formatQuestionResponseValue(question, "choice:1", []), "Not Applicable");
+});

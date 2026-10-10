@@ -10,6 +10,7 @@ public class QuestionEvaluationResponse {
     private String responseKey;
     private Long questionId;
     private Object response;
+    private Integer choiceIndex;
     private Double initialScore;
     private String respondentJustification;
     private String validationStatus;

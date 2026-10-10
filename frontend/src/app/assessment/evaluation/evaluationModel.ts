@@ -1,3 +1,4 @@
+import { getSingleChoiceIndex, singleChoiceValue } from "../singleChoiceResponse.ts";
 import type {
   AssessmentDetail,
   EvaluationDimension,
@@ -55,10 +56,7 @@ export function formatQuestionResponseValue(
     return value.length === 0 ? "None of the above" : value.map((index) => question.choices?.[index]?.label ?? "Unknown option").join("; ");
   }
   if (question.type === "multiple_choice") {
-    const selectedScore = Number(value);
-    const choice = question.choices?.find(
-      (item) => Math.abs(item.score - selectedScore) <= 1e-9
-    );
+    const choice = question.choices?.[getSingleChoiceIndex(question, value) ?? -1];
     if (choice) return choice.label;
     return "Configured option";
   }
@@ -133,7 +131,8 @@ export function buildEvaluationModel(
           if (!responseKey || !question.id) continue;
 
           const savedEvaluation = evaluations[responseKey];
-          const responseValue = savedEvaluation?.response;
+          const responseValue = savedEvaluation?.choiceIndex != null
+            ? singleChoiceValue(savedEvaluation.choiceIndex) : savedEvaluation?.response;
           const reviewable =
             isAnswered(responseValue);
 

@@ -335,6 +335,52 @@ class AssessmentServiceLifecycleTest {
     }
 
     @Test
+    void singleChoicePersistsDistinctEqualScoreOptions() {
+        MaturityModel model = booleanScoringModel();
+        model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst()
+                .getQuestions().forEach(question -> {
+                    question.setType("multiple_choice");
+                    question.setChoiceOptions("[{\"label\":\"Yes\",\"score\":1},{\"label\":\"No\",\"score\":0},{\"label\":\"Not Applicable\",\"score\":1}]");
+                });
+        Assessment draft = draftAssessment();
+        when(assessmentRepository.findByIdForUpdate(ASSESSMENT_ID)).thenReturn(Optional.of(draft));
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        AssessmentRequest request = request(Map.of("D1_M1_101_1001", 1, "D1_M1_101_1002", 1));
+        request.getQuestionResponses().get("D1_M1_101_1001").setChoiceIndex(0);
+        request.getQuestionResponses().get("D1_M1_101_1002").setChoiceIndex(2);
+
+        assessmentService.saveDraft(ASSESSMENT_ID, request, user);
+
+        verify(questionEvaluationRepository).saveAll(argThat(items -> {
+            Set<Integer> indexes = new java.util.HashSet<>();
+            items.forEach(item -> {
+                assertEquals(1, item.getResponse().asInt());
+                indexes.add(item.getChoiceIndex());
+            });
+            return indexes.equals(Set.of(0, 2));
+        }));
+    }
+
+    @Test
+    void singleChoiceRejectsIndexWithDifferentScoreOrOutOfRange() {
+        MaturityModel model = booleanScoringModel();
+        model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst()
+                .getQuestions().forEach(question -> {
+                    question.setType("multiple_choice");
+                    question.setChoiceOptions("[{\"label\":\"Yes\",\"score\":1},{\"label\":\"No\",\"score\":0}]");
+                });
+        when(assessmentRepository.findByIdForUpdate(ASSESSMENT_ID)).thenReturn(Optional.of(draftAssessment()));
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        for (int index : List.of(-1, 1, 2)) {
+            AssessmentRequest request = request(Map.of("D1_M1_101_1001", 1));
+            request.getQuestionResponses().get("D1_M1_101_1001").setChoiceIndex(index);
+            ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                    () -> assessmentService.saveDraft(ASSESSMENT_ID, request, user));
+            assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        }
+    }
+
+    @Test
     void multipleChoiceUsesConfiguredNormalizedScoresUntilDimensionProjection() {
         MaturityModel model = booleanScoringModel();
         List<Question> questions = model.getDimensions().getFirst().getModules().getFirst()
@@ -1067,6 +1113,30 @@ class AssessmentServiceLifecycleTest {
         assertEquals("CHANGES_REQUESTED", response.getStatus());
         assertTrue(flagged.getRespondentUpdated());
         assertEquals(QuestionEvaluationStatus.FLAGGED, flagged.getValidationStatus());
+    }
+
+    @Test
+    void respondentCannotSwitchAcceptedChoiceToEqualScoreOption() throws Exception {
+        String responseKey = "D1_M1_101_1001";
+        MaturityModel model = manualModelWithOpenQuestion();
+        Question question = model.getDimensions().getFirst().getModules().getFirst()
+                .getPractices().getFirst().getQuestions().getFirst();
+        question.setType("multiple_choice");
+        question.setChoiceOptions("[{\"label\":\"Yes\",\"score\":1},{\"label\":\"Not Applicable\",\"score\":1}]");
+        Assessment assessment = pendingAssessment(new ObjectMapper().writeValueAsString(Map.of(responseKey, 1)));
+        assessment.setStatus(AssessmentStatus.CHANGES_REQUESTED);
+        QuestionEvaluation accepted = questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID).getFirst();
+        accepted.setValidationStatus(QuestionEvaluationStatus.ACCEPTED);
+        accepted.setChoiceIndex(0);
+        when(assessmentRepository.findByIdForUpdate(ASSESSMENT_ID)).thenReturn(Optional.of(assessment));
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        AssessmentRequest request = request(Map.of(responseKey, 1));
+        request.getQuestionResponses().get(responseKey).setChoiceIndex(1);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> assessmentService.saveDraft(ASSESSMENT_ID, request, user));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
     }
 
     @Test

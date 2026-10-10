@@ -29,6 +29,8 @@ import {
   getQuestionInstruction,
 } from "./assessmentQuestionCardModel";
 
+import { getSingleChoiceIndex, singleChoiceValue } from "./singleChoiceResponse";
+
 interface AssessmentQuestionCardProps {
   question: Question;
   fieldName: string;
@@ -129,10 +131,11 @@ export default function AssessmentQuestionCard({
       input = (
         <SingleChoiceQuestionInput
           {...inputProps}
-          value={numberValue}
-          options={(question.choices ?? []).map(({ label, score }) => ({
+          value={getSingleChoiceIndex(question, value)}
+          onChange={(index) => onInputChange(fieldName, index === undefined ? undefined : singleChoiceValue(index))}
+          options={(question.choices ?? []).map(({ label }, index) => ({
             label,
-            value: score,
+            value: index,
           }))}
         />
       );

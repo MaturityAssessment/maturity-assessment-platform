@@ -21,7 +21,12 @@ ID across saves and submission and reject writes after the row stops being edita
 | `respondentUpdatedResponseKeys` | Optional array of response-key strings recording corrections to flagged items |
 
 Each response entry contains required `questionId` and `response`, plus optional
-`respondentJustification`. Omit unanswered questions instead of sending null or
+`respondentJustification`. Single-choice (`multiple_choice`) answers also support
+`choiceIndex`, the zero-based index in the question's choices. Send it with the
+selected option's score as `response`; the server validates that they match and
+returns `choiceIndex` in the question evaluation. This distinguishes options
+with equal scores. Legacy answers without an index retain their score.
+Omit unanswered questions instead of sending null or
 blank answers. Text answers and justifications are limited to 10,000 characters.
 The legacy top-level `responses` field is explicitly rejected.
 

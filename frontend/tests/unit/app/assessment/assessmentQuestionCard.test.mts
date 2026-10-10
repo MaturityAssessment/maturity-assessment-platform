@@ -45,13 +45,13 @@ test("the adapter selects each input and preserves field callbacks, zero, and ex
   for (const [type, name] of Object.entries(expected)) {
     const calls: unknown[] = [];
     const value = type === "multiple_selection" ? [] : type === "open_answer" ? "Policy" : 0;
-    const element = card({ question: { ...question, type, rangeMin: 0, rangeMax: 100 }, value,
+    const element = card({ question: { ...question, type, choices: [{ label: "No", score: 0 }], rangeMin: 0, rangeMax: 100 }, value,
       onInputChange: (...args: unknown[]) => calls.push(args) });
     const input = element.props.children;
     assert.equal(input.type, inputs[name]);
     assert.deepEqual(input.props.value, value);
     input.props.onChange(value);
-    assert.deepEqual(calls, [["D_M_10_1", value]]);
+    assert.deepEqual(calls, [["D_M_10_1", type === "multiple_choice" ? "choice:0" : value]]);
   }
 });
 
@@ -70,12 +70,12 @@ test("review and dependency locks are explicit and clear actions respect them", 
   assert.deepEqual(cleared, ["D_M_10_1"]);
 });
 
-test("choice values retain scores for single choice and indexes for multiple selection", () => {
+test("choice values use distinct option indexes for single and multiple selection", () => {
   const choices = [{ label: "Policy", score: 0.75 }, { label: "Training", score: 0.25 }];
   const single = card({ question: { ...question, type: "multiple_choice", choices } });
   const multiple = card({ question: { ...question, type: "multiple_selection", choices }, value: [] });
   assert.deepEqual(single.props.children.props.options, [
-    { label: "Policy", value: 0.75 }, { label: "Training", value: 0.25 },
+    { label: "Policy", value: 0 }, { label: "Training", value: 1 },
   ]);
   assert.deepEqual(multiple.props.children.props.options, [
     { label: "Policy", value: 0 }, { label: "Training", value: 1 },
@@ -111,4 +111,23 @@ test("evaluation read-only answers stay visible without a misleading dependency 
     assert.equal(element.props.onClear, undefined);
     assert.equal(element.props.disabledMessage, undefined);
   }
+});
+
+
+test("single choice keeps equal-score options exclusive and emits distinct identities", () => {
+  const choices = [{ label: "Yes", score: 1 }, { label: "No", score: 0 }, { label: "Not Applicable", score: 1 }];
+  for (const index of [0, 2]) {
+    const calls: unknown[] = [];
+    const element = card({ question: { ...question, type: "multiple_choice", choices }, value: `choice:${index}`,
+      onInputChange: (...args: unknown[]) => calls.push(args) });
+    const html = renderToStaticMarkup(element);
+    assert.equal((html.match(/checked=""/g) ?? []).length, 1);
+    assert.match(html, new RegExp(`checked="" value="${index}"`));
+    element.props.children.props.onChange(index);
+    assert.deepEqual(calls, [["D_M_10_1", `choice:${index}`]]);
+  }
+  const legacy = renderToStaticMarkup(card({ question: { ...question, type: "multiple_choice", choices }, value: 1 }));
+  assert.equal((legacy.match(/checked=""/g) ?? []).length, 1);
+  const empty = renderToStaticMarkup(card({ question: { ...question, type: "multiple_choice", choices } }));
+  assert.equal((empty.match(/checked=""/g) ?? []).length, 0);
 });

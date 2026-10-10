@@ -45,6 +45,9 @@ public class QuestionEvaluation {
     @Column(name = "response", columnDefinition = "jsonb")
     private JsonNode response;
 
+    @Column(name = "choice_index")
+    private Integer choiceIndex;
+
     @Column(name = "initial_score")
     private Double initialScore;
 

@@ -214,6 +214,7 @@ export type QuestionEvaluationStatus = "ACCEPTED" | "ADJUSTED" | "FLAGGED";
 export interface QuestionResponseRequest {
   questionId: number;
   response: unknown;
+  choiceIndex?: number;
   respondentJustification?: string;
 }
 
@@ -229,6 +230,7 @@ export interface QuestionEvaluationResponse {
   responseKey: string;
   questionId: number;
   response?: unknown;
+  choiceIndex?: number | null;
   initialScore?: number | null;
   respondentJustification?: string | null;
   validationStatus?: QuestionEvaluationStatus | null;

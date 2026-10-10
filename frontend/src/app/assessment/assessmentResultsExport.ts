@@ -161,9 +161,9 @@ function formatQuestionAnswer(
   }
   if (question.type === "multiple_choice") {
     const numericValue = Number(value);
-    const choice = question.choices?.find(
-      (candidate) => Math.abs(candidate.score - numericValue) <= 1e-9
-    );
+    const choice = evaluation?.choiceIndex != null
+      ? question.choices?.[evaluation.choiceIndex]
+      : question.choices?.find((candidate) => Math.abs(candidate.score - numericValue) <= 1e-9);
     return choice ? choice.label : "Configured option";
   }
   if (question.type === "likert") {

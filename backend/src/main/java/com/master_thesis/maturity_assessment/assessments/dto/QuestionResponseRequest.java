@@ -6,5 +6,6 @@ import lombok.Data;
 public class QuestionResponseRequest {
     private Long questionId;
     private Object response;
+    private Integer choiceIndex;
     private String respondentJustification;
 }

@@ -142,7 +142,7 @@ export function QuestionCard({
                 </p>
                 <h3
                   className={cn(
-                    "mt-1.5 text-[15px] font-semibold leading-6 sm:text-base",
+                    "mt-1.5 whitespace-pre-wrap text-[15px] font-semibold leading-6 sm:text-base",
                     disabled ? "text-slate-500" : "text-slate-950"
                   )}
                 >

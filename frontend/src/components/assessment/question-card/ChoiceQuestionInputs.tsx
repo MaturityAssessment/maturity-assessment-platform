@@ -34,7 +34,7 @@ export function SingleChoiceQuestionInput({
   return (
     <div className="grid max-w-2xl gap-2">
       {options.map((option, index) => {
-        const selected = Math.abs(Number(value) - option.value) <= 1e-9;
+        const selected = value === option.value;
         return (
           <ChoiceOptionRow
             key={`${option.value}-${index}`}
