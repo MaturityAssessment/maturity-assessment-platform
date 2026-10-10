@@ -298,7 +298,7 @@ export default function AssessmentStep({
                   </h2>
 
                   {step.practice.description && (
-                    <p title={step.practice.description} className="mt-1 max-w-3xl truncate text-sm leading-6 text-slate-600">
+                    <p className="mt-1 max-w-3xl whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">
                       {step.practice.description}
                     </p>
                   )}
