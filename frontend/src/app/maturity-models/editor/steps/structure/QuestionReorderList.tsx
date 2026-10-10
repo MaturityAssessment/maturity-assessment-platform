@@ -141,7 +141,7 @@ function SortableQuestionOrderItem({
         className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
       >
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-gray-900 group-hover:text-blue-700 [overflow-wrap:anywhere]">
+          <span title={question.text || "Untitled question"} className="block truncate text-sm font-semibold text-gray-900 group-hover:text-blue-700">
             {question.text || "Untitled question"}
           </span>
           <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs leading-5 text-gray-500">

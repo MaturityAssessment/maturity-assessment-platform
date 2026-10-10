@@ -519,7 +519,7 @@ function OverviewTab({
                             </span>
                           )}
                         </span>
-                        <span className="mt-1 block line-clamp-2 text-sm leading-5 text-slate-500">
+                        <span title={getDimensionDescription(dimension)} className="mt-1 block truncate text-sm leading-5 text-slate-500">
                           {getDimensionDescription(dimension)}
                         </span>
                       </span>

@@ -117,7 +117,7 @@ export default function AssessmentModuleOverview({
                 <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
                   {module.name}
                 </h1>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
+                <p title={module.description?.trim() || undefined} className="mt-3 max-w-2xl truncate text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
                   {module.description?.trim() ||
                     `Explore the practices and questions included in the ${module.name} module.`}
                 </p>
@@ -223,7 +223,7 @@ export default function AssessmentModuleOverview({
                           {practice.name}
                         </span>
                         {practice.description?.trim() && (
-                          <span className="mt-0.5 block line-clamp-1 text-xs leading-5 text-slate-500">
+                          <span title={practice.description} className="mt-0.5 block truncate text-xs leading-5 text-slate-500">
                             {practice.description}
                           </span>
                         )}

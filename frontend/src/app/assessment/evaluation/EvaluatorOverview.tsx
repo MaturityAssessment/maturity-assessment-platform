@@ -35,7 +35,7 @@ export default function EvaluatorOverview({ model, evaluation, onQuestion }: {
                         {remaining.length ? <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">{remaining.length} need review</span> : <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">{items.length ? <><CheckCircle2 aria-hidden="true" className="h-3 w-3" />Ready</> : "No submitted responses"}</span>}
                         {flagged > 0 && <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700"><Flag aria-hidden="true" className="h-3 w-3" />{flagged} flagged</span>}
                       </div>
-                      {dimension.description && <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-500">{dimension.description}</p>}
+                      {dimension.description && <p title={dimension.description} className="mt-1 truncate text-sm leading-5 text-slate-500">{dimension.description}</p>}
                       <div className="mt-3 flex items-center gap-3">
                         <div role="progressbar" aria-label={`${dimension.name} review progress`} aria-valuemin={0} aria-valuemax={items.length || 1} aria-valuenow={reviewed} className="h-1.5 max-w-48 flex-1 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${dimensionPercent}%` }} /></div>
                         <span className="text-xs tabular-nums text-slate-600"><strong>{reviewed}/{items.length}</strong> reviewed</span>

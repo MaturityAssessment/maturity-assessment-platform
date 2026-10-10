@@ -305,7 +305,7 @@ function PracticeDisclosure({
             </span>
           </span>
           {practice.description?.trim() && (
-            <span className="mt-1 block text-xs leading-5 text-slate-500">
+            <span title={practice.description} className="mt-1 block truncate text-xs leading-5 text-slate-500">
               {practice.description}
             </span>
           )}
@@ -401,7 +401,7 @@ function ModuleDisclosure({
               {module.name}
             </span>
             {module.description?.trim() && (
-              <span className="mt-1 block text-sm leading-6 text-slate-500">
+              <span title={module.description} className="mt-1 block truncate text-sm leading-6 text-slate-500">
                 {module.description}
               </span>
             )}
@@ -516,7 +516,7 @@ function DimensionDisclosure({
               {dimension.name}
             </span>
             {dimension.description?.trim() && (
-              <span className="mt-1.5 block max-w-3xl text-sm leading-6 text-slate-600">
+              <span title={dimension.description} className="mt-1.5 block max-w-3xl truncate text-sm leading-6 text-slate-600">
                 {dimension.description}
               </span>
             )}
