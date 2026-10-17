@@ -134,10 +134,11 @@ export default function QuestionEditor({
                 />
               </label>
 
-            <label className={labelClass}>
+            <label className={`${labelClass} min-w-0`}>
               Depends on
               <select
-                className={inputClass}
+                className={`${inputClass} min-w-0 max-w-full truncate pr-8`}
+                title={dependencyCandidates.find((candidate) => candidate.code === question.dependsOnQuestionCode)?.text || undefined}
                 value={question.dependsOnQuestionCode ?? ""}
                 onChange={(event) =>
                   onChange({
