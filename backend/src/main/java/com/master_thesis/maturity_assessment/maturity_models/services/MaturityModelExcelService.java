@@ -24,6 +24,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -38,10 +40,10 @@ public class MaturityModelExcelService {
 
     /**
      * Minimal import/export layout: child sheets (Modules, Practices, Questions) join on
-     * dimensionId + moduleCode + practiceId. Legacy workbooks may include optional columns
+     * dimensionId + moduleCode + practiceCode. Legacy workbooks may include optional columns
      * (e.g. dimensionName on Modules) for name-based joins; those are listed in *_OPTIONAL_HEADERS.
      * Exported XLSX Questions sheets include {@link #QUESTION_EXPORT_HEADERS}; import still accepts
-     * files that omit questionHelp / questionRequiresEvidence / questionRequired.
+     * files that omit the newer scoring and evidence configuration columns.
      */
     public static final String SHEET_MODEL = "Model";
     public static final String SHEET_LEVELS = "Levels";
@@ -55,29 +57,32 @@ public class MaturityModelExcelService {
             "modelName", "modelDescription", "modelAutoEvaluated"
     );
     /** Legacy exports may include modelIsActive; it is ignored on import (models from file are always inactive). */
-    private static final List<String> MODEL_OPTIONAL_HEADERS = List.of("modelLevels", "modelIsActive");
+    private static final List<String> MODEL_OPTIONAL_HEADERS = List.of("modelLevels", "modelIsActive", "modelAggregationRule", "modelChangelogMarkdown");
+    private static final List<String> MODEL_EXPORT_HEADERS = List.of("modelName", "modelDescription", "modelAutoEvaluated", "modelAggregationRule", "modelChangelogMarkdown");
 
     private static final List<String> LEVELS_HEADERS = List.of("number", "name");
     private static final List<String> LEVELS_OPTIONAL_HEADERS = List.of("description");
 
     private static final List<String> DIMENSION_HEADERS = List.of("dimensionId", "dimensionName");
-    private static final List<String> DIMENSION_OPTIONAL_HEADERS = List.of("dimensionDescription");
+    private static final List<String> DIMENSION_OPTIONAL_HEADERS = List.of("dimensionDescription", "dimensionWeight", "dimensionAggregationRule", "dimensionMappingRules", "dimensionGatingRules");
+    private static final List<String> DIMENSION_EXPORT_HEADERS = Stream.concat(DIMENSION_HEADERS.stream(), DIMENSION_OPTIONAL_HEADERS.stream()).toList();
 
     private static final List<String> MODULE_HEADERS = List.of(
             "dimensionId", "moduleCode", "moduleName", "moduleDescription"
     );
     private static final List<String> MODULE_OPTIONAL_HEADERS = List.of(
-            "dimensionName", "moduleWeight"
+            "dimensionName", "moduleWeight", "moduleAggregationRule", "moduleGatingRules"
     );
+    private static final List<String> MODULE_EXPORT_HEADERS = Stream.concat(MODULE_HEADERS.stream(), Stream.of("moduleWeight", "moduleAggregationRule", "moduleGatingRules")).toList();
 
     private static final List<String> PRACTICE_HEADERS = List.of(
             "dimensionId", "moduleCode", "practiceName", "practiceDescription"
     );
     private static final List<String> PRACTICE_OPTIONAL_HEADERS = List.of(
-            "practiceCode", "practiceId", "dimensionName", "moduleName", "practiceWeight", "practiceRequiresEvidence"
+            "practiceCode", "practiceId", "dimensionName", "moduleName", "practiceWeight", "practiceRequiresEvidence", "practiceAggregationRule", "practiceGatingRules"
     );
     private static final List<String> PRACTICE_EXPORT_HEADERS = List.of(
-            "dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence"
+            "dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceGatingRules"
     );
 
     private static final List<String> QUESTION_HEADERS = List.of(
@@ -91,7 +96,7 @@ public class MaturityModelExcelService {
             "questionHelp", "questionRequired", "questionRanges",
             "questionLikertScaleMax", "questionScalePointCount", "questionScaleMinLabel",
             "questionScaleMaxLabel", "questionScaleHighPointIsMaximum",
-            "questionRangeMin", "questionRangeMax", "questionRangeHighValueIsMaximum"
+            "questionRangeMin", "questionRangeMax", "questionRangeHighValueIsMaximum", "questionBooleanCorrectAnswer"
     );
 
     /** Questions sheet columns written by {@link #exportMaturityModelToXlsx}. */
@@ -103,7 +108,7 @@ public class MaturityModelExcelService {
                     Stream.of("questionScalePointCount", "questionScaleMinLabel", "questionScaleMaxLabel",
                             "questionScaleHighPointIsMaximum", "questionHelp",
                             "questionRequired", "questionRangeMin", "questionRangeMax",
-                            "questionRangeHighValueIsMaximum", "questionRanges"))
+                            "questionRangeHighValueIsMaximum", "questionRanges", "questionBooleanCorrectAnswer"))
     ).toList();
 
     private final CsvParsingService csvParsingService;
@@ -129,6 +134,9 @@ public class MaturityModelExcelService {
                 return new CsvUploadResponse(false, "Validation failed", null, "Model sheet: no data row");
             }
             Map<String, String> modelData = readRowAsMap(modelDataRow, modelCols);
+            if (readAllDataRows(modelSheet, modelCols, 1).size() != 1) {
+                return new CsvUploadResponse(false, "Validation failed", null, "Model sheet must contain exactly one data row");
+            }
 
             Sheet levelsSheet = workbook.getSheet(SHEET_LEVELS);
             Map<String, Integer> levelsCols = readHeaderRowFlexible(
@@ -193,6 +201,9 @@ public class MaturityModelExcelService {
             List<CsvMaturityModelRow> denormalized = new ArrayList<>();
             List<Integer> excelRows = new ArrayList<>();
             List<String> joinErrors = new ArrayList<>();
+            Set<Map<String, String>> usedDimensions = Collections.newSetFromMap(new IdentityHashMap<>());
+            Set<Map<String, String>> usedModules = Collections.newSetFromMap(new IdentityHashMap<>());
+            Set<Map<String, String>> usedPractices = Collections.newSetFromMap(new IdentityHashMap<>());
 
             for (int r = 1; r <= qSheet.getLastRowNum(); r++) {
                 Row row = qSheet.getRow(r);
@@ -214,27 +225,43 @@ public class MaturityModelExcelService {
                 if (pr == null) {
                     continue;
                 }
+                usedDimensions.add(dim);
+                usedModules.add(mod);
+                usedPractices.add(pr);
 
                 CsvMaturityModelRow m = new CsvMaturityModelRow();
+                m.setDimensionSortOrder(dimensionRows.indexOf(dim));
+                m.setModuleSortOrder(moduleRows.indexOf(mod));
+                m.setPracticeSortOrder(practiceRows.indexOf(pr));
                 m.setModelName(modelData.get("modelName"));
                 m.setModelDescription(modelData.get("modelDescription"));
                 m.setModelAutoEvaluated(modelData.get("modelAutoEvaluated"));
+                m.setModelAggregationRule(modelData.get("modelAggregationRule"));
+                m.setModelChangelogMarkdown(modelData.get("modelChangelogMarkdown"));
                 m.setModelLevels(resolvedLevelsJson);
 
                 m.setDimensionId(dim.get("dimensionId"));
                 m.setDimensionName(dim.get("dimensionName"));
                 m.setDimensionDescription(dim.get("dimensionDescription"));
+                m.setDimensionWeight(dim.get("dimensionWeight"));
+                m.setDimensionAggregationRule(dim.get("dimensionAggregationRule"));
+                m.setDimensionMappingRules(dim.get("dimensionMappingRules"));
+                m.setDimensionGatingRules(dim.get("dimensionGatingRules"));
 
                 m.setModuleCode(mod.get("moduleCode"));
                 m.setModuleName(mod.get("moduleName"));
                 m.setModuleDescription(mod.get("moduleDescription"));
                 m.setModuleWeight(mod.get("moduleWeight"));
+                m.setModuleAggregationRule(mod.get("moduleAggregationRule"));
+                m.setModuleGatingRules(mod.get("moduleGatingRules"));
 
                 m.setPracticeId(pr.get("practiceId"));
                 m.setPracticeCode(pr.get("practiceCode"));
                 m.setPracticeName(pr.get("practiceName"));
                 m.setPracticeDescription(pr.get("practiceDescription"));
                 m.setPracticeWeight(pr.get("practiceWeight"));
+                m.setPracticeAggregationRule(pr.get("practiceAggregationRule"));
+                m.setPracticeGatingRules(pr.get("practiceGatingRules"));
 
                 m.setQuestionWeight(q.get("questionWeight"));
                 m.setQuestionCode(q.get("questionCode"));
@@ -244,6 +271,7 @@ public class MaturityModelExcelService {
                 m.setQuestionHelp(q.get("questionHelp"));
                 m.setPracticeRequiresEvidence(pr.get("practiceRequiresEvidence"));
                 m.setQuestionRequired(q.get("questionRequired"));
+                m.setQuestionBooleanCorrectAnswer(q.get("questionBooleanCorrectAnswer"));
                 m.setQuestionChoices(q.get("questionChoices"));
                 m.setQuestionLikertScaleMax(q.get("questionLikertScaleMax"));
                 m.setQuestionScalePointCount(q.get("questionScalePointCount"));
@@ -259,6 +287,9 @@ public class MaturityModelExcelService {
                 excelRows.add(excelRowOneBased);
             }
 
+            checkUnusedRows(SHEET_DIMENSIONS, dimensionRows, usedDimensions, joinErrors);
+            checkUnusedRows(SHEET_MODULES, moduleRows, usedModules, joinErrors);
+            checkUnusedRows(SHEET_PRACTICES, practiceRows, usedPractices, joinErrors);
             if (!joinErrors.isEmpty()) {
                 return new CsvUploadResponse(false, "Validation failed", null, String.join("; ", joinErrors));
             }
@@ -271,6 +302,16 @@ public class MaturityModelExcelService {
             return csvParsingService.parseDenormalizedRows(denormalized, rowNumbers);
         } catch (Exception e) {
             return new CsvUploadResponse(false, "Failed to read Excel file", null, e.getMessage());
+        }
+    }
+
+    private static void checkUnusedRows(String sheet, List<Map<String, String>> rows,
+                                        Set<Map<String, String>> used, List<String> errors) {
+        for (Map<String, String> row : rows) {
+            if (!used.contains(row)) {
+                errors.add(sheet + " sheet: duplicate or unreferenced item " + row
+                        + ". Every item must lead to at least one question.");
+            }
         }
     }
 
@@ -318,7 +359,9 @@ public class MaturityModelExcelService {
             }
             String h = dataFormatter.formatCellValue(cell).trim();
             if (!h.isEmpty()) {
-                full.put(h, c);
+                if (full.put(h, c) != null) {
+                    throw new IllegalArgumentException("Duplicate header: " + h);
+                }
             }
         }
         for (String req : required) {
@@ -410,7 +453,10 @@ public class MaturityModelExcelService {
             if (!isBlank(numStr)) {
                 try {
                     double d = Double.parseDouble(numStr.trim());
-                    level.setNumber((int) Math.round(d));
+                    if (!Double.isFinite(d) || d != Math.rint(d) || d < 1 || d > 12) {
+                        throw new NumberFormatException();
+                    }
+                    level.setNumber((int) d);
                 } catch (NumberFormatException e) {
                     level.setNumber(null);
                 }
@@ -590,6 +636,7 @@ public class MaturityModelExcelService {
             writeModulesSheet(workbook, model);
             writePracticesSheet(workbook, model);
             writeQuestionsSheet(workbook, model);
+            writeInstructionsSheet(workbook);
             workbook.write(out);
             return out.toByteArray();
         }
@@ -598,20 +645,23 @@ public class MaturityModelExcelService {
     private void writeModelSheet(Workbook workbook, MaturityModelDTO model) {
         Sheet sheet = workbook.createSheet(SHEET_MODEL);
         Row h = sheet.createRow(0);
-        for (int i = 0; i < MODEL_HEADERS.size(); i++) {
-            h.createCell(i).setCellValue(MODEL_HEADERS.get(i));
+        for (int i = 0; i < MODEL_EXPORT_HEADERS.size(); i++) {
+            h.createCell(i).setCellValue(MODEL_EXPORT_HEADERS.get(i));
         }
         Row d = sheet.createRow(1);
         d.createCell(0).setCellValue(nullToEmpty(model.getName()));
         d.createCell(1).setCellValue(nullToEmpty(model.getDescription()));
         d.createCell(2).setCellValue(model.getAutoEvaluated() == null || model.getAutoEvaluated());
+        d.createCell(3).setCellValue(model.getAggregationRule() == null ? "" : model.getAggregationRule().name());
+        d.createCell(4).setCellValue(nullToEmpty(model.getChangelogMarkdown()));
     }
 
     private void writeLevelsSheet(Workbook workbook, MaturityModelDTO model) {
         Sheet sheet = workbook.createSheet(SHEET_LEVELS);
         Row h = sheet.createRow(0);
-        for (int i = 0; i < LEVELS_HEADERS.size(); i++) {
-            h.createCell(i).setCellValue(LEVELS_HEADERS.get(i));
+        List<String> headers = List.of("number", "name", "description");
+        for (int i = 0; i < headers.size(); i++) {
+            h.createCell(i).setCellValue(headers.get(i));
         }
         if (model.getLevels() == null) {
             return;
@@ -623,12 +673,13 @@ public class MaturityModelExcelService {
                 row.createCell(0).setCellValue(level.getNumber());
             }
             row.createCell(1).setCellValue(nullToEmpty(level.getName()));
+            row.createCell(2).setCellValue(nullToEmpty(level.getDescription()));
         }
     }
 
     private void writeDimensionsSheet(Workbook workbook, MaturityModelDTO model) {
         Sheet sheet = workbook.createSheet(SHEET_DIMENSIONS);
-        writeHeaderRow(sheet, DIMENSION_HEADERS);
+        writeHeaderRow(sheet, DIMENSION_EXPORT_HEADERS);
         if (model.getDimensions() == null) {
             return;
         }
@@ -637,12 +688,17 @@ public class MaturityModelExcelService {
             Row row = sheet.createRow(r++);
             row.createCell(0).setCellValue(nullToEmpty(dim.getId()));
             row.createCell(1).setCellValue(nullToEmpty(dim.getName()));
+            row.createCell(2).setCellValue(nullToEmpty(dim.getDescription()));
+            row.createCell(3).setCellValue(dim.getWeight() == null ? 1.0 : dim.getWeight());
+            row.createCell(4).setCellValue(dim.getAggregationRule() == null ? "" : dim.getAggregationRule().name());
+            row.createCell(5).setCellValue(writeJson(dim.getMappingRules()));
+            row.createCell(6).setCellValue(writeJson(dim.getGatingRules()));
         }
     }
 
     private void writeModulesSheet(Workbook workbook, MaturityModelDTO model) {
         Sheet sheet = workbook.createSheet(SHEET_MODULES);
-        writeHeaderRow(sheet, MODULE_HEADERS);
+        writeHeaderRow(sheet, MODULE_EXPORT_HEADERS);
         if (model.getDimensions() == null) {
             return;
         }
@@ -657,6 +713,9 @@ public class MaturityModelExcelService {
                 row.createCell(1).setCellValue(nullToEmpty(mod.getCode()));
                 row.createCell(2).setCellValue(nullToEmpty(mod.getName()));
                 row.createCell(3).setCellValue(nullToEmpty(mod.getDescription()));
+                row.createCell(4).setCellValue(mod.getWeight() == null ? 1.0 : mod.getWeight());
+                row.createCell(5).setCellValue(mod.getAggregationRule() == null ? "" : mod.getAggregationRule().name());
+                row.createCell(6).setCellValue(writeJson(mod.getGatingRules()));
             }
         }
     }
@@ -684,6 +743,9 @@ public class MaturityModelExcelService {
                     row.createCell(3).setCellValue(nullToEmpty(pr.getName()));
                     row.createCell(4).setCellValue(nullToEmpty(pr.getDescription()));
                     row.createCell(5).setCellValue(Boolean.TRUE.equals(pr.getRequiresEvidence()));
+                    row.createCell(6).setCellValue(pr.getWeight() == null ? 1.0 : pr.getWeight());
+                    row.createCell(7).setCellValue(pr.getAggregationRule() == null ? "" : pr.getAggregationRule().name());
+                    row.createCell(8).setCellValue(writeJson(pr.getGatingRules()));
                 }
             }
         }
@@ -722,10 +784,7 @@ public class MaturityModelExcelService {
                         String choices = "";
                         if (q.getType() != null && ("multiple_choice".equalsIgnoreCase(q.getType()) || "multiple_selection".equalsIgnoreCase(q.getType()))
                                 && q.getChoices() != null && !q.getChoices().isEmpty()) {
-                            try {
-                                choices = objectMapper.writeValueAsString(q.getChoices());
-                            } catch (JsonProcessingException ignored) {
-                            }
+                            choices = writeJson(q.getChoices());
                         }
                         row.createCell(8).setCellValue(choices);
                         if (q.getType() != null && "likert".equalsIgnoreCase(q.getType())) {
@@ -758,10 +817,44 @@ public class MaturityModelExcelService {
                             row.createCell(17).setCellValue("");
                         }
                         row.createCell(18).setCellValue("");
+                        row.createCell(19).setCellValue("boolean".equalsIgnoreCase(q.getType())
+                                ? String.valueOf(q.getBooleanCorrectAnswer() == null || q.getBooleanCorrectAnswer()) : "");
                     }
                 }
             }
         }
+    }
+
+    private String writeJson(Object value) {
+        if (value == null) return "";
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Cannot export model configuration as JSON", e);
+        }
+    }
+
+    private void writeInstructionsSheet(Workbook workbook) {
+        Sheet sheet = workbook.createSheet("Instructions");
+        List<String> lines = List.of(
+                "Edit data on the six model sheets; keep their names and column headers. Optional newer columns may be omitted in older workbooks.",
+                "Use one row on Model. Imported models are inactive; choose a domain in the editor and review before saving as a new model or version.",
+                "Levels: define 2 to 12 levels numbered 1..N. Description is optional.",
+                "Join items using dimensionId, moduleCode and practiceCode. Codes must be unique among siblings. If changing a code, update all child references, dependencies and gating rules.",
+                "Sheet row order determines dimension, module, practice and question order. Every dimension/module/practice must lead to a question. Remove child rows when deleting an item.",
+                "Aggregation rules: AVERAGE, WEIGHTED_AVERAGE, MINIMUM, MAXIMUM, SUM, MEDIAN. Empty values use the application defaults. Weights must be positive.",
+                "dimensionMappingRules: JSON array, one threshold per level, starting at zero, strictly increasing within 0..1. Example: [{\"levelNumber\":1,\"minimumScore\":0},{\"levelNumber\":2,\"minimumScore\":0.5}].",
+                "Gating rules: JSON array. Example: [{\"order\":0,\"selection\":\"specificChild\",\"childCode\":\"Q1\",\"operator\":\"<\",\"threshold\":0.5,\"operation\":\"set\",\"value\":0}]. Reference immediate child codes. selection: specificChild/anyChild/allChildren; operator: <, <=, ==, >=, >; operation: set/add/subtract.",
+                "Question types: boolean, likert, open_answer, multiple_choice, multiple_selection, numeric, percentage. Leave type-specific columns empty for other types.",
+                "boolean: questionBooleanCorrectAnswer is true or false (default true). practiceRequiresEvidence and questionRequired also use true/false.",
+                "multiple_choice questionChoices: [{\"label\":\"No\",\"score\":0},{\"label\":\"Yes\",\"score\":1}]. Scores are between 0 and 1.",
+                "multiple_selection questionChoices: [{\"label\":\"Control A\",\"rawValue\":2},{\"label\":\"Control B\",\"rawValue\":3}]. Raw values are nonnegative and their total must be positive.",
+                "likert: questionScalePointCount is 2..100; optional endpoint labels are at most 50 characters; questionScaleHighPointIsMaximum controls direction.",
+                "numeric/percentage: integer questionRangeMin < questionRangeMax; questionRangeHighValueIsMaximum controls direction. questionRanges is a legacy JSON format; keep it blank when using bounds.",
+                "dependsOnQuestionCode must refer to a boolean question in the same practice. Leave blank for independent questions."
+        );
+        for (int i = 0; i < lines.size(); i++) sheet.createRow(i).createCell(0).setCellValue(lines.get(i));
+        sheet.setColumnWidth(0, 120 * 256);
     }
 
     private static void writeHeaderRow(Sheet sheet, List<String> headers) {

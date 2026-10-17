@@ -170,6 +170,11 @@ public class MaturityModelService {
 
         public MaturityModelEditorDTO prepareEditorDocument(MaturityModelDTO source) {
                 prepareAndValidatePublicCodes(source);
+                validateTextLengths(source);
+                validateMaturityModelLevels(source);
+                validateDimensionMappingRules(source);
+                validateGatingRules(source);
+                validateMaturityModelQuestions(source);
                 return toEditorDocument(source);
         }
 

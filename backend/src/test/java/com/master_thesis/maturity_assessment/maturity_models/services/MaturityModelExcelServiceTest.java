@@ -65,18 +65,18 @@ class MaturityModelExcelServiceTest {
     }
 
     @Test
-    void export_modulesAndPracticesSheets_useMinimalHeadersOnly() throws Exception {
+    void exportSheets_includeScoringConfigurationHeaders() throws Exception {
         byte[] xlsx = excelService.exportMaturityModelToXlsx(buildOfficialTemplateModel());
         DataFormatter fmt = new DataFormatter();
         try (Workbook wb = WorkbookFactory.create(new ByteArrayInputStream(xlsx))) {
             assertEquals(
-                    List.of("modelName", "modelDescription", "modelAutoEvaluated"),
+                    List.of("modelName", "modelDescription", "modelAutoEvaluated", "modelAggregationRule", "modelChangelogMarkdown"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_MODEL), fmt));
             assertEquals(
-                    List.of("dimensionId", "moduleCode", "moduleName", "moduleDescription"),
+                    List.of("dimensionId", "moduleCode", "moduleName", "moduleDescription", "moduleWeight", "moduleAggregationRule", "moduleGatingRules"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_MODULES), fmt));
             assertEquals(
-                    List.of("dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence"),
+                    List.of("dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceGatingRules"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_PRACTICES), fmt));
             assertEquals(
                     MaturityModelExcelService.QUESTION_EXPORT_HEADERS,
@@ -506,13 +506,15 @@ class MaturityModelExcelServiceTest {
     }
 
     /** Mirrors the former public CSV template content. */
-    private static MaturityModelDTO buildOfficialTemplateModel() {
+    static MaturityModelDTO buildOfficialTemplateModel() {
         MaturityModelDTO model = new MaturityModelDTO();
         model.setName("Your Maturity Model Name");
         model.setDescription("Description of what this maturity model assesses");
         model.setIsActive(false);
-        model.setAutoEvaluated(true);
-        model.setLevels(null);
+        // The template demonstrates open-answer questions, which require manual evaluation.
+        model.setAutoEvaluated(false);
+        model.setLevels(sampleFiveLevels());
+        model.setAggregationRule(com.master_thesis.maturity_assessment.maturity_models.models.AggregationRule.WEIGHTED_AVERAGE);
 
         QuestionDTO q1 = q("boolean", "Are processes documented?",
                 "Check if there are written process descriptions", false, true, null, null);
@@ -526,10 +528,13 @@ class MaturityModelExcelServiceTest {
         pr1.setCode("P1_PD");
 
         QuestionDTO q3 = q("likert", "Are process metrics collected and analyzed?",
-                "Rate on your model maturity scale (1 = lowest).", false, false, null, null);
+                "Rate from 1 (never) to 7 (always).", false, false, null, 7);
+        q3.setScaleMinLabel("Never");
+        q3.setScaleMaxLabel("Always");
+        q3.setScaleHighPointIsMaximum(true);
         q3.setCode("Q3_APMCAA");
         QuestionDTO q4 = q("multiple_choice", "Which maturity level best describes this practice?",
-                "Each option maps to a level number on your scale. Use JSON: array of {label level}.",
+                "Choose one option. Each option has a normalized score between 0 and 1.",
                 false, false, mcqChoices(), null);
         q4.setCode("Q4_WMLBDTP");
         PracticeDTO pr3a = practice(2L, "Process Metrics",
@@ -552,6 +557,25 @@ class MaturityModelExcelServiceTest {
         PracticeDTO pr6 = practice(5L, "Quality Review",
                 "Review and audit procedures", 1.0, List.of(q6));
         pr6.setCode("P5_QR");
+        QuestionDTO numeric = q("numeric", "How many unresolved quality issues remain?", "Fewer issues produce a higher score.", false, true, null, null);
+        numeric.setCode("Q7_ISSUES");
+        numeric.setRangeMin(0);
+        numeric.setRangeMax(50);
+        numeric.setRangeHighValueIsMaximum(false);
+        QuestionDTO percentage = q("percentage", "What percentage of processes are reviewed?", "Enter an integer percentage from 0 to 100.", false, true, null, null);
+        percentage.setCode("Q8_REVIEWED");
+        percentage.setRangeMin(0);
+        percentage.setRangeMax(100);
+        percentage.setRangeHighValueIsMaximum(true);
+        QuestionChoiceDTO controlA = new QuestionChoiceDTO();
+        controlA.setLabel("Documented controls");
+        controlA.setRawValue(2.0);
+        QuestionChoiceDTO controlB = new QuestionChoiceDTO();
+        controlB.setLabel("Regular audits");
+        controlB.setRawValue(3.0);
+        QuestionDTO selection = q("multiple_selection", "Which quality controls are in place?", "Select all that apply; selected raw values are added.", false, false, List.of(controlA, controlB), null);
+        selection.setCode("Q9_CONTROLS");
+        pr6.setQuestions(List.of(q6, numeric, percentage, selection));
 
         ModuleDTO pmCore = mod("PM_CORE", "Core Process Practices",
                 "Fundamental process management capabilities", 1.0, List.of(pr1));
@@ -575,6 +599,16 @@ class MaturityModelExcelServiceTest {
         dim2.setModules(List.of(qaStd, qaRev));
 
         model.setDimensions(List.of(dim1, dim2));
+        for (DimensionDTO dimension : model.getDimensions()) {
+            dimension.setWeight(1.0);
+            dimension.setAggregationRule(com.master_thesis.maturity_assessment.maturity_models.models.AggregationRule.WEIGHTED_AVERAGE);
+            for (ModuleDTO module : dimension.getModules()) {
+                module.setAggregationRule(com.master_thesis.maturity_assessment.maturity_models.models.AggregationRule.WEIGHTED_AVERAGE);
+                for (PracticeDTO practice : module.getPractices()) {
+                    practice.setAggregationRule(com.master_thesis.maturity_assessment.maturity_models.models.AggregationRule.WEIGHTED_AVERAGE);
+                }
+            }
+        }
         return model;
     }
 
@@ -590,7 +624,10 @@ class MaturityModelExcelServiceTest {
         q.setHelp(help);
         q.setRequired(required);
         q.setChoices(choices);
-        q.setScalePointCount(likertMax != null ? likertMax : 5);
+        if ("likert".equals(type)) {
+            q.setScalePointCount(likertMax != null ? likertMax : 5);
+        }
+        if ("boolean".equals(type)) q.setBooleanCorrectAnswer(true);
         return q;
     }
 

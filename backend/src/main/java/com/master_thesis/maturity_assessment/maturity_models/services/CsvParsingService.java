@@ -7,6 +7,9 @@ import com.master_thesis.maturity_assessment.maturity_models.dto.MaturityLevelDT
 import com.master_thesis.maturity_assessment.maturity_models.dto.MaturityModelDTO;
 import com.master_thesis.maturity_assessment.maturity_models.dto.ModuleDTO;
 import com.master_thesis.maturity_assessment.maturity_models.dto.PracticeDTO;
+import com.master_thesis.maturity_assessment.maturity_models.dto.MappingRuleDTO;
+import com.master_thesis.maturity_assessment.maturity_models.dto.GatingRuleDTO;
+import com.master_thesis.maturity_assessment.maturity_models.models.AggregationRule;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.master_thesis.maturity_assessment.maturity_models.dto.QuestionChoiceDTO;
@@ -121,6 +124,7 @@ public class CsvParsingService {
             if (!errors.isEmpty()) {
                 return defaultLegacyLevelDtos();
             }
+            parsed.sort(Comparator.comparing(MaturityLevelDTO::getNumber));
             return parsed;
         } catch (Exception e) {
             errors.add("modelLevels must be valid JSON array of {number,name,description?}: " + e.getMessage());
@@ -167,6 +171,13 @@ public class CsvParsingService {
     }
 
     private void validateRow(CsvMaturityModelRow row, int lineNumber, List<String> errors, int maxMaturityLevel) {
+        validateBoolean(row.getModelAutoEvaluated(), "modelAutoEvaluated", lineNumber, errors);
+        validateBoolean(row.getPracticeRequiresEvidence(), "practiceRequiresEvidence", lineNumber, errors);
+        validateBoolean(row.getQuestionRequired(), "questionRequired", lineNumber, errors);
+        validateBoolean(row.getQuestionBooleanCorrectAnswer(), "questionBooleanCorrectAnswer", lineNumber, errors);
+        if (!isBlank(row.getQuestionBooleanCorrectAnswer()) && !"boolean".equalsIgnoreCase(row.getQuestionType())) {
+            errors.add("Row " + lineNumber + ": questionBooleanCorrectAnswer must be empty unless questionType is boolean");
+        }
         if (isBlank(row.getModelName())) {
             errors.add("Row " + lineNumber + ": modelName is required");
         }
@@ -390,6 +401,8 @@ public class CsvParsingService {
         dto.setDescription(firstRow.getModelDescription());
         dto.setIsActive(false);
         dto.setAutoEvaluated(parseBoolean(firstRow.getModelAutoEvaluated(), true));
+        dto.setAggregationRule(parseAggregationRule(firstRow.getModelAggregationRule(), "modelAggregationRule", 2, errors));
+        dto.setChangelogMarkdown(blankToNull(firstRow.getModelChangelogMarkdown()));
         dto.setLevels(modelLevels);
 
         LinkedHashMap<String, DimensionAccumulator> dimensions = new LinkedHashMap<>();
@@ -403,7 +416,7 @@ public class CsvParsingService {
             Double questionWeight = parsePositiveDouble(row.getQuestionWeight(), "questionWeight", rowNumber, errors);
             Double practiceWeight = parsePositiveDoubleOrDefault(
                     row.getPracticeWeight(), 1.0, "practiceWeight", rowNumber, errors);
-            Double moduleWeight = parseDoubleOrNull(row.getModuleWeight(), "moduleWeight", rowNumber, errors);
+            Double moduleWeight = parsePositiveDoubleOrDefault(row.getModuleWeight(), 1.0, "moduleWeight", rowNumber, errors);
 
             if (questionWeight == null || practiceWeight == null) {
                 continue;
@@ -416,8 +429,13 @@ public class CsvParsingService {
             if (dimension == null) {
                 DimensionDTO dimensionDTO = new DimensionDTO();
                 dimensionDTO.setId(blankToNull(row.getDimensionId()));
+                dimensionDTO.setSortOrder(row.getDimensionSortOrder());
                 dimensionDTO.setName(row.getDimensionName());
                 dimensionDTO.setDescription(row.getDimensionDescription());
+                dimensionDTO.setWeight(parsePositiveDoubleOrDefault(row.getDimensionWeight(), 1.0, "dimensionWeight", rowNumber, errors));
+                dimensionDTO.setAggregationRule(parseAggregationRule(row.getDimensionAggregationRule(), "dimensionAggregationRule", rowNumber, errors));
+                dimensionDTO.setMappingRules(parseRules(row.getDimensionMappingRules(), MappingRuleDTO.class, "dimensionMappingRules", rowNumber, errors));
+                dimensionDTO.setGatingRules(parseRules(row.getDimensionGatingRules(), GatingRuleDTO.class, "dimensionGatingRules", rowNumber, errors));
                 dimension = new DimensionAccumulator(dimensionDTO);
                 dimensions.put(dimensionKey, dimension);
             }
@@ -429,9 +447,12 @@ public class CsvParsingService {
             if (module == null) {
                 ModuleDTO moduleDTO = new ModuleDTO();
                 moduleDTO.setCode(blankToNull(row.getModuleCode()));
+                moduleDTO.setSortOrder(row.getModuleSortOrder());
                 moduleDTO.setName(row.getModuleName());
                 moduleDTO.setDescription(blankToNull(row.getModuleDescription()));
                 moduleDTO.setWeight(moduleWeight);
+                moduleDTO.setAggregationRule(parseAggregationRule(row.getModuleAggregationRule(), "moduleAggregationRule", rowNumber, errors));
+                moduleDTO.setGatingRules(parseRules(row.getModuleGatingRules(), GatingRuleDTO.class, "moduleGatingRules", rowNumber, errors));
                 module = new ModuleAccumulator(moduleDTO);
                 dimension.modules.put(moduleKey, module);
             }
@@ -449,7 +470,9 @@ public class CsvParsingService {
                 practiceDTO.setDescription(blankToNull(row.getPracticeDescription()));
                 practiceDTO.setWeight(practiceWeight);
                 practiceDTO.setRequiresEvidence(parseBoolean(row.getPracticeRequiresEvidence(), false));
-                practice = new PracticeAccumulator(practiceDTO);
+                practiceDTO.setAggregationRule(parseAggregationRule(row.getPracticeAggregationRule(), "practiceAggregationRule", rowNumber, errors));
+                practiceDTO.setGatingRules(parseRules(row.getPracticeGatingRules(), GatingRuleDTO.class, "practiceGatingRules", rowNumber, errors));
+                practice = new PracticeAccumulator(practiceDTO, row.getPracticeSortOrder());
                 module.practices.put(practiceKey, practice);
             }
 
@@ -462,6 +485,9 @@ public class CsvParsingService {
             questionDTO.setType(qType);
             questionDTO.setHelp(blankToNull(row.getQuestionHelp()));
             questionDTO.setRequired(parseBoolean(row.getQuestionRequired(), false));
+            if ("boolean".equals(qType)) {
+                questionDTO.setBooleanCorrectAnswer(parseBoolean(row.getQuestionBooleanCorrectAnswer(), true));
+            }
             if (("multiple_choice".equals(qType) || "multiple_selection".equals(qType)) && !isBlank(row.getQuestionChoices())) {
                 try {
                     questionDTO.setChoices(objectMapper.readValue(
@@ -529,11 +555,14 @@ public class CsvParsingService {
 
     private List<DimensionDTO> buildDimensions(LinkedHashMap<String, DimensionAccumulator> dimensions) {
         List<DimensionDTO> dimensionDTOs = new ArrayList<>();
-        for (DimensionAccumulator dimensionAccumulator : dimensions.values()) {
+        for (DimensionAccumulator dimensionAccumulator : dimensions.values().stream()
+                .sorted(Comparator.comparing(d -> d.dimension.getSortOrder(), Comparator.nullsLast(Integer::compareTo))).toList()) {
             List<ModuleDTO> moduleDTOs = new ArrayList<>();
-            for (ModuleAccumulator moduleAccumulator : dimensionAccumulator.modules.values()) {
+            for (ModuleAccumulator moduleAccumulator : dimensionAccumulator.modules.values().stream()
+                    .sorted(Comparator.comparing(m -> m.module.getSortOrder(), Comparator.nullsLast(Integer::compareTo))).toList()) {
                 List<PracticeDTO> practiceDTOs = new ArrayList<>();
-                for (PracticeAccumulator practiceAccumulator : moduleAccumulator.practices.values()) {
+                for (PracticeAccumulator practiceAccumulator : moduleAccumulator.practices.values().stream()
+                        .sorted(Comparator.comparing(p -> p.sortOrder, Comparator.nullsLast(Integer::compareTo))).toList()) {
                     practiceAccumulator.practice.setQuestions(practiceAccumulator.questions);
                     practiceDTOs.add(practiceAccumulator.practice);
                 }
@@ -582,15 +611,33 @@ public class CsvParsingService {
         return parsePositiveDouble(value, fieldName, rowNumber, errors);
     }
 
-    private Double parseDoubleOrNull(String value, String fieldName, int rowNumber, List<String> errors) {
-        if (isBlank(value)) {
+    private AggregationRule parseAggregationRule(String value, String field, int rowNumber, List<String> errors) {
+        if (isBlank(value)) return null;
+        try {
+            return AggregationRule.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            errors.add("Row " + rowNumber + ": " + field + " must be one of AVERAGE, WEIGHTED_AVERAGE, MINIMUM, MAXIMUM, SUM, MEDIAN");
             return null;
         }
+    }
+
+    private <T> List<T> parseRules(String value, Class<T> type, String field, int rowNumber, List<String> errors) {
+        if (isBlank(value)) return null;
         try {
-            return Double.parseDouble(value);
-        } catch (NumberFormatException e) {
-            errors.add("Row " + rowNumber + ": " + fieldName + " must be a number");
+            List<T> rules = objectMapper.readValue(value, objectMapper.getTypeFactory().constructCollectionType(List.class, type));
+            if (rules == null || rules.stream().anyMatch(java.util.Objects::isNull)) {
+                errors.add("Row " + rowNumber + ": " + field + " must be a JSON array of rule objects");
+            }
+            return rules;
+        } catch (Exception e) {
+            errors.add("Row " + rowNumber + ": " + field + " must be a valid JSON array: " + e.getMessage());
             return null;
+        }
+    }
+
+    private void validateBoolean(String value, String field, int rowNumber, List<String> errors) {
+        if (!isBlank(value) && !isBooleanText(value)) {
+            errors.add("Row " + rowNumber + ": " + field + " must be true or false");
         }
     }
 
@@ -634,10 +681,12 @@ public class CsvParsingService {
 
     private static final class PracticeAccumulator {
         private final PracticeDTO practice;
+        private final Integer sortOrder;
         private final List<QuestionDTO> questions = new ArrayList<>();
 
-        private PracticeAccumulator(PracticeDTO practice) {
+        private PracticeAccumulator(PracticeDTO practice, Integer sortOrder) {
             this.practice = practice;
+            this.sortOrder = sortOrder;
         }
     }
 }

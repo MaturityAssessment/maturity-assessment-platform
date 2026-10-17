@@ -23,6 +23,52 @@ authoring/editor operations require curator/admin. Use the exported workbook or
 repository template for the import layout, rather than inventing a spreadsheet
 column format. Import expects `.xlsx`; the old direct CSV upload route is absent.
 
+### Excel round trip
+
+Download `GET /api/v1/maturity-model/{id}/export.xlsx`, edit the workbook, then
+use **Import Excel** in the model editor (or **Start from Excel** for a new model).
+The workbook contains `Model`, `Levels`, `Dimensions`, `Modules`, `Practices`,
+`Questions`, and an `Instructions` sheet with configuration examples.
+
+Export/import preserves descriptions, level names and descriptions, item weights,
+aggregation rules at every scope, dimension score mappings, gating rules, evidence
+requirements, question help and required flags, boolean correct answers, choice
+scores or raw values, scale labels and direction, numeric bounds and direction,
+and dependencies. `modelChangelogMarkdown` can supply release notes for the
+imported document; loading an existing model for editing still starts with empty
+release notes. Domain selection, database IDs, activation and version lineage are
+managed by the editor and save endpoint.
+
+Keep sheet names and column headers. Dimension/module/practice sheet row order
+controls structural order; Questions row order controls questions within each
+practice. Levels are ordered by their explicit `number`. Child rows join using
+`dimensionId`, `moduleCode`, and `practiceCode`; changing a code requires updating
+child references, dependency codes and gating references. Codes are unique among
+siblings and may repeat in different branches. Added items must lead to at least
+one question. Delete child rows when deleting their parent; duplicate or
+unreferenced structure rows are rejected rather than discarded.
+
+Scoring mappings and gating rules use JSON arrays in their respective cells;
+examples and allowed values are in `Instructions`. Blank or omitted newer
+columns retain legacy application defaults. Invalid edits produce a validation
+message before saving. Review the imported model, choose a domain, then save it
+as a new inactive model or a new inactive version of the model being edited.
+
+To regenerate the repository template after changing the workbook schema, run
+from `backend`:
+
+```bash
+REGEN_TEMPLATE=true mvn test -Dtest=MaturityModelExcelServiceTest#regeneratePublicTemplateWhenEnvSet
+```
+
+`MaturityModelExcelWorkflowTest` checks the shipped template against export
+headers, exercises edited workbooks and validates the editor/save conversion.
+For a real persistence check, explicitly point `DB_URL`, `DB_USERNAME` and
+`DB_PASSWORD` at a disposable PostgreSQL database with the current schema, then
+run `MODEL_EXCEL_INTEGRATION_TEST=true mvn test
+-Dtest=MaturityModelExcelPersistenceIntegrationTest`. This test validates the
+schema, disables migrations and rolls back its test data.
+
 ## Update an existing model
 
 1. Load `GET /api/v1/maturity-model/{id}/editor`.

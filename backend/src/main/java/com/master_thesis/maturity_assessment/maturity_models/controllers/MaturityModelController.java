@@ -124,6 +124,9 @@ public class MaturityModelController {
             }
             parsed.getMaturityModel().setDomainId(domainId);
             MaturityModelEditorDTO document = maturityModelService.prepareEditorDocument(parsed.getMaturityModel());
+            if (parsed.getMaturityModel().getChangelogMarkdown() != null) {
+                document.setChangelogMarkdown(parsed.getMaturityModel().getChangelogMarkdown());
+            }
             List<String> warnings = new ArrayList<>();
             warnings.add("Review generated item codes and imported content before saving.");
             return ResponseEntity.ok(new MaturityModelEditorImportResponse(

@@ -63,7 +63,7 @@ import {
 
 function errorMessage(error: any, fallback: string) {
   const data = error?.response?.data;
-  return data?.message || data?.errorDetails || error?.errorMessage || fallback;
+  return data?.errorDetails || data?.message || error?.errorMessage || error?.message || fallback;
 }
 
 export function useMaturityModelEditor(
@@ -441,20 +441,19 @@ export function useMaturityModelEditor(
               "Workbook loaded. Review it before saving.",
           },
         });
+        return true;
       } catch (error: any) {
         dispatch({
           type: "notice",
           notice: {
             type: "error",
-            message:
-              error?.message ||
-              errorMessage(error, "Could not load this workbook."),
+            message: errorMessage(error, "Could not load this workbook."),
           },
         });
+        return false;
       } finally {
         dispatch({ type: "importing", importing: false });
       }
-      return true;
     },
     [editing, state.dirty, state.document]
   );
