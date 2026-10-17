@@ -1,3 +1,4 @@
+import WeightInput from "../../components/WeightInput";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import type {
   ModelEditorDimension,
@@ -160,15 +161,12 @@ export default function ModuleEditor({
                 />
                 <label className="grid gap-x-6 gap-y-2 rounded-xl border border-gray-200 bg-gray-50/70 p-5 @lg:grid-cols-[minmax(0,1fr)_8rem]">
                   <span className="text-sm font-semibold text-gray-900">Weight in the dimension</span>
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    className={`${inputClass} @lg:col-start-2 @lg:row-span-2 @lg:row-start-1 @lg:self-center`}
+                  <WeightInput
+                    key={module.clientKey}
+                    id={`module-${module.clientKey}-weight`}
+                    className="@lg:col-start-2 @lg:row-span-2 @lg:row-start-1 @lg:self-center"
                     value={module.weight}
-                    onChange={(event) =>
-                      update({ ...module, weight: Number(event.target.value) || 1 })
-                    }
+                    onChange={(weight) => update({ ...module, weight })}
                   />
                   <span className="block text-sm font-normal leading-6 text-gray-500">
                     Relative importance when this dimension uses weighted aggregation.

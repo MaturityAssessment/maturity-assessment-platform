@@ -1,3 +1,4 @@
+import WeightInput from "../../components/WeightInput";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle, Description } from "@headlessui/react";
 import { XMarkIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type {
@@ -124,21 +125,11 @@ export default function QuestionEditor({
             </label>
               <label className={labelClass}>
                 Weight
-                <input
+                <WeightInput
+                  key={question.clientKey}
                   id={`question-${question.clientKey}-weight`}
-                  type="number"
-                  aria-required="true"
-                  aria-invalid={!Number.isFinite(question.weight) || question.weight <= 0}
-                  min="0.01"
-                  step="0.01"
-                  className={inputClass}
-                  value={Number.isFinite(question.weight) ? question.weight : ""}
-                  onChange={(event) =>
-                    onChange({
-                      ...question,
-                      weight: event.target.value === "" ? NaN : Number(event.target.value),
-                    })
-                  }
+                  value={question.weight}
+                  onChange={(weight) => onChange({ ...question, weight })}
                 />
               </label>
 

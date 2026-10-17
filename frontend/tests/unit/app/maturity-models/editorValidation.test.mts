@@ -38,3 +38,19 @@ test("missing question text, option values, and bounds remain associated with th
   assert.equal(issues.length, 1);
   assert.match(issues[0].message, /integer bounds/);
 });
+
+test("structure weights require positive values and identify the affected field", () => {
+  const document = createEmptyDocument();
+  const dimension = document.dimensions[0];
+  const module = dimension.modules[0];
+  const practice = module.practices[0];
+  for (const value of [NaN, 0, -1]) {
+    dimension.weight = module.weight = practice.weight = value;
+    const issues = validateDocument(document);
+    for (const [kind, item] of [["dimension", dimension], ["module", module], ["practice", practice]] as const) {
+      assert.ok(issues.some((issue) => issue.field === `${kind}-${item.clientKey}-weight` && issue.severity === "error"));
+    }
+  }
+  dimension.weight = module.weight = practice.weight = 0.5;
+  assert.equal(validateDocument(document).filter((issue) => issue.field?.endsWith("-weight")).length, 0);
+});

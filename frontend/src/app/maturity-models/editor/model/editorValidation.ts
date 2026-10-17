@@ -170,6 +170,9 @@ export function validateDocument(
       dimensionSelection,
       `dimension-${dimension.clientKey}-code`
     );
+    if (!Number.isFinite(dimension.weight) || dimension.weight <= 0) {
+      add({ step: "structure", severity: "error", message: "Dimension weight is required and must be greater than zero.", selection: dimensionSelection, field: `dimension-${dimension.clientKey}-weight` });
+    }
     if (!dimension.name.trim()) {
       add({
         step: "structure",
@@ -233,6 +236,9 @@ export function validateDocument(
         moduleSelection,
         `module-${module.clientKey}-code`
       );
+      if (!Number.isFinite(module.weight) || module.weight <= 0) {
+        add({ step: "structure", severity: "error", message: "Module weight is required and must be greater than zero.", selection: moduleSelection, field: `module-${module.clientKey}-weight` });
+      }
       if (!module.name.trim()) {
         add({
           step: "structure",
@@ -289,6 +295,9 @@ export function validateDocument(
           practiceSelection,
           `practice-${practice.clientKey}-code`
         );
+        if (!Number.isFinite(practice.weight) || practice.weight <= 0) {
+          add({ step: "structure", severity: "error", message: "Practice weight is required and must be greater than zero.", selection: practiceSelection, field: `practice-${practice.clientKey}-weight` });
+        }
         if (!practice.name.trim()) {
           add({
             step: "structure",
