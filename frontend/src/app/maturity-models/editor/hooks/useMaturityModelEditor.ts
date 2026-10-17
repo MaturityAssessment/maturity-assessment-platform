@@ -56,6 +56,7 @@ import {
   editorReducer,
 } from "../state/editorReducer";
 import { compareDocuments, reconcileDocument, type ComparisonProvenance } from "../model/editorChanges";
+import { revertEditorChange } from "../model/editorRevert";
 import { useEditorDraft } from "./useEditorDraft";
 import {
   confirmLeaveEditor,
@@ -80,6 +81,7 @@ export function useMaturityModelEditor(
     createInitialEditorState
   );
   const [domains, setDomains] = useState<Domain[]>([]);
+  const [lastRevert, setLastRevert] = useState<{ before: MaturityModelEditorDocument; after: MaturityModelEditorDocument } | null>(null);
 
   const draftKey = useMemo(
     () =>
@@ -568,9 +570,30 @@ export function useMaturityModelEditor(
 
   const changes = useMemo(() => state.document ? compareDocuments(state.baseline, state.document, state.provenance, domains) : null, [state.baseline, state.document, state.provenance, domains]);
 
+  const revertChange = useCallback((entryId: string) => {
+    if (!state.document || !state.baseline || state.saving || state.importing) return;
+    try {
+      const next = revertEditorChange(state.document, state.baseline, entryId);
+      if (next === state.document) return;
+      setLastRevert({ before: state.document, after: next });
+      replaceDocument(next, null);
+    } catch (error) {
+      dispatch({ type: "notice", notice: { type: "error", message: errorMessage(error, "Could not revert this change.") } });
+    }
+  }, [state.document, state.baseline, state.saving, state.importing, replaceDocument]);
+  const canUndoRevert = Boolean(lastRevert && state.document === lastRevert.after && !state.saving && !state.importing);
+  const undoRevert = useCallback(() => {
+    if (!lastRevert || !canUndoRevert) return;
+    replaceDocument(lastRevert.before, null);
+    setLastRevert(null);
+  }, [lastRevert, canUndoRevert, replaceDocument]);
+
   return {
     state,
     changes,
+    revertChange,
+    canUndoRevert,
+    undoRevert,
     draftError,
     editing,
     domains,

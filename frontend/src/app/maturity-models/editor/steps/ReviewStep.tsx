@@ -12,11 +12,15 @@ export default function ReviewStep({
   editing,
   onIssueClick,
   changes,
+  onRevert,
+  onUndoRevert,
 }: {
   document: MaturityModelEditorDocument;
   issues: EditorIssue[];
   editing: boolean;
   changes: Preview;
+  onRevert?: (entryId: string) => void;
+  onUndoRevert?: () => void;
   onIssueClick: (issue: EditorIssue) => void;
 }) {
   const counts = countItems(document);
@@ -26,7 +30,7 @@ export default function ReviewStep({
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_23rem]">
       <div className="min-w-0 space-y-5">
-      <ChangesPreview changes={changes} document={document} />
+      <ChangesPreview changes={changes} document={document} onRevert={onRevert} onUndoRevert={onUndoRevert} />
       <Panel
         title="Review model"
         description="Check the complete shape and follow any issue back to its source."

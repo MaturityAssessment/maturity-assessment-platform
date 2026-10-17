@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import { ArrowUturnLeftIcon, ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import type { MaturityModelEditorDocument } from "@/api/types";
 import {
   buildChangeTree,
@@ -20,7 +20,7 @@ const tones = {
   order: { badge: "bg-amber-100 text-amber-900", border: "border-amber-200", header: "bg-amber-50/70" },
 };
 
-type DisclosureState = { expanded: Set<string>; onToggle: (id: string) => void };
+type DisclosureState = { expanded: Set<string>; onToggle: (id: string) => void; onRevert?: (id: string) => void };
 
 function descendants(entry: ChangeEntry): number {
   return (entry.children ?? []).reduce((sum, child) => sum + 1 + descendants(child), 0);
@@ -42,7 +42,7 @@ function DiffValue({ value, previous }: { value: string; previous: boolean }) {
   );
 }
 
-function ChangeRow({ entry, expanded, onToggle }: { entry: ChangeEntry } & DisclosureState) {
+function ChangeRow({ entry, expanded, onToggle, onRevert }: { entry: ChangeEntry } & DisclosureState) {
   const count = descendants(entry);
   const tone = tones[entry.status];
   const open = expanded.has(entry.id);
@@ -82,6 +82,15 @@ function ChangeRow({ entry, expanded, onToggle }: { entry: ChangeEntry } & Discl
         {Boolean(entry.children?.length) && <div className="space-y-3 p-2 sm:p-3">
           {entry.children!.map(child => <ChangeRow key={child.id} entry={child} expanded={expanded} onToggle={onToggle} />)}
         </div>}
+        {onRevert && <div className="flex justify-end border-t border-gray-100 px-3 py-2">
+          <button type="button" onClick={() => onRevert(entry.id)}
+            aria-label={`Revert ${entry.title}`}
+            title={entry.status === "added" ? "Remove this addition and its contents" : entry.status === "removed" ? "Restore this item and its contents" : "Restore the source version’s values for this change"}
+            className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-950 focus-visible:outline-blue-500">
+            <ArrowUturnLeftIcon className="h-3.5 w-3.5" />
+            {entry.status === "added" ? "Revert addition" : entry.status === "removed" ? "Restore item" : entry.status === "order" ? "Restore order" : "Revert changes"}
+          </button>
+        </div>}
       </div>
     </details>
   );
@@ -110,7 +119,13 @@ function allEntryIds(entries: ChangeEntry[]): string[] {
   return entries.flatMap(entry => [entry.id, ...allEntryIds(entry.children ?? [])]);
 }
 
-export default function ChangesPreview({ changes, document }: { changes: Preview; document: MaturityModelEditorDocument }) {
+export default function ChangesPreview({ changes, document, onRevert, onUndoRevert }: {
+  changes: Preview;
+  document: MaturityModelEditorDocument;
+  onRevert?: (id: string) => void;
+  onUndoRevert?: () => void;
+}) {
+  const revert = changes.isNew ? undefined : onRevert;
   const entries = [...changes.overview, ...changes.scale, ...changes.structure, ...(changes.releaseNotes ? [changes.releaseNotes] : [])];
   const ids = allEntryIds(entries);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(!changes.isNew && ids.length <= 3 ? ids : []));
@@ -141,19 +156,23 @@ export default function ChangesPreview({ changes, document }: { changes: Preview
             <button type="button" onClick={() => setExpanded(new Set())} className="rounded text-gray-500 hover:text-gray-950 focus-visible:outline-blue-500">Collapse all</button>
           </div>}
         </div>
+        {onUndoRevert && <div role="status" className="flex items-center justify-between gap-3 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-900">
+          <span>Change reverted.</span>
+          <button type="button" onClick={onUndoRevert} className="rounded font-medium underline underline-offset-2 focus-visible:outline-blue-500">Undo</button>
+        </div>}
         {changes.limitation && <p className="text-xs leading-5 text-gray-500">{changes.limitation}</p>}
         {([["Overview", changes.overview], ["Scale", changes.scale]] as const).map(([label, group]) => group.length > 0 && (
           <section key={label} aria-label={`${label} changes`}>
             <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">{label}</h3>
-            <div className="space-y-3">{group.map(entry => <ChangeRow key={entry.id} entry={entry} expanded={expanded} onToggle={onToggle} />)}</div>
+            <div className="space-y-3">{group.map(entry => <ChangeRow key={entry.id} entry={entry} expanded={expanded} onToggle={onToggle} onRevert={revert} />)}</div>
           </section>
         ))}
         {tree.length > 0 && <section aria-label="Structure changes" className="space-y-5">
-          {tree.map(node => <StructureNode key={node.key} node={node} expanded={expanded} onToggle={onToggle} />)}
+          {tree.map(node => <StructureNode key={node.key} node={node} expanded={expanded} onToggle={onToggle} onRevert={revert} />)}
         </section>}
         {changes.releaseNotes && <section aria-label="Release notes changes" className="border-t border-gray-100 pt-4">
           <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">Release notes</h3>
-          <ChangeRow entry={changes.releaseNotes} expanded={expanded} onToggle={onToggle} />
+          <ChangeRow entry={changes.releaseNotes} expanded={expanded} onToggle={onToggle} onRevert={revert} />
         </section>}
       </div>
     </Panel>

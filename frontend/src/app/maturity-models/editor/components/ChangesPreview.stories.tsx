@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { revertEditorChange } from "../model/editorRevert";
 import type { Meta, StoryObj } from "@storybook/react";
 import ChangesPreview from "./ChangesPreview";
 import { compareDocuments } from "../model/editorChanges";
@@ -41,3 +43,16 @@ const filled = structuredClone(baseline);
 filled.dimensions[0].modules[0].practices[0].questions[0].help = "Include the owner’s role and the most recent review date.";
 export const PreviouslyEmptyField: Story = { args: { document: filled, changes: compareDocuments(baseline, filled) } };
 export const ClearedField: Story = { args: { document: baseline, changes: compareDocuments(filled, baseline) } };
+
+
+function RevertExample() {
+  const [current, setCurrent] = useState(() => structuredClone(parentChanges));
+  const [previous, setPrevious] = useState<typeof current | null>(null);
+  return <ChangesPreview document={current} changes={compareDocuments(baseline, current)}
+    onRevert={id => {
+      setPrevious(current);
+      setCurrent(revertEditorChange(current, baseline, id));
+    }}
+    onUndoRevert={previous ? () => { setCurrent(previous); setPrevious(null); } : undefined} />;
+}
+export const RevertAndUndo: Story = { render: () => <RevertExample /> };

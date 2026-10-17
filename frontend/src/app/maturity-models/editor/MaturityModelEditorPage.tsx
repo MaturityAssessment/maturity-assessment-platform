@@ -107,6 +107,8 @@ export default function MaturityModelEditorPage({
       {state.step === "review" && editor.changes && (
         <ReviewStep
           changes={editor.changes}
+          onRevert={state.baseline && !state.saving && !state.importing ? editor.revertChange : undefined}
+          onUndoRevert={editor.canUndoRevert ? editor.undoRevert : undefined}
           document={state.document}
           issues={issues}
           editing={editing}
