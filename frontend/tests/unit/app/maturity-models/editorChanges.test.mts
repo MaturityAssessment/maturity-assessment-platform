@@ -21,7 +21,7 @@ test("one wording edit produces one field, without ancestor changes", () => {
   question(after).text = "Is ownership documented?";
   const result = compareDocuments(before, after);
   assert.equal(result.structure.length, 1); assert.equal(result.counts.updated, 1);
-  assert.deepEqual(result.structure[0].fields, [{ label: "Question text", before: "Not provided", after: "Is ownership documented?" }]);
+  assert.deepEqual(result.structure[0].fields, [{ label: "Question text", before: "Not provided", after: "Is ownership documented?", beforeEmpty: true, afterEmpty: false }]);
 });
 test("added and removed branches are counted once with nested content", () => {
   const before = createEmptyDocument(); const after = structuredClone(before); after.dimensions = [];
@@ -137,4 +137,74 @@ test("blank added and removed scale levels still count as changes", () => {
   document.levels.push({ number: 6, name: "" });
   assert.equal(compareDocuments(baseline, document).counts.added, 1);
   assert.equal(compareDocuments(document, baseline).counts.removed, 1);
+});
+
+test("preview groups one question under muted ancestors without adding change entries", async () => {
+  const { buildChangeTree } = await import("../../../../src/app/maturity-models/editor/model/editorChanges.ts");
+  const baseline = createEmptyDocument();
+  baseline.dimensions[0].name = "Governance / strategy";
+  const document = structuredClone(baseline);
+  question(document).text = "Updated question";
+  const changes = compareDocuments(baseline, document);
+  const tree = buildChangeTree(changes.structure);
+  assert.equal(tree.length, 1);
+  assert.equal(tree[0].item?.name, "Governance / strategy");
+  assert.equal(tree[0].entry, undefined);
+  assert.equal(tree[0].children[0].item?.kind, "Module");
+  const parent = tree[0].children[0].children[0];
+  assert.equal(parent.item?.kind, "Practice");
+  assert.equal(parent.entry, undefined);
+  assert.equal(parent.children[0].entry?.fields[0].label, "Question text");
+  assert.equal(changes.counts.updated, 1);
+});
+
+test("edited parents share their branch with changed and removed children", async () => {
+  const { buildChangeTree } = await import("../../../../src/app/maturity-models/editor/model/editorChanges.ts");
+  const baseline = createEmptyDocument();
+  practice(baseline).questions.push(emptyQuestion(2));
+  const document = structuredClone(baseline);
+  document.dimensions[0].name = "Renamed dimension";
+  practice(document).name = "Renamed practice";
+  question(document).text = "Changed wording";
+  practice(document).questions.pop();
+  const changes = compareDocuments(baseline, document);
+  const tree = buildChangeTree(changes.structure);
+  assert.equal(tree.length, 1);
+  assert.equal(tree[0].entry?.status, "updated");
+  const parent = tree[0].children[0].children[0];
+  assert.equal(parent.entry?.status, "updated");
+  assert.deepEqual(parent.children.map(node => node.entry?.status), ["updated", "removed"]);
+  assert.equal(changes.counts.updated, 3);
+  assert.equal(changes.counts.removed, 1);
+});
+
+
+test("empty field additions and clearances carry semantic presence without misclassifying literal placeholder text", () => {
+  const baseline = createEmptyDocument();
+  const document = structuredClone(baseline);
+  question(document).help = "Not provided";
+  const addition = compareDocuments(baseline, document).structure[0].fields[0];
+  assert.equal(addition.beforeEmpty, true);
+  assert.equal(addition.afterEmpty, false);
+  const removal = compareDocuments(document, baseline).structure[0].fields[0];
+  assert.equal(removal.beforeEmpty, false);
+  assert.equal(removal.afterEmpty, true);
+});
+
+test("added and removed branches omit empty fields and collections but preserve false and zero", () => {
+  const document = createEmptyDocument();
+  question(document).weight = 0;
+  question(document).help = "  ";
+  for (const changes of [compareDocuments(null, document), compareDocuments(document, { ...document, dimensions: [] })]) {
+    const dimension = changes.structure[0];
+    assert.equal(dimension.fields.some(field => field.label === "Description"), false);
+    assert.equal(dimension.fields.some(field => field.label === "Gating rules"), false);
+    const fields = dimension.children![0].children![0].children![0].fields;
+    assert.equal(fields.some(field => field.label === "Help text"), false);
+    assert.equal(fields.some(field => field.label === "Question text"), false);
+    const weight = fields.find(field => field.label === "Weight")!;
+    assert.equal(weight.before || weight.after, "0");
+    const required = fields.find(field => field.label === "Required")!;
+    assert.equal(required.before || required.after, "No");
+  }
 });

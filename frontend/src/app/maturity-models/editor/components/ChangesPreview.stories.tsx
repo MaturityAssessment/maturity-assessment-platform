@@ -26,3 +26,18 @@ export const MixedChanges: Story = { args: { document: mixed, changes: compareDo
 export const Narrow: Story = { ...MixedChanges, decorators: [(Story) => <div style={{ maxWidth: 360 }}><Story /></div>] };
 const removed = structuredClone(baseline); removed.dimensions = [];
 export const RemovedBranch: Story = { args: { document: removed, changes: compareDocuments(baseline, removed) } };
+
+const parentChanges = structuredClone(document);
+parentChanges.dimensions[0].name = "Governance and oversight";
+parentChanges.dimensions[0].modules[0].practices[0].requiresEvidence = true;
+export const EditedParents: Story = { args: { document: parentChanges, changes: compareDocuments(baseline, parentChanges) } };
+export const SingleQuestionNarrow: Story = { ...SingleQuestion, decorators: [(Story) => <div style={{ maxWidth: 360 }}><Story /></div>] };
+const multiple = structuredClone(mixed);
+multiple.dimensions[0].modules[0].name = "Policies / procedures";
+multiple.dimensions[0].modules[0].practices[0].description = "Accountability is reviewed annually.";
+export const SeveralChangesInOneBranch: Story = { args: { document: multiple, changes: compareDocuments(baseline, multiple) } };
+
+const filled = structuredClone(baseline);
+filled.dimensions[0].modules[0].practices[0].questions[0].help = "Include the owner’s role and the most recent review date.";
+export const PreviouslyEmptyField: Story = { args: { document: filled, changes: compareDocuments(baseline, filled) } };
+export const ClearedField: Story = { args: { document: baseline, changes: compareDocuments(filled, baseline) } };

@@ -2,10 +2,12 @@ import type { MaturityModelEditorDocument, ModelEditorDimension, ModelEditorModu
 import { codeSuffix } from "./editorCodes.ts";
 
 export type ComparisonProvenance = "source" | "import" | "legacy";
-export type ChangeField = { label: string; before: string; after: string };
+export type ChangeField = { label: string; before: string; after: string; beforeEmpty: boolean; afterEmpty: boolean };
+export type ChangeLocation = { key: string; code: string; name: string; kind: "Dimension" | "Module" | "Practice" | "Question" };
 export type ChangeEntry = {
   id: string; title: string; path: string; status: "updated" | "added" | "removed" | "order";
   fields: ChangeField[]; children?: ChangeEntry[];
+  location?: ChangeLocation[]; item?: ChangeLocation;
 };
 export type ChangesPreview = {
   isNew: boolean; overview: ChangeEntry[]; scale: ChangeEntry[]; structure: ChangeEntry[];
@@ -14,6 +16,12 @@ export type ChangesPreview = {
 };
 type Item = ModelEditorDimension | ModelEditorModule | ModelEditorPractice | ModelEditorQuestion;
 const children = (item: Item): Item[] => "modules" in item ? item.modules : "practices" in item ? item.practices : "questions" in item ? item.questions : [];
+const locationItem = (item: Item): ChangeLocation => ({
+  key: item.clientKey, code: item.code,
+  name: ("text" in item ? item.text : item.name) || "Untitled",
+  kind: "modules" in item ? "Dimension" : "practices" in item ? "Module" : "questions" in item ? "Practice" : "Question",
+});
+const locationPath = (location: ChangeLocation[]) => location.map(item => `${item.code} — ${item.name}`).join(" / ");
 const title = (item: Item) => `${item.code} — ${("text" in item ? item.text : item.name) || "Untitled"}`;
 const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const human = (value: string) => value.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().replace(/^./, c => c.toUpperCase());
@@ -63,27 +71,32 @@ function fields(item: Item, siblings: Item[]): Fields {
   }
   return result;
 }
+// Check semantic values, never display placeholders: false and zero are meaningful.
+function isEmpty(value: unknown): boolean {
+  return value == null || (typeof value === "string" && value.trim() === "") || (Array.isArray(value) && value.length === 0);
+}
 function changed(before: Fields, after: Fields): ChangeField[] {
-  return [...new Set([...Object.keys(before), ...Object.keys(after)])].filter(k => !equal(before[k]?.value ?? "", after[k]?.value ?? "")).map(k => ({ label: labels[k] ?? human(k), before: before[k]?.text ?? "Not applicable", after: after[k]?.text ?? "Not applicable" }));
+  return [...new Set([...Object.keys(before), ...Object.keys(after)])].filter(k => !equal(before[k]?.value ?? "", after[k]?.value ?? "")).map(k => ({ label: labels[k] ?? human(k), before: before[k]?.text ?? "Not applicable", after: after[k]?.text ?? "Not applicable", beforeEmpty: isEmpty(before[k]?.value), afterEmpty: isEmpty(after[k]?.value) }));
 }
-function branch(item: Item, status: "added" | "removed", path: string): ChangeEntry {
-  return { id: `${status}:${item.clientKey}`, title: title(item), path, status, fields: Object.entries(fields(item, [])).map(([key, value]) => ({ label: labels[key] ?? human(key), before: status === "removed" ? value.text : "", after: status === "added" ? value.text : "" })), children: children(item).map(c => branch(c, status, title(item))) };
+function branch(item: Item, status: "added" | "removed", location: ChangeLocation[]): ChangeEntry {
+  return { id: `${status}:${item.clientKey}`, title: title(item), path: locationPath(location), location, item: locationItem(item), status, fields: Object.entries(fields(item, [])).filter(([, field]) => !isEmpty(field.value)).map(([key, value]) => ({ label: labels[key] ?? human(key), before: status === "removed" ? value.text : "", after: status === "added" ? value.text : "", beforeEmpty: status === "added", afterEmpty: status === "removed" })), children: children(item).map(c => branch(c, status, [...location, locationItem(item)])) };
 }
-function compareItems(before: Item[], after: Item[], path: string): ChangeEntry[] {
+function compareItems(before: Item[], after: Item[], location: ChangeLocation[]): ChangeEntry[] {
+  const path = locationPath(location);
   const entries: ChangeEntry[] = [];
   const old = new Map(before.map(i => [i.clientKey, i]));
   const next = new Map(after.map(i => [i.clientKey, i]));
   for (const item of after) {
     const previous = old.get(item.clientKey);
-    if (!previous) { entries.push(branch(item, "added", path)); continue; }
+    if (!previous) { entries.push(branch(item, "added", location)); continue; }
     const changes = changed(fields(previous, before), fields(item, after));
-    if (changes.length) entries.push({ id: item.clientKey, title: title(item), path, status: "updated", fields: changes });
-    entries.push(...compareItems(children(previous), children(item), [path, title(item)].filter(Boolean).join(" / ")));
+    if (changes.length) entries.push({ id: item.clientKey, title: title(item), path, location, item: locationItem(item), status: "updated", fields: changes });
+    entries.push(...compareItems(children(previous), children(item), [...location, locationItem(item)]));
   }
-  for (const item of before) if (!next.has(item.clientKey)) entries.push(branch(item, "removed", path));
+  for (const item of before) if (!next.has(item.clientKey)) entries.push(branch(item, "removed", location));
   const oldOrder = before.filter(i => next.has(i.clientKey));
   const newOrder = after.filter(i => old.has(i.clientKey));
-  if (!equal(oldOrder.map(i => i.clientKey), newOrder.map(i => i.clientKey))) entries.push({ id: `order:${path}`, title: "Order changed", path, status: "order", fields: [{ label: "Item order", before: oldOrder.map(title).join("\n"), after: newOrder.map(title).join("\n") }] });
+  if (!equal(oldOrder.map(i => i.clientKey), newOrder.map(i => i.clientKey))) entries.push({ id: `order:${location.map(item => item.key).join("/")}`, title: "Order changed", path, location, status: "order", fields: [{ label: "Item order", before: oldOrder.map(title).join("\n"), after: newOrder.map(title).join("\n"), beforeEmpty: false, afterEmpty: false }] });
   return entries;
 }
 function plainFields(value: Record<string, unknown>): Fields {
@@ -100,10 +113,10 @@ export function compareDocuments(baseline: MaturityModelEditorDocument | null, c
   const scale = baseline ? [...new Set([...baseline.levels, ...current.levels].map(l => l.number))].flatMap(number => {
     const a = baseline.levels.find(l => l.number === number); const b = current.levels.find(l => l.number === number);
     const differences = changed(plainFields(a ? { name: a.name, description: a.description } : {}), plainFields(b ? { name: b.name, description: b.description } : {}));
-    if ((!a || !b) && !differences.length) differences.push({ label: "Name", before: a ? display(a.name) : "", after: b ? display(b.name) : "" });
+    if ((!a || !b) && !differences.length) differences.push({ label: "Name", before: a ? display(a.name) : "", after: b ? display(b.name) : "", beforeEmpty: isEmpty(a?.name), afterEmpty: isEmpty(b?.name) });
     return group(`level:${number}`, `Level ${number}`, differences).map(e => ({ ...e, status: !a ? "added" as const : !b ? "removed" as const : e.status }));
   }) : [];
-  const structure = baseline ? compareItems(baseline.dimensions, current.dimensions, "") : current.dimensions.map(i => branch(i, "added", ""));
+  const structure = baseline ? compareItems(baseline.dimensions, current.dimensions, []) : current.dimensions.map(i => branch(i, "added", []));
   const notes = changed(plainFields({ changelogMarkdown: baseline?.changelogMarkdown ?? "" }), plainFields({ changelogMarkdown: current.changelogMarkdown }));
   const counts = { updated: 0, added: 0, removed: 0, order: 0 };
   [...overviewEntries, ...scale, ...structure].forEach(e => counts[e.status]++);
@@ -126,4 +139,36 @@ export function reconcileDocument(incoming: MaturityModelEditorDocument, current
   }
   reconcile(result.dimensions, current?.dimensions ?? [], baseline?.dimensions ?? []);
   return result;
+}
+
+export type ChangeTreeNode = {
+  key: string;
+  item?: ChangeLocation;
+  entry?: ChangeEntry;
+  children: ChangeTreeNode[];
+};
+
+/** Group by stable identity, so renamed parents and names containing slashes stay together. */
+export function buildChangeTree(entries: ChangeEntry[]): ChangeTreeNode[] {
+  const roots: ChangeTreeNode[] = [];
+  for (const entry of entries) {
+    let siblings = roots;
+    for (const item of entry.location ?? []) {
+      let node = siblings.find(candidate => candidate.key === item.key);
+      if (!node) {
+        node = { key: item.key, item, children: [] };
+        siblings.push(node);
+      }
+      siblings = node.children;
+    }
+    const key = entry.item?.key ?? entry.id;
+    const existing = siblings.find(node => node.key === key);
+    if (existing) {
+      existing.entry = entry;
+      existing.item = entry.item;
+    } else {
+      siblings.push({ key, item: entry.item, entry, children: [] });
+    }
+  }
+  return roots;
 }
