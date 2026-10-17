@@ -3,14 +3,15 @@
 import { useState } from "react";
 import { inputClass } from "./FormFields";
 
-export default function WeightInput({ id, value, onChange, className = "" }: {
+export default function WeightInput({ id, value, onChange, className = "", allowZero = false }: {
   id: string;
   value: number;
   onChange: (value: number) => void;
   className?: string;
+  allowZero?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
-  const invalid = !Number.isFinite(value) || value <= 0;
+  const invalid = !Number.isFinite(value) || (allowZero ? value < 0 : value <= 0);
   const showError = invalid && !focused;
 
   return (
@@ -18,7 +19,7 @@ export default function WeightInput({ id, value, onChange, className = "" }: {
       <input
         id={id}
         type="number"
-        min="0.01"
+        min={allowZero ? "0" : "0.01"}
         step="0.01"
         aria-required="true"
         aria-invalid={showError}
@@ -31,7 +32,7 @@ export default function WeightInput({ id, value, onChange, className = "" }: {
       />
       {showError && (
         <span id={`${id}-error`} role="alert" className="mt-1 block text-xs font-normal text-red-600">
-          Weight is required and must be greater than zero.
+          {allowZero ? "Weight is required and must be zero or greater." : "Weight is required and must be greater than zero."}
         </span>
       )}
     </span>

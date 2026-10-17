@@ -203,13 +203,29 @@ class MaturityModelExcelWorkflowTest {
     }
 
     @Test
+    void zeroQuestionWeightIsAcceptedOnlyForOptionalQuestions() throws Exception {
+        for (boolean required : List.of(false, true)) {
+            byte[] bytes = edit(excel.exportMaturityModelToXlsx(model()), workbook -> {
+                set(workbook, "Questions", 1, "questionWeight", "0");
+                set(workbook, "Questions", 1, "questionRequired", Boolean.toString(required));
+            });
+            var parsed = excel.parseExcelWorkbook(new ByteArrayInputStream(bytes));
+            assertEquals(!required, parsed.isSuccess(), parsed.getErrorDetails());
+            if (!required) {
+                assertEquals(0.0, parsed.getMaturityModel().getDimensions().getFirst().getModules().getFirst()
+                        .getPractices().getFirst().getQuestions().getFirst().getWeight());
+            }
+        }
+    }
+
+    @Test
     void invalidEdits_returnActionableErrors() throws Exception {
         for (String[] change : List.of(
                 new String[]{"Model", "modelAggregationRule", "invalid", "modelAggregationRule"},
                 new String[]{"Dimensions", "dimensionMappingRules", "not JSON", "dimensionMappingRules"},
                 new String[]{"Practices", "practiceGatingRules", "[{\"order\":0,\"selection\":\"specificChild\",\"childCode\":\"UNKNOWN\",\"operator\":\"<\",\"threshold\":0.5,\"operation\":\"set\",\"value\":0}]", "immediate child"},
                 new String[]{"Questions", "questionBooleanCorrectAnswer", "maybe", "questionBooleanCorrectAnswer"},
-                new String[]{"Questions", "questionWeight", "0", "questionWeight"},
+                new String[]{"Questions", "questionWeight", "-1", "questionWeight"},
                 new String[]{"Levels", "number", "1.4", "level numbers"},
                 new String[]{"Questions", "practiceCode", "MISSING", "practice not found"})) {
             byte[] bytes = edit(excel.exportMaturityModelToXlsx(model()), workbook -> set(workbook, change[0], 1, change[1], change[2]));

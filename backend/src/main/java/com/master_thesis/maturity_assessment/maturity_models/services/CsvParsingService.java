@@ -413,7 +413,7 @@ public class CsvParsingService {
 
             assertSameModelData(dto, row, rowNumber, errors);
 
-            Double questionWeight = parsePositiveDouble(row.getQuestionWeight(), "questionWeight", rowNumber, errors);
+            Double questionWeight = parseWeight(row.getQuestionWeight(), "questionWeight", rowNumber, errors, !parseBoolean(row.getQuestionRequired(), false));
             Double practiceWeight = parsePositiveDoubleOrDefault(
                     row.getPracticeWeight(), 1.0, "practiceWeight", rowNumber, errors);
             Double moduleWeight = parsePositiveDoubleOrDefault(row.getModuleWeight(), 1.0, "moduleWeight", rowNumber, errors);
@@ -587,13 +587,17 @@ public class CsvParsingService {
     }
 
     private Double parsePositiveDouble(String value, String fieldName, int rowNumber, List<String> errors) {
+        return parseWeight(value, fieldName, rowNumber, errors, false);
+    }
+
+    private Double parseWeight(String value, String fieldName, int rowNumber, List<String> errors, boolean allowZero) {
         if (isBlank(value)) {
             return null;
         }
         try {
             double d = Double.parseDouble(value.trim());
-            if (d <= 0 || Double.isNaN(d) || Double.isInfinite(d)) {
-                errors.add("Row " + rowNumber + ": " + fieldName + " must be a positive number");
+            if ((allowZero ? d < 0 : d <= 0) || Double.isNaN(d) || Double.isInfinite(d)) {
+                errors.add("Row " + rowNumber + ": " + fieldName + (allowZero ? " must be a non-negative number" : " must be a positive number"));
                 return null;
             }
             return d;

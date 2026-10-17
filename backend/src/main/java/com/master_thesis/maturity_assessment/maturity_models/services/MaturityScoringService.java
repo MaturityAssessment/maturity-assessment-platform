@@ -117,7 +117,7 @@ public class MaturityScoringService {
             }
             finiteScores.add(score);
             Double weight = weights != null && index < weights.size() ? weights.get(index) : null;
-            alignedWeights.add(weight != null && Double.isFinite(weight) && weight > 0.0 ? weight : 1.0);
+            alignedWeights.add(weight != null && Double.isFinite(weight) && weight >= 0.0 ? weight : 1.0);
         }
         if (finiteScores.isEmpty()) {
             return 0.0;

@@ -1415,6 +1415,12 @@ public class MaturityModelService {
                                                 continue;
                                         }
                                         for (QuestionDTO questionDTO : practiceDTO.getQuestions()) {
+                                                Double weight = questionDTO.getWeight();
+                                                if (weight != null && (!Double.isFinite(weight) || weight < 0
+                                                                || (Boolean.TRUE.equals(questionDTO.getRequired()) && weight == 0))) {
+                                                        throw new IllegalOperationException("INVALID_QUESTION_WEIGHT",
+                                                                        "Question weight must be non-negative and greater than zero for required questions.");
+                                                }
                                                 validateQuestionType(questionDTO);
                                                 if ("multiple_selection".equals(questionDTO.getType())) {
                                                         MultipleSelectionScoring.validateOptions(questionDTO.getChoices());

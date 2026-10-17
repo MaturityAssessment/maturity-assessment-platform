@@ -129,6 +129,7 @@ export default function QuestionEditor({
                   key={question.clientKey}
                   id={`question-${question.clientKey}-weight`}
                   value={question.weight}
+                  allowZero={!question.required}
                   onChange={(weight) => onChange({ ...question, weight })}
                 />
               </label>

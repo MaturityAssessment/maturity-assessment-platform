@@ -224,7 +224,8 @@ class MaturityModelServiceTest {
         parent.setCode("Q1_PARENT");
         parent.setText("Parent?");
         parent.setType("boolean");
-        parent.setWeight(1.0);
+        parent.setWeight(0.0);
+        parent.setRequired(false);
         parent.setBooleanCorrectAnswer(false);
         var child = new MaturityModelEditorDTO.EditorQuestionDTO();
         child.setCode("Q2_CHILD");
@@ -290,6 +291,7 @@ class MaturityModelServiceTest {
                 .getPractices().get(0).getQuestions();
 
         assertEquals("Q1_PARENT", questions.get(0).getCode());
+        assertEquals(0.0, questions.get(0).getWeight());
         assertFalse(questions.get(0).getBooleanCorrectAnswer());
         assertEquals("Q1_PARENT", questions.get(1).getDependsOnQuestionCode());
         assertEquals(7, questions.get(1).getScalePointCount());
@@ -485,6 +487,23 @@ class MaturityModelServiceTest {
         assertEquals("multiple_selection", savedQuestion.getType());
         assertEquals("Policy", savedQuestion.getChoices().getFirst().getLabel());
         assertEquals(12.5, savedQuestion.getChoices().getFirst().getRawValue());
+    }
+
+    @Test
+    void createMaturityModel_rejectsInvalidQuestionWeights() {
+        for (boolean required : List.of(false, true)) {
+            for (double weight : List.of(-1.0, Double.NaN, Double.POSITIVE_INFINITY, 0.0)) {
+                if (!required && weight == 0.0) continue;
+                MaturityModelDTO dto = updateDto(domain().getId(), null);
+                QuestionDTO question = dto.getDimensions().getFirst().getModules().getFirst()
+                        .getPractices().getFirst().getQuestions().getFirst();
+                question.setRequired(required);
+                question.setWeight(weight);
+                IllegalOperationException exception = assertThrows(IllegalOperationException.class,
+                        () -> service.createMaturityModel(dto));
+                assertEquals("INVALID_QUESTION_WEIGHT", exception.getErrorCode());
+            }
+        }
     }
 
     @Test

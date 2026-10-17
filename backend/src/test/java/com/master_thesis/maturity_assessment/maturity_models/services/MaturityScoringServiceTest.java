@@ -21,6 +21,12 @@ class MaturityScoringServiceTest {
 
     private MaturityScoringService scoringService;
 
+    @Test
+    void weightedAveragePreservesZeroWeights() {
+        assertEquals(0.8, scoringService.aggregate(List.of(0.2, 0.8), List.of(0.0, 1.0), AggregationRule.WEIGHTED_AVERAGE));
+        assertEquals(0.0, scoringService.aggregate(List.of(0.2, 0.8), List.of(0.0, 0.0), AggregationRule.WEIGHTED_AVERAGE));
+    }
+
     @BeforeEach
     void setUp() {
         scoringService = new MaturityScoringService();

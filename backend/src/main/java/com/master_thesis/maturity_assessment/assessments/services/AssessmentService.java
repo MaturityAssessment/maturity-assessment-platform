@@ -2123,7 +2123,7 @@ public class AssessmentService {
                     .add(new ScoreNode(
                             info.getQuestionCode(),
                             questionScore,
-                            positiveWeight(info.getWeight()),
+                            info.getWeight() != null && info.getWeight() == 0.0 ? 0.0 : positiveWeight(info.getWeight()),
                             1,
                             questionScore * info.getEffectiveWeight(),
                             true

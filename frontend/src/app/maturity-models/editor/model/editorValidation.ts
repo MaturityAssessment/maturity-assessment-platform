@@ -320,8 +320,8 @@ export function validateDocument(
         const questionCodes = new Map<string, string>();
         practice.questions.forEach((question, questionIndex) => {
           const firstQuestionIssue = issues.length;
-          if (!Number.isFinite(question.weight) || question.weight <= 0) {
-            add({ step: "structure", severity: "error", message: "Question weight is required and must be greater than zero.", selection: practiceSelection, field: `question-${question.clientKey}-weight` });
+          if (!Number.isFinite(question.weight) || question.weight < 0 || (question.required && question.weight === 0)) {
+            add({ step: "structure", severity: "error", message: question.required ? "Required question weight must be greater than zero." : "Question weight is required and must be zero or greater.", selection: practiceSelection, field: `question-${question.clientKey}-weight` });
           }
           checkCode(
             questionCodes,

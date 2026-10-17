@@ -54,3 +54,21 @@ test("structure weights require positive values and identify the affected field"
   dimension.weight = module.weight = practice.weight = 0.5;
   assert.equal(validateDocument(document).filter((issue) => issue.field?.endsWith("-weight")).length, 0);
 });
+
+test("zero question weight is valid only while the question is optional", () => {
+  const document = createEmptyDocument();
+  const question = document.dimensions[0].modules[0].practices[0].questions[0];
+  const weightIssues = () => validateDocument(document).filter((issue) => issue.field === `question-${question.clientKey}-weight`);
+  question.weight = 0;
+  question.required = false;
+  assert.equal(weightIssues().length, 0);
+  question.required = true;
+  assert.equal(weightIssues().length, 1);
+  question.weight = 0.5;
+  assert.equal(weightIssues().length, 0);
+  question.required = false;
+  for (const invalid of [NaN, -1, Infinity]) {
+    question.weight = invalid;
+    assert.equal(weightIssues().length, 1);
+  }
+});
