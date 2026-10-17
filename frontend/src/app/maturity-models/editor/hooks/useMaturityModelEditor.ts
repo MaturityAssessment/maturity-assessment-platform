@@ -55,6 +55,7 @@ import {
   createInitialEditorState,
   editorReducer,
 } from "../state/editorReducer";
+import { compareDocuments, reconcileDocument, type ComparisonProvenance } from "../model/editorChanges";
 import { useEditorDraft } from "./useEditorDraft";
 import {
   confirmLeaveEditor,
@@ -87,8 +88,11 @@ export function useMaturityModelEditor(
       }`,
     [sourceModelId, user?.email, user?.id]
   );
-  const { clearDraft, readDraft } = useEditorDraft({
+  const { clearDraft, readDraft, draftError } = useEditorDraft({
     draftKey,
+    sourceModelId,
+    baseline: state.baseline,
+    provenance: state.provenance,
     document: state.document,
     initialized: state.initialized,
     dirty: state.dirty,
@@ -99,12 +103,16 @@ export function useMaturityModelEditor(
     (
       document: MaturityModelEditorDocument,
       lockCodes: boolean,
-      dirty = false
+      dirty = false,
+      baseline: MaturityModelEditorDocument | null = null,
+      provenance: ComparisonProvenance = "source"
     ) => {
       dispatch({
         type: "initialize",
         document: hydrateDocument(document, lockCodes),
         dirty,
+        baseline,
+        provenance,
       });
     },
     []
@@ -130,13 +138,16 @@ export function useMaturityModelEditor(
         `/api/v1/maturity-model/${sourceModelId}/editor`
       )
       .then((response) => {
+        const baseline = hydrateDocument(response.data, true);
         const saved = readDraft();
         if (saved) {
           const resume = window.confirm(
             "A browser draft exists for this model. Select OK to resume it, or Cancel to discard it and load the saved model."
           );
           if (resume) {
-            initialize(saved, true);
+            const restoredBaseline = saved.version === 2 ? saved.baseline : baseline;
+            const restored = saved.version === 2 ? saved.document : reconcileDocument(saved.document, null, baseline);
+            initialize(restored, true, true, restoredBaseline, saved.version === 2 ? saved.provenance : "legacy");
             dispatch({
               type: "notice",
               notice: { type: "success", message: "Browser draft restored." },
@@ -145,7 +156,7 @@ export function useMaturityModelEditor(
           }
           clearDraft();
         }
-        initialize(response.data, true);
+        initialize(structuredClone(baseline), true, false, baseline);
       })
       .catch((error) =>
         dispatch({
@@ -171,7 +182,7 @@ export function useMaturityModelEditor(
           "A browser draft exists. Select OK to resume it, or Cancel to start again."
         );
         if (resume) {
-          initialize(saved, false);
+          initialize(saved.document, false, true, null, saved.version === 2 ? saved.provenance : "source");
           dispatch({
             type: "notice",
             notice: { type: "success", message: "Browser draft restored." },
@@ -430,7 +441,8 @@ export function useMaturityModelEditor(
         if (editing && state.document?.domainId && !imported.domainId) {
           imported.domainId = state.document.domainId;
         }
-        dispatch({ type: "initialize", document: imported, dirty: true });
+        const reconciled = editing ? reconcileDocument(imported, state.document, state.baseline) : imported;
+        dispatch({ type: "initialize", document: reconciled, dirty: true, provenance: editing ? "import" : "source" });
         dispatch({ type: "entryChoice", entryChoice: "manual" });
         dispatch({
           type: "notice",
@@ -455,7 +467,7 @@ export function useMaturityModelEditor(
         dispatch({ type: "importing", importing: false });
       }
     },
-    [editing, state.dirty, state.document]
+    [editing, state.dirty, state.document, state.baseline]
   );
 
   const selectIssue = useCallback((issue: EditorIssue) => {
@@ -554,8 +566,12 @@ export function useMaturityModelEditor(
     dispatch({ type: "notice", notice: null });
   }, []);
 
+  const changes = useMemo(() => state.document ? compareDocuments(state.baseline, state.document, state.provenance, domains) : null, [state.baseline, state.document, state.provenance, domains]);
+
   return {
     state,
+    changes,
+    draftError,
     editing,
     domains,
     issues,

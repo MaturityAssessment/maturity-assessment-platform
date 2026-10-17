@@ -13,6 +13,8 @@ export type EditorAction =
       document: MaturityModelEditorDocument;
       selection?: Selection | null;
       dirty?: boolean;
+      baseline?: MaturityModelEditorDocument | null;
+      provenance?: import("../model/editorChanges").ComparisonProvenance;
     }
   | {
       type: "replaceDocument";
@@ -32,6 +34,8 @@ export type EditorAction =
 export function createInitialEditorState(editing: boolean): EditorState {
   return {
     document: null,
+    baseline: null,
+    provenance: "source",
     step: "overview",
     selection: null,
     initialized: false,
@@ -54,6 +58,8 @@ export function editorReducer(
       return {
         ...state,
         document: action.document,
+        baseline: action.baseline === undefined ? state.baseline : action.baseline,
+        provenance: action.provenance ?? state.provenance,
         step: "overview",
         selection:
           action.selection ??

@@ -81,6 +81,7 @@ export default function MaturityModelEditorPage({
       onCancel={editor.cancel}
       onSave={editor.save}
     >
+      {editor.draftError && <p role="status" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{editor.draftError}</p>}
       {state.step === "overview" && (
         <OverviewStep
           document={state.document}
@@ -103,8 +104,9 @@ export default function MaturityModelEditorPage({
           commands={structureCommands}
         />
       )}
-      {state.step === "review" && (
+      {state.step === "review" && editor.changes && (
         <ReviewStep
+          changes={editor.changes}
           document={state.document}
           issues={issues}
           editing={editing}

@@ -32,6 +32,8 @@ export type EditorNotice = {
 export type EditorEntryChoice = "manual" | "excel" | null;
 
 export type EditorState = {
+  baseline: MaturityModelEditorDocument | null;
+  provenance: import("./editorChanges").ComparisonProvenance;
   document: MaturityModelEditorDocument | null;
   step: EditorStep;
   selection: Selection | null;

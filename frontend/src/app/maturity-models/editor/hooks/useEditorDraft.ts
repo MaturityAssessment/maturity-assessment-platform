@@ -1,41 +1,45 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { MaturityModelEditorDocument } from "@/api/types";
+import type { ComparisonProvenance } from "../model/editorChanges";
+import { parseEditorDraft, persistEditorDraft, type EditorDraft } from "../model/editorDraft";
 
 type UseEditorDraftOptions = {
   draftKey: string;
+  sourceModelId?: string;
   document: MaturityModelEditorDocument | null;
+  baseline: MaturityModelEditorDocument | null;
+  provenance: ComparisonProvenance;
   initialized: boolean;
   dirty: boolean;
 };
 
-export function useEditorDraft({
-  draftKey,
-  document,
-  initialized,
-  dirty,
-}: UseEditorDraftOptions) {
+export function useEditorDraft({ draftKey, sourceModelId, document, baseline, provenance, initialized, dirty }: UseEditorDraftOptions) {
+  const [draftError, setDraftError] = useState<string | null>(null);
   const clearDraft = useCallback(() => {
-    window.localStorage.removeItem(draftKey);
+    try { window.localStorage.removeItem(draftKey); setDraftError(null); }
+    catch { setDraftError("Could not clear the browser draft. Your saved model is unaffected."); }
   }, [draftKey]);
-
   const readDraft = useCallback(() => {
-    const saved = window.localStorage.getItem(draftKey);
-    if (!saved) return null;
     try {
-      return JSON.parse(saved) as MaturityModelEditorDocument;
+      const saved = window.localStorage.getItem(draftKey);
+      if (!saved) return null;
+      const draft = parseEditorDraft(saved, sourceModelId ?? null);
+      if (!draft) setDraftError("The browser draft could not be restored. The saved model has been loaded.");
+      return draft;
     } catch {
-      window.localStorage.removeItem(draftKey);
+      setDraftError("Could not read the browser draft. Keep this page open until you save your changes.");
       return null;
     }
-  }, [draftKey]);
-
+  }, [draftKey, sourceModelId]);
   useEffect(() => {
     if (!initialized || !document || !dirty) return;
     const timer = window.setTimeout(() => {
-      window.localStorage.setItem(draftKey, JSON.stringify(document));
+      try {
+        const draft: EditorDraft = { version: 2, sourceModelId: sourceModelId ?? null, document, baseline, provenance };
+        setDraftError(persistEditorDraft(window.localStorage, draftKey, draft));
+      } catch { setDraftError("Changes could not be saved in this browser. Keep this page open until you save your model."); }
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [dirty, document, draftKey, initialized]);
-
-  return { clearDraft, readDraft };
+  }, [dirty, document, baseline, provenance, draftKey, initialized, sourceModelId]);
+  return { clearDraft, readDraft, draftError };
 }

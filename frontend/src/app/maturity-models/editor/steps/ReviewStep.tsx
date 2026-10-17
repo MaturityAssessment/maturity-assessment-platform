@@ -1,5 +1,7 @@
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import type { MaturityModelEditorDocument } from "@/api/types";
+import ChangesPreview from "../components/ChangesPreview";
+import type { ChangesPreview as Preview } from "../model/editorChanges";
 import { Panel } from "../components/FormFields";
 import { countItems } from "../model/editorDocument";
 import type { EditorIssue } from "../model/editorTypes";
@@ -9,10 +11,12 @@ export default function ReviewStep({
   issues,
   editing,
   onIssueClick,
+  changes,
 }: {
   document: MaturityModelEditorDocument;
   issues: EditorIssue[];
   editing: boolean;
+  changes: Preview;
   onIssueClick: (issue: EditorIssue) => void;
 }) {
   const counts = countItems(document);
@@ -21,6 +25,8 @@ export default function ReviewStep({
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_23rem]">
+      <div className="min-w-0 space-y-5">
+      <ChangesPreview changes={changes} document={document} />
       <Panel
         title="Review model"
         description="Check the complete shape and follow any issue back to its source."
@@ -75,7 +81,8 @@ export default function ReviewStep({
           here will not affect the model currently used for assessments.
         </div>
       </Panel>
-      <aside className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      </div>
+      <aside className="self-start rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex items-center gap-2">
           <ExclamationTriangleIcon
             className={`h-5 w-5 ${errors.length ? "text-red-500" : "text-green-600"}`}
