@@ -13,7 +13,7 @@ import {
 import { suggestCode } from "../../model/editorDocument";
 import { codePrefix } from "../../model/editorCodes";
 import { changeQuestionType } from "../../model/editorMutations";
-import { dependencyWouldCycle } from "../../model/editorValidation";
+import QuestionDependencyField from "../../components/QuestionDependencyField";
 import QuestionTypeFields, {
   ScaleConfigurationFields,
 } from "./QuestionTypeFields";
@@ -38,12 +38,6 @@ export default function QuestionEditor({
   onClose: () => void;
   onDelete: () => void;
 }) {
-  const dependencyCandidates = practice.questions.filter(
-    (candidate) =>
-      candidate.clientKey !== question.clientKey &&
-      candidate.type === "boolean" &&
-      !dependencyWouldCycle(practice, question.code, candidate.code)
-  );
   return (
     <Dialog open onClose={onClose} className="relative z-50">
       <DialogBackdrop className="fixed inset-0 bg-gray-950/40" />
@@ -134,28 +128,7 @@ export default function QuestionEditor({
                 />
               </label>
 
-            <label className={`${labelClass} min-w-0`}>
-              Depends on
-              <select
-                className={`${inputClass} min-w-0 max-w-full truncate pr-8`}
-                title={dependencyCandidates.find((candidate) => candidate.code === question.dependsOnQuestionCode)?.text || undefined}
-                value={question.dependsOnQuestionCode ?? ""}
-                onChange={(event) =>
-                  onChange({
-                    ...question,
-                    dependsOnQuestionCode: event.target.value || undefined,
-                  })
-                }
-              >
-                <option value="">No dependency</option>
-                {dependencyCandidates.map((candidate) => (
-                  <option key={candidate.clientKey} value={candidate.code}>
-                    {candidate.code} — {candidate.text || "Untitled question"}
-                  </option>
-                ))}
-              </select>
-              <span className="text-xs font-normal text-gray-500">Dependencies can only target Yes / No questions in this practice.</span>
-            </label>
+            <QuestionDependencyField question={question} practice={practice} onChange={onChange} />
             <ScaleConfigurationFields
               question={question}
               maxLevel={maxLevel}

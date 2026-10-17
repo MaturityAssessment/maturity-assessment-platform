@@ -45,6 +45,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.master_thesis.maturity_assessment.maturity_models.dto.QuestionChoiceDTO;
 
+import com.master_thesis.maturity_assessment.maturity_models.services.QuestionDependencies;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -64,6 +65,11 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class AssessmentService {
+
+    // Raw values remain available for scoring; option identity is retained for activation.
+    private static class ResponseValues extends LinkedHashMap<String, Object> {
+        private final Map<Long, QuestionDependencies.Answer> answers = new HashMap<>();
+    }
 
     private final AssessmentRepository assessmentRepository;
     private final DimensionResultRepository dimensionResultRepository;
@@ -903,26 +909,51 @@ public class AssessmentService {
         if (request == null || request.getQuestionResponses() == null) {
             return Map.of();
         }
-        Map<String, Object> responses = new LinkedHashMap<>();
+        ResponseValues responses = new ResponseValues();
         request.getQuestionResponses().forEach((key, value) -> {
             if (value != null) {
                 responses.put(key, value.getResponse());
+                responses.answers.put(value.getQuestionId(), new QuestionDependencies.Answer(value.getResponse(), value.getChoiceIndex()));
             }
         });
-        return responses;
+        return activeResponseValues(responses, request.getMaturityModelId());
     }
 
-    private Map<String, Object> responseValues(List<QuestionEvaluation> rows) {
-        Map<String, Object> responses = new LinkedHashMap<>();
+    private Map<String, Object> responseValues(List<QuestionEvaluation> rows, Long modelId) {
+        ResponseValues responses = new ResponseValues();
         if (rows == null) {
             return responses;
         }
         for (QuestionEvaluation row : rows) {
             if (row.getResponseKey() != null && row.getResponse() != null) {
+                responses.answers.put(row.getQuestionId(), new QuestionDependencies.Answer(
+                        objectMapper.convertValue(row.getResponse(), Object.class), row.getChoiceIndex()));
                 responses.put(
                         row.getResponseKey(),
                         objectMapper.convertValue(row.getResponse(), Object.class)
                 );
+            }
+        }
+        return activeResponseValues(responses, modelId);
+    }
+
+    private Map<String, Object> activeResponseValues(ResponseValues responses, Long modelId) {
+        if (modelId == null || responses.isEmpty()) return responses;
+        MaturityModel model = maturityModelRepository.findById(modelId).orElse(null);
+        if (model == null || model.getDimensions() == null) return responses;
+        for (Dimension dimension : model.getDimensions()) {
+            if (dimension.getModules() == null) continue;
+            for (Module module : dimension.getModules()) {
+                if (module.getPractices() == null) continue;
+                for (Practice practice : module.getPractices()) {
+                    if (practice.getQuestions() == null) continue;
+                    for (Question question : practice.getQuestions()) {
+                        if (!isQuestionVisible(question, responses)) {
+                            String key = findQuestionKey(question.getId(), responses);
+                            if (key != null) responses.remove(key);
+                        }
+                    }
+                }
             }
         }
         return responses;
@@ -934,7 +965,9 @@ public class AssessmentService {
             boolean calculateInitialScores,
             boolean preserveReviewedRows
     ) {
-        Map<String, QuestionResponseRequest> submitted = request.getQuestionResponses();
+        Map<String, Object> active = responseValues(request);
+        Map<String, QuestionResponseRequest> submitted = new LinkedHashMap<>(request.getQuestionResponses());
+        submitted.keySet().retainAll(active.keySet());
         Map<String, QuestionInfo> metadata = loadQuestionMetadata(request.getMaturityModelId());
         List<QuestionEvaluation> existingRows =
                 questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(assessment.getId());
@@ -1090,6 +1123,7 @@ public class AssessmentService {
                 request.getQuestionResponses() != null
                         ? request.getQuestionResponses()
                         : Map.of();
+        Map<String, Object> active = responseValues(request);
         for (QuestionEvaluation row :
                 questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(assessment.getId())) {
             if (row.getValidationStatus() != QuestionEvaluationStatus.ACCEPTED) {
@@ -1111,7 +1145,7 @@ public class AssessmentService {
                     );
             boolean sameChoice = candidate == null ? row.getChoiceIndex() == null
                     : Objects.equals(row.getChoiceIndex(), candidate.getChoiceIndex());
-            if (!sameResponse || !sameJustification || !sameChoice) {
+            if (!sameResponse || !sameJustification || !sameChoice || !active.containsKey(row.getResponseKey())) {
                 throw new ResponseStatusException(
                         HttpStatus.CONFLICT,
                         "Accepted responses cannot be changed: " + row.getResponseKey()
@@ -1381,7 +1415,7 @@ public class AssessmentService {
                 questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(assessment.getId());
         List<Evidence> persistedEvidence =
                 evidenceRepository.findByAssessmentIdOrderByIdAsc(assessment.getId());
-        Map<String, Object> persistedResponses = responseValues(persistedRows);
+        Map<String, Object> persistedResponses = responseValues(persistedRows, assessment.getMaturityModelId());
         boolean hasReviewableContent = persistedResponses.values().stream()
                 .anyMatch(this::isAnswered)
                 || !persistedEvidence.isEmpty();
@@ -1452,7 +1486,7 @@ public class AssessmentService {
 
         List<QuestionEvaluation> persistedQuestionRows =
                 questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(assessment.getId());
-        Map<String, Object> responses = responseValues(persistedQuestionRows);
+        Map<String, Object> responses = responseValues(persistedQuestionRows, assessment.getMaturityModelId());
 
         Map<String, QuestionInfo> questionMetadata = loadQuestionMetadata(maturityModelId);
         int manualMaxLevel = questionMetadata.values().stream()
@@ -1535,7 +1569,7 @@ public class AssessmentService {
 
         List<QuestionEvaluation> persistedRows =
                 questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(assessment.getId());
-        Map<String, Object> responses = responseValues(persistedRows);
+        Map<String, Object> responses = responseValues(persistedRows, assessment.getMaturityModelId());
         Map<String, QuestionInfo> questionMetadata = loadQuestionMetadata(assessment.getMaturityModelId());
         int manualMaxLevel = questionMetadata.values().stream()
                 .mapToInt(QuestionInfo::getMaxLevelNumber)
@@ -1569,7 +1603,7 @@ public class AssessmentService {
 
         List<QuestionEvaluation> persistedRows =
                 questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(assessment.getId());
-        Map<String, Object> responses = responseValues(persistedRows);
+        Map<String, Object> responses = responseValues(persistedRows, assessment.getMaturityModelId());
         Map<String, QuestionInfo> questionMetadata = loadQuestionMetadata(assessment.getMaturityModelId());
         Set<String> requiredReviewKeys = determineRequiredReviewKeys(
                 assessment.getId(),
@@ -2013,10 +2047,10 @@ public class AssessmentService {
     }
 
     public Map<String, Object> getOpenAnswerQuestions(Long assessmentId, User user) {
-        assessmentRepository.findById(assessmentId)
+        Assessment assessment = assessmentRepository.findById(assessmentId)
                 .orElseThrow(() -> new RuntimeException("Assessment not found"));
         return responseValues(
-                questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(assessmentId)
+                questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(assessmentId), assessment.getMaturityModelId()
         );
     }
 
@@ -2588,38 +2622,11 @@ public class AssessmentService {
     }
 
     boolean isQuestionVisible(Question question, Map<String, Object> responses) {
-        return isQuestionVisible(question, responses, new HashSet<>());
-    }
-
-
-    private boolean isQuestionVisible(
-            Question question,
-            Map<String, Object> responses,
-            Set<Long> visitingQuestionIds
-    ) {
-        Question parent = question.getDependsOnQuestion();
-        if (parent == null || parent.getId() == null) return true;
-
-        Long questionId = question.getId();
-        if (questionId != null && !visitingQuestionIds.add(questionId)) {
-            return false;
-        }
-        try {
-            if (!isQuestionVisible(parent, responses, visitingQuestionIds)) {
-                return false;
-            }
-
-            String key = findQuestionKey(parent.getId(), responses);
-            if (key == null) return false;
-            Object value = responses.get(key);
-            return value instanceof Number ? ((Number) value).intValue() == 1
-                    : "1".equals(String.valueOf(value)) || "true".equalsIgnoreCase(String.valueOf(value))
-                    || "yes".equalsIgnoreCase(String.valueOf(value));
-        } finally {
-            if (questionId != null) {
-                visitingQuestionIds.remove(questionId);
-            }
-        }
+        return QuestionDependencies.active(question, id -> {
+            if (responses instanceof ResponseValues values) return values.answers.get(id);
+            String key = findQuestionKey(id, responses);
+            return key == null ? null : new QuestionDependencies.Answer(responses.get(key), null);
+        }, objectMapper);
     }
 
     private String findQuestionKey(Long questionId, Map<String, Object> responses) {

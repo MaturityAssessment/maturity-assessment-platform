@@ -133,6 +133,7 @@ export default function QuestionTypeFields({
               setChoices([
                 ...(question.choices ?? []),
                 {
+                  id: crypto.randomUUID(),
                   label: "",
                   score: 0,
                   rawValue: 0,

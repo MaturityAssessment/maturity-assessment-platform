@@ -17,6 +17,7 @@ public class QuestionDTO {
     private String help;
     private Long dependsOnQuestionId; // Reference to parent question ID (numeric) within same practice
     private String dependsOnQuestionCode; // Stable editor/API dependency reference
+    private DependencyCondition dependencyCondition;
     private Boolean required;
     /** For boolean questions, the answer that receives normalized score 1. */
     private Boolean booleanCorrectAnswer;

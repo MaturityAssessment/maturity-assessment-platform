@@ -46,6 +46,10 @@ public class Question {
     @JoinColumn(name = "depends_on_question_id")
     private Question dependsOnQuestion;
 
+    @Convert(converter = DependencyConditionConverter.class)
+    @Column(name = "dependency_condition", columnDefinition = "TEXT")
+    private com.master_thesis.maturity_assessment.maturity_models.dto.DependencyCondition dependencyCondition;
+
     @Column(name = "required", nullable = false, columnDefinition = "boolean default false")
     private Boolean required = false;
 

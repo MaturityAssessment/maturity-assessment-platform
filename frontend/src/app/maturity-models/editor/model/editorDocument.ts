@@ -211,6 +211,7 @@ export function hydrateDocument(
             codeLocked: false,
             weight: question.weight ?? 1,
             help: question.help ?? "",
+            choices: question.choices?.map((choice) => ({ ...choice, ...(question.type === "multiple_choice" ? { id: choice.id || key() } : {}) })),
             required: question.required ?? false,
             booleanCorrectAnswer: question.booleanCorrectAnswer ?? true,
             scalePointCount: question.scalePointCount ?? 5,
@@ -238,6 +239,11 @@ export function hydrateDocument(
       modelModule.practices = practices.items;
       modelModule.gatingRules = practices.gatingRules;
       for (const practice of modelModule.practices) {
+        practice.questions = practice.questions.map((question) => {
+          const parent = practice.questions.find((candidate) => candidate.code.toLowerCase() === question.dependsOnQuestionCode?.toLowerCase());
+          return parent?.type === "boolean" && !question.dependencyCondition
+            ? { ...question, dependencyCondition: { type: "boolean" as const, answers: [true] } } : question;
+        });
         const questions = renumberSiblingCodes(practice.questions, "Q", practice.gatingRules);
         practice.questions = questions.items;
         practice.gatingRules = questions.gatingRules;

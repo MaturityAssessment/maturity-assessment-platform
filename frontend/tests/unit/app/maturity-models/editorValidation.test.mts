@@ -72,3 +72,24 @@ test("zero question weight is valid only while the question is optional", () => 
     assert.equal(weightIssues().length, 1);
   }
 });
+
+test("dependency conditions survive hydration, and parent edits require explicit repair", async () => {
+  const { hydrateDocument, serializeDocument, emptyQuestion } = await import("../../../../src/app/maturity-models/editor/model/editorDocument.ts");
+  const document = createEmptyDocument();
+  const practice = document.dimensions[0].modules[0].practices[0];
+  const parent = practice.questions[0]; parent.type = "multiple_choice";
+  parent.choices = [{ id: "a", label: "A", score: 0.5 }, { id: "b", label: "B", score: 0.5 }];
+  const child = emptyQuestion(2); child.dependsOnQuestionCode = parent.code;
+  child.dependencyCondition = { type: "multiple_choice", optionIds: ["b"] };
+  practice.questions.push(child);
+  const dependencyIssues = () => validateDocument(document).filter((issue) => issue.questionKey === child.clientKey && /activation|dependency/.test(issue.message));
+  assert.equal(dependencyIssues().length, 0);
+  const restored = hydrateDocument(serializeDocument(document) as typeof document, false);
+  assert.deepEqual(restored.dimensions[0].modules[0].practices[0].questions[1].dependencyCondition, child.dependencyCondition);
+  parent.choices.reverse(); parent.choices[0].label = "Renamed"; parent.choices[0].score = 0;
+  assert.equal(dependencyIssues().length, 0);
+  parent.choices.shift(); assert.equal(dependencyIssues().length, 1);
+  parent.type = "likert"; assert.equal(dependencyIssues().length, 1);
+  child.dependencyCondition = { type: "likert", points: [5] }; assert.equal(dependencyIssues().length, 0);
+  parent.scalePointCount = 4; assert.equal(dependencyIssues().length, 1);
+});

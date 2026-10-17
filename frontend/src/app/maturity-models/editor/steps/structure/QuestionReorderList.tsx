@@ -1,3 +1,4 @@
+import { dependencySummary } from "@/lib/questionDependencies";
 import {
   DndContext,
   KeyboardSensor,
@@ -65,6 +66,7 @@ export default function QuestionReorderList({
             <SortableQuestionOrderItem
               key={question.clientKey}
               question={question}
+              dependencyText={dependencySummary(questions.find((candidate) => candidate.code.toLowerCase() === question.dependsOnQuestionCode?.toLowerCase()), question.dependencyCondition)}
               issues={issues.filter((issue) => issue.questionKey === question.clientKey)}
               questionIndex={questionIndex}
               questionCount={questions.length}
@@ -84,6 +86,7 @@ export default function QuestionReorderList({
 
 function SortableQuestionOrderItem({
   question,
+  dependencyText,
   issues,
   questionIndex,
   questionCount,
@@ -92,6 +95,7 @@ function SortableQuestionOrderItem({
   onDelete,
 }: {
   question: ModelEditorQuestion;
+  dependencyText: string;
   issues: EditorIssue[];
   questionIndex: number;
   questionCount: number;
@@ -154,7 +158,7 @@ function SortableQuestionOrderItem({
             {question.dependsOnQuestionCode && (
               <span className="inline-flex min-w-0 items-center gap-1.5 text-gray-600">
                 <LinkIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-                <span className="[overflow-wrap:anywhere]">Depends on {question.dependsOnQuestionCode}</span>
+                <span className="[overflow-wrap:anywhere]">{dependencyText}</span>
               </span>
             )}
           </span>

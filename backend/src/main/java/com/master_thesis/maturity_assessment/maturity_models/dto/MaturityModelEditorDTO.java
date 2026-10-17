@@ -65,6 +65,7 @@ public class MaturityModelEditorDTO {
         private String type;
         private String help;
         private String dependsOnQuestionCode;
+        private DependencyCondition dependencyCondition;
         private Boolean required;
         private Boolean booleanCorrectAnswer;
         private List<QuestionChoiceDTO> choices;

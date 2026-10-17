@@ -72,11 +72,20 @@ class MaturityModelExcelPersistenceIntegrationTest {
         practice.setRequiresEvidence(true);
         practice.setWeight(4.5);
         practice.setGatingRules(List.of(gate(practice.getQuestions().getFirst().getCode())));
-        practice.getQuestions().getFirst().setBooleanCorrectAnswer(false);
+        practice.getQuestions().getFirst().setType("likert");
+        practice.getQuestions().getFirst().setScalePointCount(5);
+        var dependent = practice.getQuestions().get(1);
+        dependent.setDependsOnQuestionCode(practice.getQuestions().getFirst().getCode());
+        var condition = new com.master_thesis.maturity_assessment.maturity_models.dto.DependencyCondition();
+        condition.setType("likert"); condition.setPoints(List.of(3, 4, 5));
+        dependent.setDependencyCondition(condition);
 
         var original = models.createFromEditor(editor);
         entityManager.flush();
         entityManager.clear();
+        var originalReloaded = models.getMaturityModelById(original.getId());
+        assertEquals(List.of(3, 4, 5), originalReloaded.getDimensions().getFirst().getModules().getFirst()
+                .getPractices().getFirst().getQuestions().get(1).getDependencyCondition().getPoints());
         byte[] exported = excel.exportMaturityModelToXlsx(models.getMaturityModelById(original.getId()));
         byte[] edited;
         try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(exported));
@@ -111,7 +120,7 @@ class MaturityModelExcelPersistenceIntegrationTest {
         assertTrue(savedPractice.getRequiresEvidence());
         assertEquals(practice.getGatingRules(), savedPractice.getGatingRules());
         assertEquals("Edited question from Excel", savedPractice.getQuestions().getFirst().getText());
-        assertFalse(savedPractice.getQuestions().getFirst().getBooleanCorrectAnswer());
+        assertEquals(condition, savedPractice.getQuestions().get(1).getDependencyCondition());
         assertEquals(savedPractice.getQuestions().getFirst().getCode(), savedPractice.getQuestions().getLast().getDependsOnQuestionCode());
         var quality = reloaded.getDimensions().getLast().getModules().getLast().getPractices().getFirst().getQuestions();
         assertFalse(quality.get(1).getRangeHighValueIsMaximum());

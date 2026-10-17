@@ -479,6 +479,10 @@ public class CsvParsingService {
             QuestionDTO questionDTO = new QuestionDTO();
             questionDTO.setCode(blankToNull(row.getQuestionCode()));
             questionDTO.setDependsOnQuestionCode(blankToNull(row.getDependsOnQuestionCode()));
+            if (!isBlank(row.getDependencyCondition())) {
+                try { questionDTO.setDependencyCondition(objectMapper.readValue(row.getDependencyCondition(), com.master_thesis.maturity_assessment.maturity_models.dto.DependencyCondition.class)); }
+                catch (Exception exception) { errors.add("Row " + rowNumber + ": invalid dependencyCondition JSON"); }
+            }
             questionDTO.setWeight(questionWeight);
             questionDTO.setText(row.getQuestionText());
             String qType = row.getQuestionType().toLowerCase(Locale.ROOT);
@@ -550,6 +554,16 @@ public class CsvParsingService {
         }
 
         dto.setDimensions(buildDimensions(dimensions));
+        for (var dimension : dto.getDimensions()) for (var module : dimension.getModules()) for (var practice : module.getPractices()) {
+            for (var question : practice.getQuestions()) QuestionDependencies.normalizeChoices(question);
+            for (var question : practice.getQuestions()) {
+                String code = question.getDependsOnQuestionCode();
+                var parent = code == null ? null : practice.getQuestions().stream().filter(candidate -> code.equalsIgnoreCase(candidate.getCode())).findFirst().orElse(null);
+                if (code != null && parent == null) { errors.add("Question '" + question.getCode() + "': dependency parent not found in this practice"); continue; }
+                try { QuestionDependencies.validate(question, parent); }
+                catch (com.master_thesis.maturity_assessment.config.IllegalOperationException exception) { errors.add(exception.getMessage()); }
+            }
+        }
         return dto;
     }
 

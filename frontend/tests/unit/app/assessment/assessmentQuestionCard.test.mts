@@ -131,3 +131,11 @@ test("single choice keeps equal-score options exclusive and emits distinct ident
   const empty = renderToStaticMarkup(card({ question: { ...question, type: "multiple_choice", choices } }));
   assert.equal((empty.match(/checked=""/g) ?? []).length, 0);
 });
+
+test("ambiguous historical choices ask for an explicit option when they control dependencies", () => {
+  const parent = { ...question, type: "multiple_choice", choices: [{ id: "a", label: "A", score: 1 }, { id: "b", label: "B", score: 1 }] };
+  const child = { ...question, id: 2, dependsOnQuestionId: parent.id, dependencyCondition: { type: "multiple_choice", optionIds: ["b"] } };
+  const html = renderToStaticMarkup(card({ question: parent, value: 1, practiceQuestions: [parent, child] }));
+  assert.match(html, /Please select an answer option again/);
+  assert.equal((html.match(/checked=""/g) ?? []).length, 0);
+});

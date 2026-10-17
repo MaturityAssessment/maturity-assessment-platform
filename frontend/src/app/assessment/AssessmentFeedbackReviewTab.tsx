@@ -205,6 +205,7 @@ export default function AssessmentFeedbackReviewTab({
 
               <AssessmentQuestionCard readOnly={readOnly}
                 question={item.question}
+                practiceQuestions={item.step.practice.questions}
                 fieldName={item.fieldName}
                 value={formData[item.fieldName]}
                 disabled={isDependentQuestionDisabled(

@@ -602,6 +602,43 @@ class AssessmentServiceLifecycleTest {
     }
 
     @Test
+    void selectedChoiceIdentityControlsRequiredDependenciesEvenWithEqualScores() throws Exception {
+        MaturityModel model = autoModelWithRequiredBooleanDependency();
+        var questions = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getQuestions();
+        Question parent = questions.getFirst(); parent.setType("multiple_choice");
+        parent.setChoiceOptions("[{\"id\":\"a\",\"label\":\"A\",\"score\":0.5},{\"id\":\"b\",\"label\":\"B\",\"score\":0.5}]");
+        var condition = new com.master_thesis.maturity_assessment.maturity_models.dto.DependencyCondition();
+        condition.setType("multiple_choice"); condition.setOptionIds(List.of("b"));
+        questions.getLast().setDependencyCondition(condition);
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        AssessmentRequest incoming = request(Map.of("D1_M1_101_1001", 0.5));
+        incoming.getQuestionResponses().get("D1_M1_101_1001").setChoiceIndex(1);
+        assertThrows(IllegalOperationException.class, () -> assessmentService.createAssessment(incoming, user));
+        incoming.getQuestionResponses().get("D1_M1_101_1001").setChoiceIndex(0);
+        Assessment draft = draftAssessment();
+        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(USER_ID, MODEL_ID, AssessmentStatus.DRAFT)).thenReturn(Optional.of(draft));
+        assertEquals("COMPLETED", assessmentService.createAssessment(incoming, user).getStatus());
+    }
+
+    @Test
+    void scaleDependencyMatchesRawPointAndDiscardsInactiveChildResponses() {
+        MaturityModel model = autoModelWithRequiredBooleanDependency();
+        var questions = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getQuestions();
+        questions.getFirst().setType("likert"); questions.getFirst().setScaleHighPointIsMaximum(false);
+        var condition = new com.master_thesis.maturity_assessment.maturity_models.dto.DependencyCondition();
+        condition.setType("likert"); condition.setPoints(List.of(3, 4)); questions.getLast().setDependencyCondition(condition);
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        assertThrows(IllegalOperationException.class, () -> assessmentService.createAssessment(request(Map.of("D1_M1_101_1001", 3)), user));
+        Assessment draft = draftAssessment();
+        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(USER_ID, MODEL_ID, AssessmentStatus.DRAFT)).thenReturn(Optional.of(draft));
+        var result = assessmentService.createAssessment(request(Map.of("D1_M1_101_1001", 1, "D1_M1_101_1002", 1)), user);
+        assertEquals("COMPLETED", result.getStatus());
+        org.mockito.ArgumentCaptor<List<QuestionEvaluation>> saved = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(questionEvaluationRepository).saveAll(saved.capture());
+        assertEquals(List.of(1001L), saved.getValue().stream().map(QuestionEvaluation::getQuestionId).toList());
+    }
+
+    @Test
     void hiddenIntermediateResponseDoesNotMakeNestedRequiredDependentVisible() {
         String rootKey = "D1_M1_101_1001";
         String intermediateKey = "D1_M1_101_1002";
@@ -1136,6 +1173,22 @@ class AssessmentServiceLifecycleTest {
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> assessmentService.saveDraft(ASSESSMENT_ID, request, user));
 
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+    }
+
+    @Test
+    void respondentCannotDeactivateAcceptedChildByKeepingItsStaleAnswer() throws Exception {
+        String parentKey = "D1_M1_101_1001";
+        String childKey = "D1_M1_101_1002";
+        MaturityModel model = autoModelWithRequiredBooleanDependency();
+        Assessment assessment = pendingAssessment(new ObjectMapper().writeValueAsString(Map.of(parentKey, 1, childKey, 1)));
+        assessment.setStatus(AssessmentStatus.CHANGES_REQUESTED);
+        var rows = questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID);
+        rows.stream().filter(row -> childKey.equals(row.getResponseKey())).forEach(row -> row.setValidationStatus(QuestionEvaluationStatus.ACCEPTED));
+        when(assessmentRepository.findByIdForUpdate(ASSESSMENT_ID)).thenReturn(Optional.of(assessment));
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        var exception = assertThrows(ResponseStatusException.class,
+                () -> assessmentService.saveDraft(ASSESSMENT_ID, request(Map.of(parentKey, 0, childKey, 1)), user));
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
     }
 

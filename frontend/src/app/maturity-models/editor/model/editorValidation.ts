@@ -1,3 +1,4 @@
+import { dependencyConditionError } from "../../../../lib/questionDependencies.ts";
 import type {
   MaturityModelEditorDocument,
   ModelEditorPractice,
@@ -340,6 +341,10 @@ export function validateDocument(
               field: `question-${question.clientKey}-text`,
             });
           }
+          if (question.type === "multiple_choice" && question.choices) {
+            const ids = question.choices.map((choice) => choice.id).filter(Boolean);
+            if (new Set(ids).size !== ids.length) add({ step: "structure", severity: "error", message: "Answer option identifiers must be unique.", selection: practiceSelection });
+          }
           if (
             (question.type === "multiple_choice" && choiceIssues(question.choices)) ||
             (question.type === "multiple_selection" && (
@@ -381,6 +386,9 @@ export function validateDocument(
               selection: practiceSelection,
             });
           }
+          if (!question.dependsOnQuestionCode && question.dependencyCondition) {
+            add({ step: "structure", severity: "error", message: "Select a parent question for these activation answers.", selection: practiceSelection, field: `question-${question.clientKey}-dependency` });
+          }
           if (question.dependsOnQuestionCode) {
             const parent = practice.questions.find(
               (candidate) =>
@@ -393,13 +401,15 @@ export function validateDocument(
                 severity: "error",
                 message: `${question.code} has a broken dependency.`,
                 selection: practiceSelection,
+                field: `question-${question.clientKey}-dependency`,
               });
-            } else if (parent && parent.type !== "boolean") {
+            } else if (parent && dependencyConditionError(parent, question.dependencyCondition)) {
               add({
                 step: "structure",
                 severity: "error",
-                message: `${question.code} must depend on a boolean question.`,
+                message: `${question.code}: ${dependencyConditionError(parent, question.dependencyCondition)}`,
                 selection: practiceSelection,
+                field: `question-${question.clientKey}-dependency`,
               });
             } else if (
               dependencyWouldCycle(
@@ -413,6 +423,7 @@ export function validateDocument(
                 severity: "error",
                 message: `${question.code} creates a dependency cycle.`,
                 selection: practiceSelection,
+                field: `question-${question.clientKey}-dependency`,
               });
             }
           }

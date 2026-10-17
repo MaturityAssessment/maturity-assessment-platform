@@ -486,6 +486,7 @@ public class MaturityModelService {
                 if (question.getPractice() != null) {
                         dto.setPracticeId(question.getPractice().getId());
                 }
+                dto.setDependencyCondition(question.getDependencyCondition());
                 dto.setWeight(question.getWeight());
                 dto.setText(question.getText());
                 dto.setType(question.getType());
@@ -613,10 +614,6 @@ public class MaturityModelService {
                                         if (parent == question) {
                                                 throw invalidDependency(questionDTO, "cannot depend on itself.");
                                         }
-                                        if (!isBooleanQuestion(parent.getType())) {
-                                                throw invalidDependency(questionDTO,
-                                                                "must depend on a boolean question.");
-                                        }
                                         question.setDependsOnQuestion(parent);
                                 }
                         }
@@ -630,6 +627,7 @@ public class MaturityModelService {
                 Question question = new Question();
                 // Don't set ID - let Hibernate generate new IDs for new entities
                 // This is important when creating new model versions
+                question.setDependencyCondition(dto.getDependencyCondition());
                 question.setCode(dto.getCode());
                 question.setSortOrder(sortOrder);
                 question.setWeight(dto.getWeight() != null ? dto.getWeight() : 1.0);
@@ -737,6 +735,7 @@ public class MaturityModelService {
                                                 editorQuestion.setType(question.getType());
                                                 editorQuestion.setHelp(question.getHelp());
                                                 editorQuestion.setDependsOnQuestionCode(question.getDependsOnQuestionCode());
+                                                editorQuestion.setDependencyCondition(question.getDependencyCondition());
                                                 editorQuestion.setRequired(question.getRequired());
                                                 editorQuestion.setBooleanCorrectAnswer(question.getBooleanCorrectAnswer());
                                                 editorQuestion.setChoices(question.getChoices());
@@ -819,6 +818,7 @@ public class MaturityModelService {
                                                 question.setType(editorQuestion.getType());
                                                 question.setHelp(editorQuestion.getHelp());
                                                 question.setDependsOnQuestionCode(editorQuestion.getDependsOnQuestionCode());
+                                                question.setDependencyCondition(editorQuestion.getDependencyCondition());
                                                 question.setRequired(editorQuestion.getRequired());
                                                 question.setBooleanCorrectAnswer(editorQuestion.getBooleanCorrectAnswer());
                                                 question.setChoices(editorQuestion.getChoices());
@@ -1092,6 +1092,7 @@ public class MaturityModelService {
                 Map<String, QuestionDTO> questionsByCode = new LinkedHashMap<>();
                 Map<Long, QuestionDTO> questionsById = new HashMap<>();
                 for (QuestionDTO question : practice.getQuestions()) {
+                        QuestionDependencies.normalizeChoices(question);
                         questionsByCode.put(normalizeCode(question.getCode()), question);
                         if (question.getId() != null) {
                                 questionsById.put(question.getId(), question);
@@ -1103,6 +1104,7 @@ public class MaturityModelService {
                         Long parentId = question.getDependsOnQuestionId();
                         String parentCode = question.getDependsOnQuestionCode();
                         if (parentId == null && (parentCode == null || parentCode.isBlank())) {
+                                QuestionDependencies.validate(question, null);
                                 continue;
                         }
 
@@ -1124,9 +1126,7 @@ public class MaturityModelService {
                         if (parent == question) {
                                 throw invalidDependency(question, "cannot depend on itself.");
                         }
-                        if (!isBooleanQuestion(parent.getType())) {
-                                throw invalidDependency(question, "must depend on a boolean question.");
-                        }
+                        QuestionDependencies.validate(question, parent);
                         if (normalizeForWrite) {
                                 question.setDependsOnQuestionCode(parent.getCode());
                         }
@@ -1158,10 +1158,6 @@ public class MaturityModelService {
                 }
                 visiting.remove(questionCode);
                 visited.add(questionCode);
-        }
-
-        private boolean isBooleanQuestion(String type) {
-                return "boolean".equalsIgnoreCase(type);
         }
 
         private boolean isRangeQuestion(String type) {

@@ -8,6 +8,7 @@ import {
 } from "./assessmentEvidence.ts";
 import type { AssessmentEvidenceByField } from "./assessmentEvidence.ts";
 
+import { dependencyMatches } from "../../lib/questionDependencies.ts";
 import { getSingleChoiceIndex } from "./singleChoiceResponse.ts";
 
 export function getFieldName(step: AssessmentPracticeStep, question: Question) {
@@ -89,7 +90,7 @@ export function isDependentQuestionDisabled(
   if (!parentQuestion || isDependentQuestionDisabled(step, parentQuestion, formData, visiting)) return true;
 
   const parentFieldName = getFieldName(step, parentQuestion);
-  return Number(formData[parentFieldName]) !== 1;
+  return !dependencyMatches(parentQuestion, question.dependencyCondition, formData[parentFieldName]);
 }
 
 export function isPracticeRequiredComplete(

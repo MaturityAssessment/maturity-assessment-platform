@@ -43,6 +43,7 @@ public class CsvMaturityModelRow {
     private String questionWeight;
     private String questionCode;
     private String dependsOnQuestionCode;
+    private String dependencyCondition;
     private String questionText;
     private String questionType;
     private String questionHelp;

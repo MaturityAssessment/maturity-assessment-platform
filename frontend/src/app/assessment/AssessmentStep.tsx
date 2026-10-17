@@ -381,6 +381,7 @@ export default function AssessmentStep({
                           responseDetails={reviewControls("score")}
                           footer={reviewControls("note")}
                           question={question}
+                          practiceQuestions={step.practice.questions}
                           fieldName={fieldName}
                           value={formData[fieldName]}
                           disabled={disabled}

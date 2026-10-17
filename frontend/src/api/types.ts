@@ -44,7 +44,13 @@ export interface GatingRule {
   value: number;
 }
 
+export type DependencyCondition =
+  | { type: "boolean"; answers: boolean[] }
+  | { type: "multiple_choice"; optionIds: string[] }
+  | { type: "likert"; points: number[] };
+
 export interface QuestionChoice {
+  id?: string;
   label: string;
   score: number;
   /** Non-negative cumulative value for Multiple Selection options. */
@@ -69,6 +75,7 @@ export interface Question {
   help: string;
   dependsOnQuestionId?: number; // Reference to parent question ID (numeric) within same practice
   dependsOnQuestionCode?: string;
+  dependencyCondition?: DependencyCondition | null;
   required?: boolean; // Whether this question must be answered
   /** Boolean answer that receives normalized score 1; the other receives 0. */
   booleanCorrectAnswer?: boolean;
@@ -500,6 +507,7 @@ export interface ModelEditorQuestion {
   type: ModelEditorQuestionType;
   help: string;
   dependsOnQuestionCode?: string;
+  dependencyCondition?: DependencyCondition | null;
   required: boolean;
   booleanCorrectAnswer: boolean;
   choices?: QuestionChoice[];

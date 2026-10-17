@@ -155,3 +155,21 @@ test("review labels distinguish single-choice options with the same score", asyn
   assert.equal(formatQuestionResponseValue(question, "choice:0", []), "Yes");
   assert.equal(formatQuestionResponseValue(question, "choice:1", []), "Not Applicable");
 });
+
+test("choice and scale dependencies preserve matching answers and prune nonmatching descendants", async () => {
+  const { pruneDisabledQuestionData, getAssessmentPracticeProgress } = await import("../../../../src/app/assessment/assessmentFlowUtils.ts");
+  const configured: AssessmentPracticeStep = structuredClone(step);
+  const [parent, child, grandchild] = configured.practice.questions;
+  parent.type = "multiple_choice";
+  parent.choices = [{ id: "a", label: "A", score: 0 }, { id: "b", label: "B", score: 0 }, { id: "c", label: "C", score: 1 }];
+  child.type = "likert"; child.dependsOnQuestionId = parent.id; child.required = true;
+  child.dependencyCondition = { type: "multiple_choice", optionIds: ["a", "b"] };
+  grandchild.dependsOnQuestionId = child.id; grandchild.dependencyCondition = { type: "likert", points: [3, 4] };
+  const answers = { D1_M1_10_100: "choice:0", D1_M1_10_101: 3, D1_M1_10_102: 4 };
+  assert.equal(Object.keys(collectQuestionResponses([configured], answers)).length, 3);
+  assert.equal(pruneDisabledQuestionData([configured], { ...answers, D1_M1_10_100: "choice:1" }).removedFields.size, 0);
+  const pruned = pruneDisabledQuestionData([configured], { ...answers, D1_M1_10_100: "choice:2" });
+  assert.equal(pruned.removedFields.size, 2);
+  assert.equal(getAssessmentPracticeProgress(configured, pruned.formData, new Map()).totalEnabledQuestions, 1);
+  assert.equal(Object.keys(collectQuestionResponses([configured], { ...answers, D1_M1_10_100: "choice:2" })).length, 1);
+});

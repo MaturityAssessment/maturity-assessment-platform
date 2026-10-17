@@ -509,7 +509,7 @@ export function deleteQuestion(
         .map((candidate) =>
           candidate.dependsOnQuestionCode?.toLowerCase() ===
           question.code.toLowerCase()
-            ? { ...candidate, dependsOnQuestionCode: undefined }
+            ? { ...candidate, dependsOnQuestionCode: undefined, dependencyCondition: undefined }
             : candidate
         ),
     };
@@ -537,10 +537,10 @@ export function changeQuestionType(
     choices:
       type === "multiple_choice" || type === "multiple_selection"
         ? question.choices?.length
-          ? question.choices.map((choice) => ({ ...choice, rawValue: choice.rawValue ?? choice.score }))
+          ? question.choices.map((choice) => ({ ...choice, id: choice.id || crypto.randomUUID(), rawValue: choice.rawValue ?? choice.score }))
           : [
-              { label: "", score: 0, rawValue: 0 },
-              { label: "", score: 1, rawValue: 1 },
+              { id: crypto.randomUUID(), label: "", score: 0, rawValue: 0 },
+              { id: crypto.randomUUID(), label: "", score: 1, rawValue: 1 },
             ]
         : undefined,
   };

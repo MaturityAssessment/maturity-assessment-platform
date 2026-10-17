@@ -16,3 +16,8 @@ export function getSingleChoiceIndex(question: Question, value: unknown): number
   const index = question.choices?.findIndex((choice) => Math.abs(choice.score - Number(value)) <= 1e-9);
   return index !== undefined && index >= 0 ? index : undefined;
 }
+
+export function isAmbiguousChoiceResponse(question: Question, value: unknown) {
+  if ((typeof value !== "number" && typeof value !== "string") || value === "" || String(value).startsWith("choice:")) return false;
+  return (question.choices?.filter((choice) => Math.abs(choice.score - Number(value)) <= 1e-9).length ?? 0) > 1;
+}

@@ -203,6 +203,31 @@ class MaturityModelExcelWorkflowTest {
     }
 
     @Test
+    void explicitChoiceAndScaleConditionsSurviveWorkbookAndEditorRoundTrip() throws Exception {
+        for (String type : List.of("multiple_choice", "likert")) {
+            var source = model();
+            var questions = source.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getQuestions();
+            var parent = questions.getFirst(); parent.setType(type); parent.setScalePointCount(5);
+            var condition = new DependencyCondition(); condition.setType(type);
+            if (type.equals("likert")) condition.setPoints(List.of(3, 4));
+            else {
+                var first = new QuestionChoiceDTO(); first.setId("choice-a"); first.setLabel("A"); first.setScore(0.5);
+                var second = new QuestionChoiceDTO(); second.setId("choice-b"); second.setLabel("B"); second.setScore(0.5);
+                parent.setChoices(List.of(first, second)); condition.setOptionIds(List.of("choice-b"));
+            }
+            questions.getLast().setDependsOnQuestionId(null);
+            questions.getLast().setDependsOnQuestionCode(parent.getCode());
+            questions.getLast().setDependencyCondition(condition);
+            var parsed = excel.parseExcelWorkbook(new ByteArrayInputStream(excel.exportMaturityModelToXlsx(source)));
+            assertTrue(parsed.isSuccess(), parsed.getErrorDetails());
+            var editor = modelService().prepareEditorDocument(parsed.getMaturityModel());
+            var restored = editor.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getQuestions();
+            assertEquals(condition, restored.getLast().getDependencyCondition());
+            if (type.equals("multiple_choice")) assertEquals(List.of("choice-a", "choice-b"), restored.getFirst().getChoices().stream().map(QuestionChoiceDTO::getId).toList());
+        }
+    }
+
+    @Test
     void zeroQuestionWeightIsAcceptedOnlyForOptionalQuestions() throws Exception {
         for (boolean required : List.of(false, true)) {
             byte[] bytes = edit(excel.exportMaturityModelToXlsx(model()), workbook -> {

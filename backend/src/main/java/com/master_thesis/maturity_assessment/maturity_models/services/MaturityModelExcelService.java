@@ -96,7 +96,7 @@ public class MaturityModelExcelService {
             "questionHelp", "questionRequired", "questionRanges",
             "questionLikertScaleMax", "questionScalePointCount", "questionScaleMinLabel",
             "questionScaleMaxLabel", "questionScaleHighPointIsMaximum",
-            "questionRangeMin", "questionRangeMax", "questionRangeHighValueIsMaximum", "questionBooleanCorrectAnswer"
+            "questionRangeMin", "questionRangeMax", "questionRangeHighValueIsMaximum", "questionBooleanCorrectAnswer", "dependencyCondition"
     );
 
     /** Questions sheet columns written by {@link #exportMaturityModelToXlsx}. */
@@ -108,7 +108,7 @@ public class MaturityModelExcelService {
                     Stream.of("questionScalePointCount", "questionScaleMinLabel", "questionScaleMaxLabel",
                             "questionScaleHighPointIsMaximum", "questionHelp",
                             "questionRequired", "questionRangeMin", "questionRangeMax",
-                            "questionRangeHighValueIsMaximum", "questionRanges", "questionBooleanCorrectAnswer"))
+                            "questionRangeHighValueIsMaximum", "questionRanges", "questionBooleanCorrectAnswer", "dependencyCondition"))
     ).toList();
 
     private final CsvParsingService csvParsingService;
@@ -266,6 +266,7 @@ public class MaturityModelExcelService {
                 m.setQuestionWeight(q.get("questionWeight"));
                 m.setQuestionCode(q.get("questionCode"));
                 m.setDependsOnQuestionCode(q.get("dependsOnQuestionCode"));
+                m.setDependencyCondition(q.get("dependencyCondition"));
                 m.setQuestionText(q.get("questionText"));
                 m.setQuestionType(q.get("questionType"));
                 m.setQuestionHelp(q.get("questionHelp"));
@@ -771,6 +772,7 @@ public class MaturityModelExcelService {
                         continue;
                     }
                     for (QuestionDTO q : pr.getQuestions()) {
+                        QuestionDependencies.normalizeChoices(q);
                         Row row = sheet.createRow(r++);
                         row.createCell(0).setCellValue(nullToEmpty(dim.getId()));
                         row.createCell(1).setCellValue(nullToEmpty(mod.getCode()));
@@ -819,6 +821,12 @@ public class MaturityModelExcelService {
                         row.createCell(18).setCellValue("");
                         row.createCell(19).setCellValue("boolean".equalsIgnoreCase(q.getType())
                                 ? String.valueOf(q.getBooleanCorrectAnswer() == null || q.getBooleanCorrectAnswer()) : "");
+                        var condition = q.getDependencyCondition();
+                        if (condition == null && pr.getQuestions().stream().anyMatch(parent ->
+                                resolveDependencyCode(pr, q).equalsIgnoreCase(parent.getCode()) && "boolean".equalsIgnoreCase(parent.getType()))) {
+                            condition = com.master_thesis.maturity_assessment.maturity_models.dto.DependencyCondition.affirmative();
+                        }
+                        row.createCell(20).setCellValue(writeJson(condition));
                     }
                 }
             }
@@ -842,7 +850,7 @@ public class MaturityModelExcelService {
                 "Levels: define 2 to 12 levels numbered 1..N. Description is optional.",
                 "Join items using dimensionId, moduleCode and practiceCode. Codes must be unique among siblings. If changing a code, update all child references, dependencies and gating rules.",
                 "Sheet row order determines dimension, module, practice and question order. Every dimension/module/practice must lead to a question. Remove child rows when deleting an item.",
-                "Aggregation rules: AVERAGE, WEIGHTED_AVERAGE, MINIMUM, MAXIMUM, SUM, MEDIAN. Empty values use the application defaults. Weights must be positive.",
+                "Aggregation rules: AVERAGE, WEIGHTED_AVERAGE, MINIMUM, MAXIMUM, SUM, MEDIAN. Empty values use the application defaults. Weights must be positive; optional questions may have zero weight.",
                 "dimensionMappingRules: JSON array, one threshold per level, starting at zero, strictly increasing within 0..1. Example: [{\"levelNumber\":1,\"minimumScore\":0},{\"levelNumber\":2,\"minimumScore\":0.5}].",
                 "Gating rules: JSON array. Example: [{\"order\":0,\"selection\":\"specificChild\",\"childCode\":\"Q1\",\"operator\":\"<\",\"threshold\":0.5,\"operation\":\"set\",\"value\":0}]. Reference immediate child codes. selection: specificChild/anyChild/allChildren; operator: <, <=, ==, >=, >; operation: set/add/subtract.",
                 "Question types: boolean, likert, open_answer, multiple_choice, multiple_selection, numeric, percentage. Leave type-specific columns empty for other types.",
@@ -851,7 +859,8 @@ public class MaturityModelExcelService {
                 "multiple_selection questionChoices: [{\"label\":\"Control A\",\"rawValue\":2},{\"label\":\"Control B\",\"rawValue\":3}]. Raw values are nonnegative and their total must be positive.",
                 "likert: questionScalePointCount is 2..100; optional endpoint labels are at most 50 characters; questionScaleHighPointIsMaximum controls direction.",
                 "numeric/percentage: integer questionRangeMin < questionRangeMax; questionRangeHighValueIsMaximum controls direction. questionRanges is a legacy JSON format; keep it blank when using bounds.",
-                "dependsOnQuestionCode must refer to a boolean question in the same practice. Leave blank for independent questions."
+                "dependencyCondition JSON examples: {\"type\":\"boolean\",\"answers\":[false]}, {\"type\":\"multiple_choice\",\"optionIds\":[\"option-a\"]}, {\"type\":\"likert\",\"points\":[3,4,5]}. Select one or more answers; any selected answer activates the question. Preserve choice id values when editing options.",
+                "dependsOnQuestionCode must refer to a Yes / No, Multiple choice, or Scale question in the same practice. dependencyCondition specifies matching answers; a legacy boolean dependency defaults to Yes."
         );
         for (int i = 0; i < lines.size(); i++) sheet.createRow(i).createCell(0).setCellValue(lines.get(i));
         sheet.setColumnWidth(0, 120 * 256);

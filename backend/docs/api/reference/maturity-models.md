@@ -255,7 +255,33 @@ rules affect calculated results, not which REST endpoints are available.
 ## Question types
 
 Common question fields are `code`, `weight`, `text`, `type`, `help`,
-`dependsOnQuestionCode` and `required`.
+`dependsOnQuestionCode`, `dependencyCondition` and `required`.
+
+Dependencies target one Yes / No, Multiple choice, or Scale question in the same
+practice. Set `dependencyCondition` to one of:
+
+```json
+{ "type": "boolean", "answers": [false] }
+{ "type": "multiple_choice", "optionIds": ["option-a", "option-b"] }
+{ "type": "likert", "points": [3, 4, 5] }
+```
+
+Any listed answer activates the child, provided its parent and all ancestors are
+active. Conditions match respondent answers independently of scoring direction,
+option scores, evaluator scores, and weight. Lists must be nonempty, unique, and
+valid for the parent's current configuration. Self-reference, cycles, missing
+parents, conflicting parent ID/code, and cross-practice links are rejected.
+Conditions without a parent are rejected. Legacy boolean dependencies without a
+condition still activate on Yes. Other parent types require an explicit condition.
+
+Multiple-choice options carry a persistent string `id` (generated for legacy
+options without one). Preserve it when editing labels or scores, reordering,
+exporting/importing, or creating a new model version. Dependency `optionIds`
+reference these identifiers, never option labels, scores, or positions. Assessment
+responses retain their existing numeric `response` and `choiceIndex` fields;
+activation resolves the index against the assessment's model version. Historical
+score-only answers activate an option-specific rule only when the score identifies
+exactly one option; ambiguous editable answers need an explicit option selection.
 
 `requiresEvidence` is a practice field, defaults to `false`, and is preserved
 through model versions and editor read/write. In workbooks, use

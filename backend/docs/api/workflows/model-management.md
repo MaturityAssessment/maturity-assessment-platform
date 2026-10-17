@@ -54,6 +54,14 @@ columns retain legacy application defaults. Invalid edits produce a validation
 message before saving. Review the imported model, choose a domain, then save it
 as a new inactive model or a new inactive version of the model being edited.
 
+For conditional questions, use `dependsOnQuestionCode` and the optional
+`dependencyCondition` JSON column on Questions. Conditions select boolean
+`answers`, multiple-choice `optionIds`, or Scale `points`; any selected answer
+activates the child. Preserve the option `id` values inside `questionChoices` when
+editing a workbook. Existing workbooks with boolean dependencies and no condition
+continue to activate on Yes. A deleted option, changed parent type, or invalid
+scale point requires repairing the dependency before saving.
+
 To regenerate the repository template after changing the workbook schema, run
 from `backend`:
 

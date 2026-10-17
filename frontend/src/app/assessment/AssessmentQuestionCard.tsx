@@ -1,5 +1,6 @@
 "use client";
 
+import { dependencySummary, isDependencyParent } from "@/lib/questionDependencies";
 import type {
   Question,
   QuestionEvaluationResponse,
@@ -29,10 +30,11 @@ import {
   getQuestionInstruction,
 } from "./assessmentQuestionCardModel";
 
-import { getSingleChoiceIndex, singleChoiceValue } from "./singleChoiceResponse";
+import { getSingleChoiceIndex, singleChoiceValue, isAmbiguousChoiceResponse } from "./singleChoiceResponse";
 
 interface AssessmentQuestionCardProps {
   question: Question;
+  practiceQuestions?: Question[];
   fieldName: string;
   value: unknown;
   disabled: boolean;
@@ -58,6 +60,7 @@ interface AssessmentQuestionCardProps {
 
 export default function AssessmentQuestionCard({
   question,
+  practiceQuestions = [],
   fieldName,
   value,
   disabled,
@@ -74,6 +77,10 @@ export default function AssessmentQuestionCard({
 }: AssessmentQuestionCardProps) {
   if (!question.id) return null;
 
+  const dependencyParent = practiceQuestions.find((candidate) => isDependencyParent(candidate, question));
+  const needsChoiceSelection = question.type === "multiple_choice" && !readOnly
+    && practiceQuestions.some((child) => child.dependencyCondition?.type === "multiple_choice" && isDependencyParent(question, child))
+    && isAmbiguousChoiceResponse(question, value);
   const reviewStatus = evaluation?.validationStatus;
   const interactionDisabled =
     readOnly || disabled || reviewStatus === "ACCEPTED" || reviewStatus === "ADJUSTED";
@@ -131,7 +138,7 @@ export default function AssessmentQuestionCard({
       input = (
         <SingleChoiceQuestionInput
           {...inputProps}
-          value={getSingleChoiceIndex(question, value)}
+          value={needsChoiceSelection && !interactionDisabled ? undefined : getSingleChoiceIndex(question, value)}
           onChange={(index) => onInputChange(fieldName, index === undefined ? undefined : singleChoiceValue(index))}
           options={(question.choices ?? []).map(({ label }, index) => ({
             label,
@@ -195,7 +202,7 @@ export default function AssessmentQuestionCard({
       interactionDisabled={interactionDisabled}
       disabledMessage={
         disabled
-          ? "Available when the related question is answered Yes."
+          ? `${dependencySummary(dependencyParent, question.dependencyCondition)}.`
           : undefined
       }
       guidance={question.help || undefined}
@@ -205,7 +212,10 @@ export default function AssessmentQuestionCard({
         respondentUpdated
       )}
       headerActions={headerActions}
-      responseDetails={responseDetails}
+      responseDetails={needsChoiceSelection && !interactionDisabled ? <>
+        <p role="status" className="text-sm text-amber-800">Please select an answer option again to activate dependent questions.</p>
+        {responseDetails}
+      </> : responseDetails}
       footer={footer}
       onAskAssistant={onAskAssistant}
       onClear={

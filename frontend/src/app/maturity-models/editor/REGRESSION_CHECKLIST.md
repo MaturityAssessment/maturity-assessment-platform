@@ -23,7 +23,17 @@ or question configuration.
 - Change dimension, module, practice, and question codes in a new version and
   verify the saved version uses the new codes while the source version is unchanged.
 - Clear dependency references after deleting their parent question.
-- Prevent non-boolean, cross-practice, broken, and cyclic dependencies.
+- Configure Yes / No, Multiple choice, and Scale dependencies with one or more
+  activation answers. Existing dependencies default to Yes.
+- Prevent unsupported parent types, cross-practice, broken, and cyclic dependencies.
+- Preserve choice option IDs through label/score edits, reorder, drafts, versions,
+  and spreadsheet export/import; equal-scored options activate independently.
+- Flag deleted activation options, reduced scales, and changed parent types for
+  explicit repair. Clear conditions when removing the dependency.
+- Verify inactive descendants do not block required completion or affect scoring;
+  changing a parent retains the answer-clearing confirmation and accepted locks.
+- Check the Question dependencies Storybook example at desktop and mobile widths,
+  including long dropdown names, wrapping answer labels, and keyboard navigation.
 - Configure boolean, Likert, multiple-choice, Multiple Selection, numeric,
   percentage, and open-answer questions with the existing defaults and constraints.
 - Configure Multiple Selection with 1–100 labeled options and non-negative raw
