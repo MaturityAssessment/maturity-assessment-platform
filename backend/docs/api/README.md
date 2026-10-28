@@ -41,6 +41,7 @@ these are one method/path with two controller mappings.
 | `POST` | [`/api/v1/auth/login`](reference/authentication-and-users.md#post-apiv1authlogin) |
 | `POST` | [`/api/v1/auth/refresh`](reference/authentication-and-users.md#post-apiv1authrefresh) |
 | `GET` | [`/api/v1/user/me`](reference/authentication-and-users.md#get-apiv1userme) |
+| `PUT` | [`/api/v1/user/me/password`](reference/authentication-and-users.md#put-apiv1usermepassword) |
 | `PUT` | [`/api/v1/user/me/help-tours/{tourKey}/complete`](reference/authentication-and-users.md#put-apiv1usermehelp-tourstourkeycomplete) |
 | `PUT` | [`/api/v1/user/me/help-tours/{tourKey}/dismiss-prompt`](reference/authentication-and-users.md#put-apiv1usermehelp-tourstourkeydismiss-prompt) |
 
@@ -51,6 +52,7 @@ these are one method/path with two controller mappings.
 | `GET` | [`/api/v1/admin/users`](reference/administration.md#get-apiv1adminusers) |
 | `POST` | [`/api/v1/admin/users`](reference/administration.md#post-apiv1adminusers) |
 | `PUT` | [`/api/v1/admin/users/{id}`](reference/administration.md#put-apiv1adminusersid) |
+| `POST` | [`/api/v1/admin/users/{id}/reset-password`](reference/administration.md#post-apiv1adminusersidreset-password) |
 | `DELETE` | [`/api/v1/admin/users/{id}`](reference/administration.md#delete-apiv1adminusersid) |
 | `PATCH` | [`/api/v1/admin/users/{id}/approve`](reference/administration.md#patch-apiv1adminusersidapprove) |
 | `PATCH` | [`/api/v1/admin/users/{id}/reject`](reference/administration.md#patch-apiv1adminusersidreject) |

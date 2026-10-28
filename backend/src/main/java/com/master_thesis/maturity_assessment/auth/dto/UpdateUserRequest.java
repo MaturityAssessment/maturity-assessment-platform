@@ -10,7 +10,7 @@ import com.master_thesis.maturity_assessment.auth.models.UserRole;
 @NoArgsConstructor
 public class UpdateUserRequest {
     private String email;
-    private String password; // Optional - only set if you want to change it
+    private String password; // Legacy field: rejected; use the dedicated reset endpoint.
     private UserRole role;
 }
 

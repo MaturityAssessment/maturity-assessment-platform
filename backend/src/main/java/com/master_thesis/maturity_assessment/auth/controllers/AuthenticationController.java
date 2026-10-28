@@ -2,13 +2,12 @@ package com.master_thesis.maturity_assessment.auth.controllers;
 
 import org.springframework.web.bind.annotation.RestController;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.CredentialsExpiredException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,26 +27,41 @@ import com.master_thesis.maturity_assessment.config.ErrorResponse;
 
 @RestController
 @RequestMapping("/api/v1/auth")
-@RequiredArgsConstructor
 public class AuthenticationController {
 
     private final AuthenticationManager authenticationManager;
-    private final UserDetailsService userDetailsService;
     private final JwtUtils jwtUtils;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
 
+    public AuthenticationController(AuthenticationManager authenticationManager,
+                                    JwtUtils jwtUtils,
+                                    UserRepository userRepository,
+                                    PasswordEncoder passwordEncoder,
+                                    RefreshTokenService refreshTokenService) {
+        this.authenticationManager = authenticationManager;
+        this.jwtUtils = jwtUtils;
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.refreshTokenService = refreshTokenService;
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> authenticate(@RequestBody AuthenticationRequest request) {
+        final Authentication authentication;
         try {
-            authenticationManager.authenticate(
+            authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
         } catch (DisabledException ex) {
             return ResponseEntity.status(403).body(
                     new ErrorResponse(
                             "ACCOUNT_PENDING_APPROVAL",
                             "Your request was submitted and is awaiting admin approval."));
+        } catch (CredentialsExpiredException ex) {
+            return ResponseEntity.status(401).body(new ErrorResponse(
+                    "TEMPORARY_PASSWORD_EXPIRED",
+                    "Your temporary password has expired. Contact an administrator for another reset."));
         } catch (AuthenticationException ex) {
             return ResponseEntity.status(401).body(
                     new ErrorResponse(
@@ -55,10 +69,10 @@ public class AuthenticationController {
                             "Invalid email or password."));
         }
 
-        final UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
-        if (userDetails != null) {
-            User user = userRepository.findByEmail(request.getEmail());
-            String accessToken = jwtUtils.generateAccessToken(userDetails);
+        // Issue tokens for the exact credential version that was authenticated.
+        // Reloading the user here could issue a valid session after a concurrent reset.
+        if (authentication.getPrincipal() instanceof User user) {
+            String accessToken = jwtUtils.generateAccessToken(user);
             RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
 
             AuthenticationResponse response = new AuthenticationResponse();
@@ -105,6 +119,12 @@ public class AuthenticationController {
                 .orElseThrow(() -> new RuntimeException("Refresh token not found"));
 
         User user = refreshToken.getUser();
+        if (!user.isCredentialsNonExpired()) {
+            refreshTokenService.revokeAllUserTokens(user);
+            return ResponseEntity.status(401).body(new ErrorResponse(
+                    "TEMPORARY_PASSWORD_EXPIRED",
+                    "Your temporary password has expired. Contact an administrator for another reset."));
+        }
         if (user.getApprovalStatus() != UserApprovalStatus.APPROVED) {
             refreshTokenService.revokeAllUserTokens(user);
             return ResponseEntity.status(403).body(
@@ -112,13 +132,12 @@ public class AuthenticationController {
                             "ACCOUNT_PENDING_APPROVAL",
                             "Your request was submitted and is awaiting admin approval."));
         }
-        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
 
         // Revoke old refresh token (token rotation)
         refreshTokenService.revokeRefreshToken(refreshTokenString);
 
         // Generate new tokens
-        String accessToken = jwtUtils.generateAccessToken(userDetails);
+        String accessToken = jwtUtils.generateAccessToken(user);
         RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(user);
 
         AuthenticationResponse response = new AuthenticationResponse();

@@ -165,7 +165,7 @@ Spring properties and contains only non-secret application defaults. Keep
 `SPRING_FLYWAY_ENABLED=false` for a brand-new local database; see the root setup
 guide for why the current migrations are legacy upgrades rather than a baseline.
 
-### Gmail campaign invitations
+### Gmail campaign invitations and password resets
 
 Campaign creation automatically queues one personalized invitation email per
 participant after the database transaction commits. Each message contains the
@@ -204,9 +204,28 @@ Restart the backend after changing `.env` because configuration is loaded only
 at startup. OS environment variables and JVM/system properties override values
 from the file.
 
-Email is disabled by default. SMTP delivery runs asynchronously after commit,
+Email is disabled by default. Campaign SMTP delivery runs asynchronously after commit,
 so a temporary Gmail failure is logged without rolling back the newly created
 campaign. This POC does not yet persist delivery status or retry failed mail.
+
+Admin password resets use the same mail configuration. They send synchronously:
+disabled email, a missing sender, or an SMTP failure returns `503` and rolls back
+the password reset. Temporary passwords expire in 24 hours and must be changed
+after sign-in. Both user password changes and admin resets revoke all sessions.
+For Flyway-managed installations, migration `V42` adds password-version and
+temporary-password state; Hibernate-managed local databases add these fields
+with safe defaults for existing accounts.
+
+The persistence tests require an explicitly disposable PostgreSQL database:
+
+```bash
+PASSWORD_TEST_DB_URL=jdbc:postgresql://localhost:5432/password_flows_test \
+PASSWORD_TEST_DB_USER=postgres \
+./mvnw -Dtest=PasswordPersistenceIntegrationTest test
+```
+
+The tests create and drop their schema and use mocked email delivery. Never
+point `PASSWORD_TEST_DB_URL` at an application database.
 
 ## API documentation
 

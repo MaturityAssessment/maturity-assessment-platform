@@ -3,6 +3,7 @@ package com.master_thesis.maturity_assessment.auth.models;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.type.SqlTypes;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.Instant;
 
 @Data
 @Entity
@@ -25,6 +27,17 @@ public class User implements UserDetails {
     private String email;
 
     private String password;
+
+    @Column(name = "password_version", nullable = false)
+    @ColumnDefault("0")
+    private long passwordVersion = 0;
+
+    @Column(name = "password_change_required", nullable = false)
+    @ColumnDefault("false")
+    private boolean passwordChangeRequired = false;
+
+    @Column(name = "temporary_password_expires_at")
+    private Instant temporaryPasswordExpiresAt;
     
     private String name;
     
@@ -91,7 +104,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return true;
+        return temporaryPasswordExpiresAt == null || Instant.now().isBefore(temporaryPasswordExpiresAt);
     }
 
     @Override

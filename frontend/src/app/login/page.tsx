@@ -11,7 +11,8 @@ const Login = ({
 
   return (
     <div className="flex items-center justify-center h-screen">
-      <LoginForm registrationSubmitted={registrationSubmitted} />
+      <LoginForm registrationSubmitted={registrationSubmitted}
+        passwordChanged={(Array.isArray(status) ? status[0] : status) === "password-changed"} />
     </div>
   );
 };

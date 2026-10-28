@@ -17,6 +17,16 @@ import org.springframework.web.server.ResponseStatusException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException ex) {
+        // Binding diagnostics include rejected values; never return passwords in errors.
+        String message = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getDefaultMessage() == null ? "Invalid request data" : error.getDefaultMessage())
+                .distinct()
+                .collect(java.util.stream.Collectors.joining(" "));
+        return ResponseEntity.badRequest().body(new ErrorResponse("BAD_REQUEST", message));
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException ex) {
         ErrorResponse errorResponse = new ErrorResponse(
@@ -73,7 +83,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
         IllegalArgumentException.class,
-        MethodArgumentNotValidException.class,
         HttpMessageNotReadableException.class,
         MissingServletRequestParameterException.class,
         MethodArgumentTypeMismatchException.class,

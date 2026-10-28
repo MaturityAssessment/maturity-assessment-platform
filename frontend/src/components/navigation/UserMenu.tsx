@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { ChevronDown, LogOut } from "lucide-react";
+import { ChevronDown, KeyRound, LogOut } from "lucide-react";
+import Link from "next/link";
 import { useAuth } from "@/context";
 
 interface UserMenuProps {
@@ -109,6 +110,16 @@ export default function UserMenu({ variant = "top" }: UserMenuProps) {
               )}
             </div>
           </div>
+          <Link
+            href="/account/password"
+            onClick={() => setIsOpen(false)}
+            className="group flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-indigo-50 hover:text-indigo-700"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+              <KeyRound className="h-4 w-4" aria-hidden="true" />
+            </span>
+            Change password
+          </Link>
           <button
             type="button"
             onClick={logout}

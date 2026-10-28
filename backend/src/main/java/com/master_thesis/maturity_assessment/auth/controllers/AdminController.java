@@ -22,9 +22,10 @@ import com.master_thesis.maturity_assessment.auth.models.User;
 import com.master_thesis.maturity_assessment.auth.models.UserApprovalStatus;
 import com.master_thesis.maturity_assessment.auth.models.UserRole;
 import com.master_thesis.maturity_assessment.auth.repository.UserRepository;
+import com.master_thesis.maturity_assessment.auth.services.PasswordService;
+import com.master_thesis.maturity_assessment.config.IllegalOperationException;
 import com.master_thesis.maturity_assessment.assessments.models.Assessment;
 import com.master_thesis.maturity_assessment.assessments.repository.AssessmentRepository;
-import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 import java.util.LinkedHashMap;
@@ -32,12 +33,29 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/admin/users")
-@RequiredArgsConstructor
 public class AdminController {
 
     private final UserRepository userRepository;
     private final AssessmentRepository assessmentRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordService passwordService;
+
+    public AdminController(UserRepository userRepository,
+                           AssessmentRepository assessmentRepository,
+                           PasswordEncoder passwordEncoder,
+                           PasswordService passwordService) {
+        this.userRepository = userRepository;
+        this.assessmentRepository = assessmentRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.passwordService = passwordService;
+    }
+
+    @PostMapping("/{id}/reset-password")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> resetPassword(@PathVariable Long id) {
+        passwordService.resetPassword(id);
+        return ResponseEntity.noContent().build();
+    }
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -113,11 +131,14 @@ public class AdminController {
             @PathVariable Long id,
             @RequestBody UpdateUserRequest request) {
         
-        User currentUser = getCurrentUser();
-
         User user = userRepository.findById(id).orElse(null);
         if (user == null) {
             return ResponseEntity.notFound().build();
+        }
+
+        if (request.getPassword() != null) {
+            throw new IllegalOperationException("PASSWORD_RESET_REQUIRED",
+                    "Use the password reset endpoint to email a generated temporary password.");
         }
 
         // Update email if provided
@@ -128,11 +149,6 @@ public class AdminController {
                 return ResponseEntity.badRequest().build();
             }
             user.setEmail(request.getEmail());
-        }
-
-        // Update password if provided
-        if (request.getPassword() != null && !request.getPassword().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
         // Update role if provided
@@ -225,6 +241,7 @@ public class AdminController {
     private UserDTO toUserDTO(User user) {
         UserDTO dto = new UserDTO();
         dto.setId(user.getId());
+        dto.setPasswordChangeRequired(user.isPasswordChangeRequired());
         dto.setEmail(user.getEmail());
         dto.setName(user.getName());
         dto.setOrganizationName(user.getOrganizationName());

@@ -8,6 +8,7 @@ export interface UserDTO {
   helpBalloonsEnabled: boolean;
   completedHelpTours: Record<string, number>;
   dismissedHelpTourPrompts: Record<string, number>;
+  passwordChangeRequired?: boolean;
 }
 
 export interface MaturityLevel {
@@ -599,7 +600,6 @@ export interface CreateUserRequest {
 
 export interface UpdateUserRequest {
   email?: string;
-  password?: string;
   role?: "ADMIN" | "USER" | "CURATOR";
 }
 

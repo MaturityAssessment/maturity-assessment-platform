@@ -89,6 +89,9 @@ Stores user accounts and authentication information.
 | id                | BIGSERIAL    | PRIMARY KEY      | Auto-incrementing user ID                |
 | email             | VARCHAR(255) | UNIQUE, NOT NULL | User email (used as username)            |
 | password          | VARCHAR(255) | NOT NULL         | BCrypt hashed password                   |
+| password_version | BIGINT | NOT NULL, DEFAULT 0 | Credential version checked by access/refresh tokens |
+| password_change_required | BOOLEAN | NOT NULL, DEFAULT false | Temporary password must be replaced before using the app |
+| temporary_password_expires_at | TIMESTAMPTZ | | Expiry for admin-generated temporary passwords |
 | name              | VARCHAR(255) |                  | User's display name                      |
 | organization_name | VARCHAR(255) |                  | User's organization                      |
 | role              | VARCHAR(50)  | NOT NULL         | User role (USER/CURATOR/ADMIN) |
@@ -121,6 +124,7 @@ Stores JWT refresh tokens for token rotation.
 | expiry_date| TIMESTAMP    | NOT NULL              | Token expiration date    |
 | created_at | TIMESTAMP    | NOT NULL              | Token creation timestamp |
 | revoked    | BOOLEAN      | NOT NULL, DEFAULT false | Whether token is revoked |
+| password_version | BIGINT | NOT NULL, DEFAULT 0 | Credential version when this token was issued |
 
 **Foreign Keys:**
 

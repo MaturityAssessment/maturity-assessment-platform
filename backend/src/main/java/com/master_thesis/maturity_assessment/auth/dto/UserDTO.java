@@ -23,4 +23,5 @@ public class UserDTO {
     private boolean helpBalloonsEnabled;
     private Map<String, Integer> completedHelpTours;
     private Map<String, Integer> dismissedHelpTourPrompts;
+    private boolean passwordChangeRequired;
 }

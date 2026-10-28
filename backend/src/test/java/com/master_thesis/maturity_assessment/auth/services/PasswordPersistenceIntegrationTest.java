@@ -1,0 +1,149 @@
+package com.master_thesis.maturity_assessment.auth.services;
+
+import com.master_thesis.maturity_assessment.auth.dto.ChangePasswordRequest;
+import com.master_thesis.maturity_assessment.auth.models.User;
+import com.master_thesis.maturity_assessment.auth.models.UserRole;
+import com.master_thesis.maturity_assessment.auth.repository.UserRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.jdbc.core.JdbcTemplate;
+import com.master_thesis.maturity_assessment.config.IllegalOperationException;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
+
+// This test creates/drops schema: run only against an explicitly supplied disposable database.
+@EnabledIfEnvironmentVariable(named = "PASSWORD_TEST_DB_URL", matches = ".+")
+@DataJpaTest(properties = {"spring.jpa.hibernate.ddl-auto=create-drop", "spring.flyway.enabled=false"})
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Import({PasswordService.class, RefreshTokenService.class, PasswordPersistenceIntegrationTest.Config.class})
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
+class PasswordPersistenceIntegrationTest {
+    @Autowired private PasswordService passwords;
+    @Autowired private RefreshTokenService tokens;
+    @Autowired private UserRepository users;
+    @Autowired private PasswordEncoder encoder;
+    @MockitoBean private PasswordEmailService email;
+    @Autowired private PlatformTransactionManager transactionManager;
+    @Autowired private JdbcTemplate jdbc;
+
+    @DynamicPropertySource
+    static void database(DynamicPropertyRegistry properties) {
+        properties.add("spring.datasource.url", () -> System.getenv("PASSWORD_TEST_DB_URL"));
+        properties.add("spring.datasource.username", () -> System.getenv().getOrDefault("PASSWORD_TEST_DB_USER", "postgres"));
+        properties.add("spring.datasource.password", () -> "");
+    }
+
+    @Test
+    void failedEmailRollsBackPasswordStateAndTokenDeletion() {
+        User user = createUser();
+        String token = tokens.createRefreshToken(user).getToken();
+        doThrow(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "SMTP unavailable"))
+                .when(email).sendTemporaryPassword(anyString(), anyString());
+
+        assertThrows(ResponseStatusException.class, () -> passwords.resetPassword(user.getId()));
+
+        User stored = users.findById(user.getId()).orElseThrow();
+        assertTrue(encoder.matches("original-password-123", stored.getPassword()));
+        assertEquals(0, stored.getPasswordVersion());
+        assertFalse(stored.isPasswordChangeRequired());
+        assertNull(stored.getTemporaryPasswordExpiresAt());
+        assertTrue(tokens.findByToken(token).isPresent());
+    }
+
+    @Test
+    void successfulResetPersistsTemporaryStateAndDeletesRefreshTokens() {
+        User user = createUser();
+        String token = tokens.createRefreshToken(user).getToken();
+        passwords.resetPassword(user.getId());
+
+        User stored = users.findById(user.getId()).orElseThrow();
+        assertFalse(encoder.matches("original-password-123", stored.getPassword()));
+        assertEquals(1, stored.getPasswordVersion());
+        assertTrue(stored.isPasswordChangeRequired());
+        assertNotNull(stored.getTemporaryPasswordExpiresAt());
+        assertTrue(tokens.findByToken(token).isEmpty());
+    }
+
+    @Test
+    void userChangePersistsNewHashAndDeletesRefreshTokens() {
+        User user = createUser();
+        String token = tokens.createRefreshToken(user).getToken();
+        ChangePasswordRequest request = new ChangePasswordRequest();
+        request.setCurrentPassword("original-password-123");
+        request.setNewPassword("replacement-password-456");
+        request.setConfirmPassword("replacement-password-456");
+        passwords.changePassword(user.getId(), request);
+
+        User stored = users.findById(user.getId()).orElseThrow();
+        assertTrue(encoder.matches("replacement-password-456", stored.getPassword()));
+        assertEquals(1, stored.getPasswordVersion());
+        assertTrue(tokens.findByToken(token).isEmpty());
+    }
+
+    @Test
+    void passwordCheckRefreshesAnEntityPreviouslyLoadedByAuthentication() {
+        User user = createUser();
+        ChangePasswordRequest request = new ChangePasswordRequest();
+        request.setCurrentPassword("original-password-123");
+        request.setNewPassword("replacement-password-456");
+        request.setConfirmPassword("replacement-password-456");
+
+        IllegalOperationException error = assertThrows(IllegalOperationException.class,
+                () -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                    users.findById(user.getId()).orElseThrow();
+                    // Simulate a cached authentication entity whose database credentials have changed.
+                    jdbc.update("UPDATE users SET password = ?, password_version = 5 WHERE id = ?",
+                            encoder.encode("concurrently-reset-password"), user.getId());
+                    passwords.changePassword(user.getId(), request);
+                }));
+        assertEquals("INCORRECT_CURRENT_PASSWORD", error.getErrorCode());
+    }
+
+    @Test
+    void resetIncrementsTheStoredVersionEvenWhenAnOlderEntityIsCached() {
+        User user = createUser();
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            users.findById(user.getId()).orElseThrow();
+            jdbc.update("UPDATE users SET password_version = 5 WHERE id = ?", user.getId());
+            passwords.resetPassword(user.getId());
+        });
+        assertEquals(6, users.findById(user.getId()).orElseThrow().getPasswordVersion());
+    }
+
+    private User createUser() {
+        User user = new User();
+        user.setEmail(UUID.randomUUID() + "@example.com");
+        user.setRole(UserRole.USER);
+        user.setPassword(encoder.encode("original-password-123"));
+        return users.saveAndFlush(user);
+    }
+
+    @TestConfiguration
+    static class Config {
+        @Bean
+        PasswordEncoder passwordEncoder() {
+            return new BCryptPasswordEncoder(4);
+        }
+    }
+}

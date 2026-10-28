@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Pencil, Search, Trash2, X } from "lucide-react";
+import { Check, KeyRound, Pencil, Search, Trash2, X } from "lucide-react";
+import axios from "axios";
 import { Badge, Modal, PageLoading, SideNavbar } from "@/components";
 import apiClient from "@/api/axios";
 import { useAuth } from "@/context";
@@ -25,7 +26,7 @@ function userInitial(user: UserDTO) {
 
 export default function UserManagementPage() {
   const router = useRouter();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, handleLogout } = useAuth();
   const [users, setUsers] = useState<UserDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +37,19 @@ export default function UserManagementPage() {
   const [editingUser, setEditingUser] = useState<UserDTO | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserDTO | null>(null);
+  const [userToReset, setUserToReset] = useState<UserDTO | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const handleResetPassword = async () => {
+    if (!userToReset) return;
+    await apiClient.post(`/api/v1/admin/users/${userToReset.id}/reset-password`);
+    setUsers((current) => current.map((user) => user.id === userToReset.id
+      ? { ...user, passwordChangeRequired: true } : user));
+    setSuccess(`A temporary password has been emailed to ${userToReset.email}.`);
+    setError(null);
+    setUserToReset(null);
+    if (userToReset.id === currentUser?.id) handleLogout("/login");
+  };
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -227,6 +241,11 @@ export default function UserManagementPage() {
               </p>
             </header>
 
+            {success && (
+              <p role="status" className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                {success}
+              </p>
+            )}
             {error && (
               <div
                 role="alert"
@@ -457,6 +476,15 @@ export default function UserManagementPage() {
                                   >
                                     <Pencil className="h-4 w-4" aria-hidden="true" />
                                   </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => { setSuccess(null); setUserToReset(user); }}
+                                    className="rounded-md p-2 text-slate-400 transition hover:bg-amber-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                                    aria-label={`Reset password for ${user.email}`}
+                                    title="Reset password"
+                                  >
+                                    <KeyRound className="h-4 w-4" aria-hidden="true" />
+                                  </button>
                                   {user.id !== currentUser?.id && (
                                     <button
                                       type="button"
@@ -486,6 +514,9 @@ export default function UserManagementPage() {
         </main>
       </div>
 
+      {userToReset && (
+        <ResetPasswordModal user={userToReset} onClose={() => setUserToReset(null)} onConfirm={handleResetPassword} />
+      )}
       {editingUser && (
         <EditUserModal
           isOpen={isEditModalOpen}
@@ -510,6 +541,50 @@ export default function UserManagementPage() {
         />
       )}
     </>
+  );
+}
+
+function ResetPasswordModal({ user, onClose, onConfirm }: {
+  user: UserDTO;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const reset = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      await onConfirm();
+    } catch (error) {
+      setError(axios.isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message || "The password could not be reset. Please try again."
+        : "The password could not be reset. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal isOpen onClose={onClose} title="Reset password" closeButtonDisabled={submitting} footer={
+      <div className="flex justify-end gap-3">
+        <button type="button" onClick={onClose} disabled={submitting}
+          className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-60">Cancel</button>
+        <button type="button" onClick={() => void reset()} disabled={submitting}
+          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+          {submitting ? "Sending..." : "Reset and email password"}
+        </button>
+      </div>
+    }>
+      <p className="text-sm leading-6 text-slate-600">
+        Generate a temporary password and email it to <strong>{user.email}</strong>?
+        Their current password and all sessions will stop working. The temporary password expires
+        in 24 hours and must be replaced after signing in.
+      </p>
+      {error && <p role="alert" className="mt-4 text-sm text-red-700">{error}</p>}
+    </Modal>
   );
 }
 

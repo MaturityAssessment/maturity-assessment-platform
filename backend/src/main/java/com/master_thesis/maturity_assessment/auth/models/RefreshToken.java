@@ -1,6 +1,7 @@
 package com.master_thesis.maturity_assessment.auth.models;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.ColumnDefault;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -32,5 +33,9 @@ public class RefreshToken {
 
     @Column(nullable = false)
     private Boolean revoked = false;
+
+    @Column(name = "password_version", nullable = false)
+    @ColumnDefault("0")
+    private long passwordVersion = 0;
 }
 

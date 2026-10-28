@@ -10,22 +10,42 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.master_thesis.maturity_assessment.auth.dto.CompleteHelpTourRequest;
+import com.master_thesis.maturity_assessment.auth.dto.ChangePasswordRequest;
+import com.master_thesis.maturity_assessment.auth.services.PasswordService;
 import com.master_thesis.maturity_assessment.auth.dto.UserDTO;
 import com.master_thesis.maturity_assessment.auth.models.User;
 import com.master_thesis.maturity_assessment.auth.repository.UserRepository;
 import com.master_thesis.maturity_assessment.auth.services.UserHelpTourService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 
 import java.util.LinkedHashMap;
 
 @RestController
 @RequestMapping("/api/v1/user")
-@RequiredArgsConstructor
 public class UserController {
 
     private final UserRepository userRepository;
     private final UserHelpTourService userHelpTourService;
+    private final PasswordService passwordService;
+
+    public UserController(UserRepository userRepository,
+                          UserHelpTourService userHelpTourService,
+                          PasswordService passwordService) {
+        this.userRepository = userRepository;
+        this.userHelpTourService = userHelpTourService;
+        this.passwordService = passwordService;
+    }
+
+    @PutMapping("/me/password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request,
+                                             Authentication authentication) {
+        User user = userRepository.findByEmail(authentication.getName());
+        if (user == null) {
+            return ResponseEntity.notFound().build();
+        }
+        passwordService.changePassword(user.getId(), request);
+        return ResponseEntity.noContent().build();
+    }
 
     @GetMapping("/me")
     public ResponseEntity<UserDTO> getCurrentUser() {
@@ -104,6 +124,7 @@ public class UserController {
     private UserDTO toUserDTO(User user) {
         UserDTO userDTO = new UserDTO();
         userDTO.setId(user.getId());
+        userDTO.setPasswordChangeRequired(user.isPasswordChangeRequired());
         userDTO.setName(user.getName());
         userDTO.setOrganizationName(user.getOrganizationName());
         userDTO.setEmail(user.getEmail());

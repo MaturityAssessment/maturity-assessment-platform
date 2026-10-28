@@ -1,6 +1,8 @@
 package com.master_thesis.maturity_assessment.config;
 
 import jakarta.servlet.FilterChain;
+import com.master_thesis.maturity_assessment.auth.models.User;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -70,6 +72,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
 
                 if (jwtUtils.validateToken(jwtToken, userDetails)) {
+                    if (userDetails instanceof User user && user.isPasswordChangeRequired()
+                            && !isPasswordChangeRequest(request)) {
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        response.setContentType("application/json");
+                        new ObjectMapper().writeValue(response.getWriter(), new ErrorResponse(
+                                "PASSWORD_CHANGE_REQUIRED", "Change your temporary password before continuing."));
+                        return;
+                    }
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,
@@ -90,6 +100,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
         }
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isPasswordChangeRequest(HttpServletRequest request) {
+        String path = request.getServletPath();
+        return ("GET".equals(request.getMethod()) && "/api/v1/user/me".equals(path))
+                || ("PUT".equals(request.getMethod()) && "/api/v1/user/me/password".equals(path))
+                || ("POST".equals(request.getMethod()) && "/api/v1/auth/refresh".equals(path))
+                || ("POST".equals(request.getMethod()) && "/api/v1/auth/login".equals(path));
     }
 
 }

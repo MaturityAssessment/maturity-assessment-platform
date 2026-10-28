@@ -8,6 +8,7 @@ import com.master_thesis.maturity_assessment.auth.models.UserApprovalStatus;
 import com.master_thesis.maturity_assessment.auth.models.UserRole;
 import com.master_thesis.maturity_assessment.auth.repository.UserRepository;
 import com.master_thesis.maturity_assessment.auth.services.UserHelpTourService;
+import com.master_thesis.maturity_assessment.auth.services.PasswordService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -37,7 +38,7 @@ class UserControllerTest {
     void currentUserResponseIncludesHelpTourState() {
         UserRepository userRepository = mock(UserRepository.class);
         UserHelpTourService helpTourService = mock(UserHelpTourService.class);
-        UserController controller = new UserController(userRepository, helpTourService);
+        UserController controller = new UserController(userRepository, helpTourService, mock(PasswordService.class));
         User user = userWithHelpState();
         authenticate(user);
         when(userRepository.findByEmail(user.getEmail())).thenReturn(user);
@@ -58,7 +59,7 @@ class UserControllerTest {
     void completingTourUsesAuthenticatedPrincipalAndReturnsUpdatedState() {
         UserRepository userRepository = mock(UserRepository.class);
         UserHelpTourService helpTourService = mock(UserHelpTourService.class);
-        UserController controller = new UserController(userRepository, helpTourService);
+        UserController controller = new UserController(userRepository, helpTourService, mock(PasswordService.class));
         User authenticatedUser = userWithHelpState();
         authenticatedUser.setCompletedHelpTours(Map.of());
         User updatedUser = userWithHelpState();
@@ -84,7 +85,7 @@ class UserControllerTest {
     void completingTourRejectsUnauthenticatedRequest() {
         UserRepository userRepository = mock(UserRepository.class);
         UserHelpTourService helpTourService = mock(UserHelpTourService.class);
-        UserController controller = new UserController(userRepository, helpTourService);
+        UserController controller = new UserController(userRepository, helpTourService, mock(PasswordService.class));
         CompleteHelpTourRequest request = new CompleteHelpTourRequest();
         request.setVersion(1);
 
@@ -100,7 +101,7 @@ class UserControllerTest {
     void dismissingTourPromptUsesAuthenticatedPrincipalAndReturnsUpdatedState() {
         UserRepository userRepository = mock(UserRepository.class);
         UserHelpTourService helpTourService = mock(UserHelpTourService.class);
-        UserController controller = new UserController(userRepository, helpTourService);
+        UserController controller = new UserController(userRepository, helpTourService, mock(PasswordService.class));
         User authenticatedUser = userWithHelpState();
         authenticatedUser.setCompletedHelpTours(Map.of());
         authenticatedUser.setDismissedHelpTourPrompts(Map.of());
@@ -134,7 +135,8 @@ class UserControllerTest {
         AdminController controller = new AdminController(
                 userRepository,
                 mock(AssessmentRepository.class),
-                mock(PasswordEncoder.class)
+                mock(PasswordEncoder.class),
+                mock(PasswordService.class)
         );
         User user = userWithHelpState();
         when(userRepository.findAll()).thenReturn(List.of(user));

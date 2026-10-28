@@ -34,6 +34,18 @@ logout/revoke endpoint in the current controller API.
 
 ## Permissions
 
+Password changes immediately invalidate every access/refresh token for the
+account. Access tokens include a password version checked against the stored
+user on each request; refresh tokens also record that version. Existing tokens
+without the claim are accepted as version zero until the first password change.
+
+Admins can [reset a user's password](reference/administration.md#post-apiv1adminusersidreset-password).
+The system emails a temporary password valid for 24 hours. Sessions created
+with it are restricted to profile/password and login/refresh endpoints until the
+user [chooses a new password](reference/authentication-and-users.md#put-apiv1usermepassword).
+Other requests return `403 PASSWORD_CHANGE_REQUIRED`. Expired temporary
+credentials cannot log in, refresh, or use an existing access token.
+
 | Access label | Meaning in the reference |
 |---|---|
 | Public | No bearer token required |

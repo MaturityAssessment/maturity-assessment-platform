@@ -1,6 +1,7 @@
 package com.master_thesis.maturity_assessment.config;
 
 import io.jsonwebtoken.Claims;
+import com.master_thesis.maturity_assessment.auth.models.User;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -49,12 +50,14 @@ public class JwtUtils {
 
     @Deprecated
     public String generateToken(UserDetails userDetails) {
-        Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, userDetails.getUsername(), accessTokenExpiration);
+        return generateAccessToken(userDetails);
     }
 
     public String generateAccessToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
+        if (userDetails instanceof User user) {
+            claims.put("passwordVersion", user.getPasswordVersion());
+        }
         return createToken(claims, userDetails.getUsername(), accessTokenExpiration);
     }
 
@@ -79,7 +82,15 @@ public class JwtUtils {
 
     public Boolean validateToken(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        if (userDetails instanceof User user) {
+            Number version = extractClaim(token, claims -> claims.get("passwordVersion", Number.class));
+            long tokenVersion = version == null ? 0 : version.longValue();
+            if (tokenVersion != user.getPasswordVersion()) {
+                return false;
+            }
+        }
+        return username.equals(userDetails.getUsername()) && !isTokenExpired(token)
+                && userDetails.isEnabled() && userDetails.isCredentialsNonExpired();
     }
 
     public Boolean validateRefreshToken(String token) {

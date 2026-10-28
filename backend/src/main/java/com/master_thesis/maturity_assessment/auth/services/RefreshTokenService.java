@@ -26,6 +26,7 @@ public class RefreshTokenService {
     public RefreshToken createRefreshToken(User user) {
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setUser(user);
+        refreshToken.setPasswordVersion(user.getPasswordVersion());
         refreshToken.setToken(UUID.randomUUID().toString());
         refreshToken.setExpiryDate(new Date(System.currentTimeMillis() + refreshTokenExpiration));
         refreshToken.setCreatedAt(new Date(System.currentTimeMillis()));
@@ -71,7 +72,8 @@ public class RefreshTokenService {
             return false;
         }
         RefreshToken refreshToken = refreshTokenOpt.get();
-        if (refreshToken.getRevoked()) {
+        if (refreshToken.getRevoked()
+                || refreshToken.getPasswordVersion() != refreshToken.getUser().getPasswordVersion()) {
             return false;
         }
         try {

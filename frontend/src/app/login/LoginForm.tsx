@@ -15,10 +15,12 @@ import {
 
 interface LoginFormProps {
   registrationSubmitted?: boolean;
+  passwordChanged?: boolean;
 }
 
 export default function LoginForm({
   registrationSubmitted = false,
+  passwordChanged = false,
 }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,6 +54,8 @@ export default function LoginForm({
         setError(
           "Your access request was submitted. Admins will review it before approving your login."
         );
+      } else if (error.errorCode === "TEMPORARY_PASSWORD_EXPIRED") {
+        setError("Your temporary password has expired. Contact an administrator for another reset.");
       } else {
         setError("Login failed. Please try again.");
       }
@@ -68,6 +72,11 @@ export default function LoginForm({
             Sign in to your account
           </h2>
         </div>
+        {passwordChanged && (
+          <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Your password has been changed. Sign in with your new password.
+          </p>
+        )}
         {registrationSubmitted && (
           <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-md px-4 py-3">
             Your access request was submitted. Admins will review it and approve
