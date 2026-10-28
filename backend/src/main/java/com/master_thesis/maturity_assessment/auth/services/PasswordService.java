@@ -74,16 +74,22 @@ public class PasswordService {
         if (user.getApprovalStatus() != UserApprovalStatus.APPROVED) {
             throw new IllegalOperationException("ACCOUNT_NOT_APPROVED", "Approve the account before resetting its password.");
         }
+        String temporaryPassword = assignTemporaryPassword(user);
+        invalidateSessions(user);
+        // Surface database errors before handing the temporary password to SMTP.
+        userRepository.flush();
+        passwordEmailService.sendTemporaryPassword(user.getEmail(), temporaryPassword);
+    }
+
+    // Shared by account creation and resets; the caller persists and emails within its transaction.
+    String assignTemporaryPassword(User user) {
         byte[] bytes = new byte[24];
         random.nextBytes(bytes);
         String temporaryPassword = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         user.setPassword(passwordEncoder.encode(temporaryPassword));
         user.setPasswordChangeRequired(true);
         user.setTemporaryPasswordExpiresAt(Instant.now().plus(24, ChronoUnit.HOURS));
-        invalidateSessions(user);
-        // Surface database errors before handing the temporary password to SMTP.
-        userRepository.flush();
-        passwordEmailService.sendTemporaryPassword(user.getEmail(), temporaryPassword);
+        return temporaryPassword;
     }
 
     private User findForUpdate(Long userId) {

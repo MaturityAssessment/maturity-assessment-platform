@@ -593,9 +593,10 @@ export interface MaturityModelEditorImportResponse {
 }
 
 export interface CreateUserRequest {
+  name: string;
   email: string;
-  password: string;
-  role: "ADMIN" | "USER" | "CURATOR";
+  organizationName: string;
+  role?: "ADMIN" | "USER" | "CURATOR";
 }
 
 export interface UpdateUserRequest {

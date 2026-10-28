@@ -4,6 +4,7 @@ import com.master_thesis.maturity_assessment.assessments.repository.AssessmentRe
 import com.master_thesis.maturity_assessment.auth.models.User;
 import com.master_thesis.maturity_assessment.auth.repository.UserRepository;
 import com.master_thesis.maturity_assessment.auth.services.PasswordService;
+import com.master_thesis.maturity_assessment.auth.services.AdminUserService;
 import com.master_thesis.maturity_assessment.auth.services.UserHelpTourService;
 import com.master_thesis.maturity_assessment.config.JwtAuthFilter;
 import com.master_thesis.maturity_assessment.config.JwtUtils;
@@ -38,6 +39,7 @@ class PasswordControllerSecurityTest {
     @MockitoBean private AssessmentRepository assessments;
     @MockitoBean private UserHelpTourService tours;
     @MockitoBean private PasswordService passwords;
+    @MockitoBean private AdminUserService adminUsers;
     @MockitoBean private UserDetailsService userDetails;
 
     @Test

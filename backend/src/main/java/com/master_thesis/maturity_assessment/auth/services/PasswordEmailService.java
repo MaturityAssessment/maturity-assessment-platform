@@ -15,11 +15,20 @@ public class PasswordEmailService {
     private final JavaMailSender mailSender;
     private final CampaignMailProperties properties;
 
-    // Synchronous: an SMTP failure must roll back the password reset.
+    // Synchronous: an SMTP failure must roll back account creation or the password reset.
     public void sendTemporaryPassword(String email, String temporaryPassword) {
+        send(email, temporaryPassword, false);
+    }
+
+    public void sendWelcomePassword(String email, String temporaryPassword) {
+        send(email, temporaryPassword, true);
+    }
+
+    private void send(String email, String temporaryPassword, boolean newAccount) {
+        String unchangedMessage = newAccount ? "The account has not been created." : "The password has not been changed.";
         if (!properties.isEnabled() || properties.getFrom() == null || properties.getFrom().isBlank()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "Password reset email is unavailable. The password has not been changed.");
+                    "Temporary password email is unavailable. " + unchangedMessage);
         }
         String baseUrl = properties.getFrontendBaseUrl();
         if (baseUrl == null || baseUrl.isBlank()) {
@@ -28,11 +37,11 @@ public class PasswordEmailService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(properties.getFrom().trim());
         message.setTo(email);
-        message.setSubject("Your temporary password");
+        message.setSubject(newAccount ? "Welcome to Maturity Assessment — your account is ready" : "Your temporary password");
         message.setText("""
                 Hello,
 
-                An administrator has reset your maturity assessment account password.
+                %s
 
                 Temporary password: %s
 
@@ -40,15 +49,20 @@ public class PasswordEmailService {
                 You must choose a new password before continuing. Enter the temporary
                 password in the current password field. It expires in 24 hours.
 
-                Your previous password and sessions no longer work.
-                If you did not expect this change, contact your administrator.
-                """.formatted(temporaryPassword, baseUrl.trim().replaceAll("/+$", "")));
+                %s
+                If you did not expect this email, contact your administrator.
+                """.formatted(
+                newAccount ? "An administrator has created a maturity assessment account for you."
+                        : "An administrator has reset your maturity assessment account password.",
+                temporaryPassword, baseUrl.trim().replaceAll("/+$", ""),
+                newAccount ? "Your account is approved and ready to use."
+                        : "Your previous password and sessions no longer work."));
         try {
             mailSender.send(message);
         } catch (MailException exception) {
             // Do not expose SMTP diagnostics, which can contain the email body.
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "The temporary password email could not be sent. The password has not been changed.");
+                    "The temporary password email could not be sent. " + unchangedMessage);
         }
     }
 }

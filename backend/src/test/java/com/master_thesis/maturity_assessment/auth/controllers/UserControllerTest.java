@@ -9,13 +9,13 @@ import com.master_thesis.maturity_assessment.auth.models.UserRole;
 import com.master_thesis.maturity_assessment.auth.repository.UserRepository;
 import com.master_thesis.maturity_assessment.auth.services.UserHelpTourService;
 import com.master_thesis.maturity_assessment.auth.services.PasswordService;
+import com.master_thesis.maturity_assessment.auth.services.AdminUserService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Map;
@@ -135,7 +135,7 @@ class UserControllerTest {
         AdminController controller = new AdminController(
                 userRepository,
                 mock(AssessmentRepository.class),
-                mock(PasswordEncoder.class),
+                mock(AdminUserService.class),
                 mock(PasswordService.class)
         );
         User user = userWithHelpState();

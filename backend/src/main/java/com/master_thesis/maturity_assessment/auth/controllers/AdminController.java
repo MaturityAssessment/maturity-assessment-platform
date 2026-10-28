@@ -14,7 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import jakarta.validation.Valid;
 import com.master_thesis.maturity_assessment.auth.dto.UserDTO;
 import com.master_thesis.maturity_assessment.auth.dto.CreateUserRequest;
 import com.master_thesis.maturity_assessment.auth.dto.UpdateUserRequest;
@@ -23,6 +23,7 @@ import com.master_thesis.maturity_assessment.auth.models.UserApprovalStatus;
 import com.master_thesis.maturity_assessment.auth.models.UserRole;
 import com.master_thesis.maturity_assessment.auth.repository.UserRepository;
 import com.master_thesis.maturity_assessment.auth.services.PasswordService;
+import com.master_thesis.maturity_assessment.auth.services.AdminUserService;
 import com.master_thesis.maturity_assessment.config.IllegalOperationException;
 import com.master_thesis.maturity_assessment.assessments.models.Assessment;
 import com.master_thesis.maturity_assessment.assessments.repository.AssessmentRepository;
@@ -37,16 +38,16 @@ public class AdminController {
 
     private final UserRepository userRepository;
     private final AssessmentRepository assessmentRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final AdminUserService adminUserService;
     private final PasswordService passwordService;
 
     public AdminController(UserRepository userRepository,
                            AssessmentRepository assessmentRepository,
-                           PasswordEncoder passwordEncoder,
+                           AdminUserService adminUserService,
                            PasswordService passwordService) {
         this.userRepository = userRepository;
         this.assessmentRepository = assessmentRepository;
-        this.passwordEncoder = passwordEncoder;
+        this.adminUserService = adminUserService;
         this.passwordService = passwordService;
     }
 
@@ -96,33 +97,8 @@ public class AdminController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<UserDTO> createUser(@RequestBody CreateUserRequest request) {
-
-        // Validate request
-        if (request.getEmail() == null || request.getEmail().isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
-        if (request.getPassword() == null || request.getPassword().isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
-        if (request.getRole() == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        // Check if email already exists
-        if (userRepository.findByEmail(request.getEmail()) != null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        // Create new user
-        User user = new User();
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole());
-        user.setApprovalStatus(UserApprovalStatus.APPROVED);
-        user = userRepository.save(user);
-
-        return ResponseEntity.ok(toUserDTO(user));
+    public ResponseEntity<UserDTO> createUser(@Valid @RequestBody CreateUserRequest request) {
+        return ResponseEntity.status(201).body(toUserDTO(adminUserService.createUser(request)));
     }
 
     @PutMapping("/{id}")

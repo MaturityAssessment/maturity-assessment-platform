@@ -51,8 +51,9 @@ Do not interpret the success body's `errorCode` field as a failed HTTP request.
 **Errors:** `401 INVALID_CREDENTIALS`; `403 ACCOUNT_PENDING_APPROVAL` for a
 pending/disabled account; `500 INTERNAL_SERVER_ERROR` if authenticated user
 details cannot be loaded; `401 TEMPORARY_PASSWORD_EXPIRED` if a temporary
-password has expired. After an admin reset, fetch `/api/v1/user/me` and complete
-the required password change before accessing application features.
+password has expired. After account creation by an admin or an admin reset, fetch
+`/api/v1/user/me` and complete the required password change before accessing
+application features.
 
 ## POST /api/v1/auth/refresh
 
@@ -134,8 +135,8 @@ an already completed version is not added to dismissals.
 ## User response
 
 `UserDTO` is also returned by admin create/update/approve endpoints. It contains
-no password or token fields. Profile names may be null, especially for accounts
-created through the admin endpoint.
+no password or token fields. Profile names may be null for legacy accounts or
+accounts registered without optional profile details.
 
 ```json
 {
@@ -155,8 +156,9 @@ created through the admin endpoint.
 `role` is `USER`, `CURATOR`, or `ADMIN`; `approvalStatus` is `PENDING` or
 `APPROVED`. Tour maps associate string keys with integer versions.
 
-`passwordChangeRequired` is true after an admin reset. The frontend displays
-the change-password form immediately after sign-in. The backend restricts these
+`passwordChangeRequired` is true after account creation by an admin or an admin
+reset. The frontend displays the change-password form immediately after sign-in.
+The backend restricts these
 sessions to reading `/user/me`, changing `/user/me/password`, and authentication
 login/refresh. Other bearer-authenticated requests return
 `403 PASSWORD_CHANGE_REQUIRED` until the temporary password is replaced.

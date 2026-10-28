@@ -1,11 +1,14 @@
 package com.master_thesis.maturity_assessment.auth.services;
 
 import com.master_thesis.maturity_assessment.auth.dto.ChangePasswordRequest;
+import com.master_thesis.maturity_assessment.auth.dto.CreateUserRequest;
 import com.master_thesis.maturity_assessment.auth.models.User;
 import com.master_thesis.maturity_assessment.auth.models.UserRole;
+import com.master_thesis.maturity_assessment.auth.models.UserApprovalStatus;
 import com.master_thesis.maturity_assessment.auth.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -31,15 +34,18 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.eq;
 
 // This test creates/drops schema: run only against an explicitly supplied disposable database.
 @EnabledIfEnvironmentVariable(named = "PASSWORD_TEST_DB_URL", matches = ".+")
 @DataJpaTest(properties = {"spring.jpa.hibernate.ddl-auto=create-drop", "spring.flyway.enabled=false"})
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({PasswordService.class, RefreshTokenService.class, PasswordPersistenceIntegrationTest.Config.class})
+@Import({PasswordService.class, AdminUserService.class, RefreshTokenService.class, PasswordPersistenceIntegrationTest.Config.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class PasswordPersistenceIntegrationTest {
     @Autowired private PasswordService passwords;
+    @Autowired private AdminUserService adminUsers;
     @Autowired private RefreshTokenService tokens;
     @Autowired private UserRepository users;
     @Autowired private PasswordEncoder encoder;
@@ -52,6 +58,64 @@ class PasswordPersistenceIntegrationTest {
         properties.add("spring.datasource.url", () -> System.getenv("PASSWORD_TEST_DB_URL"));
         properties.add("spring.datasource.username", () -> System.getenv().getOrDefault("PASSWORD_TEST_DB_USER", "postgres"));
         properties.add("spring.datasource.password", () -> "");
+    }
+
+    @Test
+    void failedWelcomeEmailRollsBackNewAccountSoCreationCanBeRetried() {
+        CreateUserRequest request = accountRequest();
+        doThrow(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "SMTP unavailable"))
+                .when(email).sendWelcomePassword(anyString(), anyString());
+
+        assertThrows(ResponseStatusException.class, () -> adminUsers.createUser(request));
+        assertFalse(users.existsByEmailIgnoreCase(request.getEmail()));
+    }
+
+    @Test
+    void existingPendingAccountCannotBeDuplicatedUsingDifferentEmailCase() {
+        User pending = createUser();
+        pending.setApprovalStatus(UserApprovalStatus.PENDING);
+        users.saveAndFlush(pending);
+        CreateUserRequest request = accountRequest();
+        request.setEmail(pending.getEmail().toUpperCase(java.util.Locale.ROOT));
+
+        assertEquals(409, assertThrows(ResponseStatusException.class,
+                () -> adminUsers.createUser(request)).getStatusCode().value());
+        org.mockito.Mockito.verifyNoInteractions(email);
+    }
+
+    @Test
+    void createdAccountCanReplaceItsEmailedTemporaryPasswordUsingExistingFlow() {
+        User created = adminUsers.createUser(accountRequest());
+        ArgumentCaptor<String> temporaryPassword = ArgumentCaptor.forClass(String.class);
+        verify(email).sendWelcomePassword(eq(created.getEmail()), temporaryPassword.capture());
+        User stored = users.findById(created.getId()).orElseThrow();
+        assertEquals("New User", stored.getName());
+        assertEquals("Example Org", stored.getOrganizationName());
+        assertEquals(UserRole.USER, stored.getRole());
+        assertTrue(stored.isEnabled());
+        assertTrue(stored.isCredentialsNonExpired());
+        assertTrue(stored.isPasswordChangeRequired());
+        assertTrue(encoder.matches(temporaryPassword.getValue(), stored.getPassword()));
+
+        ChangePasswordRequest request = new ChangePasswordRequest();
+        request.setCurrentPassword(temporaryPassword.getValue());
+        request.setNewPassword("chosen-new-password-456");
+        request.setConfirmPassword("chosen-new-password-456");
+        passwords.changePassword(created.getId(), request);
+
+        User updated = users.findById(created.getId()).orElseThrow();
+        assertTrue(encoder.matches("chosen-new-password-456", updated.getPassword()));
+        assertFalse(encoder.matches(temporaryPassword.getValue(), updated.getPassword()));
+        assertFalse(updated.isPasswordChangeRequired());
+        assertNull(updated.getTemporaryPasswordExpiresAt());
+    }
+
+    private CreateUserRequest accountRequest() {
+        CreateUserRequest request = new CreateUserRequest();
+        request.setName("New User");
+        request.setEmail(UUID.randomUUID() + "@example.com");
+        request.setOrganizationName("Example Org");
+        return request;
     }
 
     @Test

@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Check, KeyRound, Pencil, Search, Trash2, X } from "lucide-react";
+import { Check, KeyRound, Pencil, Search, Trash2, UserPlus, X } from "lucide-react";
 import axios from "axios";
 import { Badge, Modal, PageLoading, SideNavbar } from "@/components";
 import apiClient from "@/api/axios";
 import { useAuth } from "@/context";
-import type { UpdateUserRequest, UserDTO } from "@/api/types";
+import type { CreateUserRequest, UpdateUserRequest, UserDTO } from "@/api/types";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { DashboardPanel } from "@/components/dashboard/DashboardPrimitives";
 import AdminBreadcrumb from "@/components/admin/AdminBreadcrumb";
 
@@ -39,6 +41,17 @@ export default function UserManagementPage() {
   const [userToDelete, setUserToDelete] = useState<UserDTO | null>(null);
   const [userToReset, setUserToReset] = useState<UserDTO | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const handleCreateUser = async (data: CreateUserRequest) => {
+    const response = await apiClient.post<UserDTO>("/api/v1/admin/users", data);
+    setUsers((current) => [...current, response.data]);
+    setActiveMode("APPROVED");
+    clearFilters();
+    setError(null);
+    setSuccess(`User created. A temporary password has been emailed to ${response.data.email}.`);
+    setIsCreateModalOpen(false);
+  };
 
   const handleResetPassword = async () => {
     if (!userToReset) return;
@@ -239,6 +252,14 @@ export default function UserManagementPage() {
               <p className="mt-2 text-sm text-slate-600 sm:text-base">
                 Review access requests and manage user roles and accounts.
               </p>
+              <button
+                type="button"
+                onClick={() => { setSuccess(null); setIsCreateModalOpen(true); }}
+                className="mt-5 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              >
+                <UserPlus className="h-4 w-4" aria-hidden="true" />
+                Create user
+              </button>
             </header>
 
             {success && (
@@ -514,6 +535,9 @@ export default function UserManagementPage() {
         </main>
       </div>
 
+      {isCreateModalOpen && (
+        <CreateUserModal onClose={() => setIsCreateModalOpen(false)} onSubmit={handleCreateUser} />
+      )}
       {userToReset && (
         <ResetPasswordModal user={userToReset} onClose={() => setUserToReset(null)} onConfirm={handleResetPassword} />
       )}
@@ -541,6 +565,74 @@ export default function UserManagementPage() {
         />
       )}
     </>
+  );
+}
+
+function CreateUserModal({ onClose, onSubmit }: {
+  onClose: () => void;
+  onSubmit: (data: CreateUserRequest) => Promise<void>;
+}) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [organizationName, setOrganizationName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (submitting) return;
+    setError("");
+    if (!name.trim() || !email.trim() || !organizationName.trim()) {
+      setError("Enter a name, email address, and organization.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await onSubmit({ name: name.trim(), email: email.trim(), organizationName: organizationName.trim() });
+    } catch (error) {
+      setError(axios.isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message || "The user could not be created. Please try again."
+        : "The user could not be created. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal isOpen onClose={onClose} title="Create user" maxWidth="md" closeButtonDisabled={submitting} footer={
+      <div className="flex justify-end gap-3">
+        <button type="button" onClick={onClose} disabled={submitting}
+          className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-60">Cancel</button>
+        <button type="submit" form="create-user-form" disabled={submitting}
+          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+          {submitting ? "Creating and sending..." : "Create and email password"}
+        </button>
+      </div>
+    }>
+      <form id="create-user-form" onSubmit={submit} className="space-y-5">
+        <p className="text-sm leading-6 text-slate-600">
+          Create an approved account with the User role. The user will receive a temporary
+          password by email, valid for 24 hours, and must change it after signing in.
+          You can edit their role after creation.
+        </p>
+        {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+        <div className="space-y-2">
+          <Label htmlFor="create-user-name">Name</Label>
+          <Input id="create-user-name" name="name" autoComplete="name" required autoFocus maxLength={255}
+            value={name} onChange={(event) => setName(event.target.value)} disabled={submitting} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="create-user-email">Email</Label>
+          <Input id="create-user-email" name="email" type="email" autoComplete="email" required maxLength={255}
+            value={email} onChange={(event) => setEmail(event.target.value)} disabled={submitting} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="create-user-organization">Organization</Label>
+          <Input id="create-user-organization" name="organizationName" autoComplete="organization" required maxLength={255}
+            value={organizationName} onChange={(event) => setOrganizationName(event.target.value)} disabled={submitting} />
+        </div>
+      </form>
+    </Modal>
   );
 }
 

@@ -64,7 +64,7 @@ export default function ChangePasswordForm({
         <h1 className="text-2xl font-bold text-slate-900">Change password</h1>
         <p className="mt-2 text-sm text-slate-600">
           {required
-            ? "An administrator reset your password. Enter the temporary password from your email and choose a new password to continue."
+            ? "Enter the temporary password from your email and choose a new password to continue."
             : "Confirm your current password and choose a new password."}
         </p>
         <p id="password-guidance" className="mt-2 text-sm text-slate-600">
