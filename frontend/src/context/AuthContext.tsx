@@ -11,6 +11,8 @@ import {
 import { useRouter } from "next/navigation";
 import apiClient from "@/api/axios";
 import { UserDTO } from "@/api/types";
+import CompleteProfileForm from "@/components/auth/CompleteProfileForm";
+import { currentReturnTo } from "@/lib/authRedirect";
 import ChangePasswordForm from "@/components/auth/ChangePasswordForm";
 import {
   ACCESS_TOKEN_STORAGE_KEY,
@@ -100,11 +102,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {user?.passwordChangeRequired ? (
         <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
           <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <ChangePasswordForm required onSuccess={() => handleLogout("/login?status=password-changed")} />
+            <ChangePasswordForm required onSuccess={() => handleLogout(`/login?status=password-changed&returnTo=${encodeURIComponent(currentReturnTo())}`)} />
             <button type="button" onClick={() => handleLogout("/login")}
               className="mt-5 w-full text-sm font-medium text-slate-600 hover:text-slate-900">
               Sign out
             </button>
+          </div>
+        </div>
+      ) : user?.profileCompletionRequired ? (
+        <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+          <div className="w-full max-w-md rounded-xl border bg-white p-6 shadow-sm">
+            <CompleteProfileForm onSuccess={refreshUserData} />
+            <button className="mt-5 text-sm" onClick={() => handleLogout(`/login?returnTo=${encodeURIComponent(currentReturnTo())}`)}>Sign out</button>
           </div>
         </div>
       ) : children}

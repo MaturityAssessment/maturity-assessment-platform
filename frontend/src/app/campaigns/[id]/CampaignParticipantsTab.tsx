@@ -148,14 +148,14 @@ export default function CampaignParticipantsTab({
                           onClick={() => onCopyInvitation(participant.id)}
                           disabled={issuingParticipantId === participant.id || isCampaignExpired(campaign.endsAt)}
                           className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                          title="Generating a new link invalidates the previous one"
+                          title="Sign in with the invited account to use this link"
                         >
                           {copiedParticipantId === participant.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                           {issuingParticipantId === participant.id
                             ? "Generating..."
                             : copiedParticipantId === participant.id
                               ? "Copied"
-                              : "Copy new link"}
+                              : "Copy invitation link"}
                         </button>
                       </td>
                       <td className="py-4 pl-5">

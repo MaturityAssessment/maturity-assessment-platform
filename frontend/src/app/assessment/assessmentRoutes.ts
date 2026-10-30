@@ -5,7 +5,7 @@ const ASSESSMENT_ROOT = "/assessment";
 
 export type AssessmentRouteContext = {
   draftId?: number;
-  campaignToken?: string;
+  campaignId?: string;
   tab?: "overview" | "review" | "results" | "discussion" | "logs" | "evaluation";
 };
 
@@ -157,8 +157,8 @@ export function replaceAssessmentPathContext(
   context: AssessmentRouteContext | null
 ) {
   const search = new URLSearchParams();
-  if (context?.campaignToken) {
-    search.set("campaignToken", context.campaignToken);
+  if (context?.campaignId) {
+    search.set("campaignId", context.campaignId);
   } else if (
     context?.draftId &&
     Number.isSafeInteger(context.draftId) &&
@@ -181,9 +181,9 @@ export function readAssessmentRouteContext(
   const tabValue = params.get("tab");
   const tab = ["overview", "review", "results", "discussion", "logs", "evaluation"].includes(tabValue || "") ? tabValue as AssessmentRouteContext["tab"] : undefined;
   const tabContext = tab ? { tab } : {};
-  const campaignToken = params.get("campaignToken")?.trim();
-  if (campaignToken && /^[A-Za-z0-9_-]{43}$/.test(campaignToken)) {
-    return { campaignToken, ...tabContext };
+  const campaignId = params.get("campaignId")?.trim();
+  if (campaignId && /^[1-9][0-9]*$/.test(campaignId)) {
+    return { campaignId, ...tabContext };
   }
 
   const draftId = readPositiveInteger(params.get("draftId"));

@@ -98,18 +98,18 @@ test("reads only valid positive route context identifiers", () => {
 });
 
 test("preserves a campaign invitation token across assessment routes", () => {
-  const token = "a".repeat(43);
+  const token = "123";
 
   assert.deepEqual(
-    readAssessmentRouteContext(`?campaignToken=${token}`),
-    { campaignToken: token }
+    readAssessmentRouteContext(`?campaignId=${token}`),
+    { campaignId: token }
   );
   assert.equal(
-    buildAssessmentOverviewHref({ campaignToken: token }),
-    `/assessment?campaignToken=${token}`
+    buildAssessmentOverviewHref({ campaignId: token }),
+    `/assessment?campaignId=${token}`
   );
   assert.equal(
-    readAssessmentRouteContext("?campaignToken=unsafe/token"),
+    readAssessmentRouteContext("?campaignId=unsafe/token"),
     null
   );
 });
@@ -223,6 +223,6 @@ test("evaluation context survives overview, practice and module navigation and r
     assert.deepEqual(readAssessmentRouteContext(href.split("?")[1]), context);
   }
   assert.deepEqual(readAssessmentRouteContext("?draftId=41&tab=unknown"), { draftId: 41 });
-  const token = "a".repeat(43);
-  assert.deepEqual(readAssessmentRouteContext(`?campaignToken=${token}&tab=review`), { campaignToken: token, tab: "review" });
+  const token = "123";
+  assert.deepEqual(readAssessmentRouteContext(`?campaignId=${token}&tab=review`), { campaignId: token, tab: "review" });
 });

@@ -149,19 +149,16 @@ export default function EvidenceUpload({
   const downloadPersistedFile = async (item: AssessmentEvidenceInputItem) => {
     if (!item.evidenceId) return;
     try {
-      const campaignToken =
+      const campaignId =
         typeof window === "undefined"
           ? null
-          : new URLSearchParams(window.location.search).get("campaignToken");
+          : new URLSearchParams(window.location.search).get("campaignId");
       const response = await apiClient.get(
-        campaignToken
-          ? `/api/v1/campaign-response/evidence/${item.evidenceId}/download`
+        campaignId
+          ? `/api/v1/campaign-response/${campaignId}/evidence/${item.evidenceId}/download`
           : `/api/v1/evidence/${item.evidenceId}/download`,
         {
           responseType: "blob",
-          ...(campaignToken
-            ? { headers: { "X-Campaign-Token": campaignToken } }
-            : {}),
         }
       );
       const objectUrl = URL.createObjectURL(response.data);

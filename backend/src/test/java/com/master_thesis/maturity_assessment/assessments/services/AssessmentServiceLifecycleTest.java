@@ -130,7 +130,7 @@ class AssessmentServiceLifecycleTest {
         AssessmentRequest request = request(Map.of());
 
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID,
                 MODEL_ID,
                 AssessmentStatus.DRAFT
@@ -169,7 +169,7 @@ class AssessmentServiceLifecycleTest {
         AssessmentRequest request = request(Map.of());
 
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID,
                 MODEL_ID,
                 AssessmentStatus.DRAFT
@@ -197,7 +197,7 @@ class AssessmentServiceLifecycleTest {
         );
 
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID,
                 MODEL_ID,
                 AssessmentStatus.DRAFT
@@ -223,7 +223,7 @@ class AssessmentServiceLifecycleTest {
         );
 
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID,
                 MODEL_ID,
                 AssessmentStatus.DRAFT
@@ -259,7 +259,7 @@ class AssessmentServiceLifecycleTest {
         Assessment draft = draftAssessment();
 
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID, MODEL_ID, AssessmentStatus.DRAFT)).thenReturn(Optional.of(draft));
         when(dimensionResultRepository.findByAssessmentId(ASSESSMENT_ID)).thenReturn(List.of());
 
@@ -284,7 +284,7 @@ class AssessmentServiceLifecycleTest {
         );
 
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID,
                 MODEL_ID,
                 AssessmentStatus.DRAFT
@@ -311,7 +311,7 @@ class AssessmentServiceLifecycleTest {
         Assessment draft = draftAssessment();
 
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID,
                 MODEL_ID,
                 AssessmentStatus.DRAFT
@@ -394,7 +394,7 @@ class AssessmentServiceLifecycleTest {
         Assessment draft = draftAssessment();
 
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID,
                 MODEL_ID,
                 AssessmentStatus.DRAFT
@@ -430,7 +430,7 @@ class AssessmentServiceLifecycleTest {
         Assessment draft = draftAssessment();
 
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID,
                 MODEL_ID,
                 AssessmentStatus.DRAFT
@@ -453,6 +453,17 @@ class AssessmentServiceLifecycleTest {
     }
 
     @Test
+    void ordinaryAssessmentRoutesCannotReadOrModifyCampaignAssessment() {
+        user.setRole(com.master_thesis.maturity_assessment.auth.models.UserRole.USER);
+        Assessment assessment = draftAssessment();
+        assessment.setCampaign(new Campaign());
+        when(assessmentRepository.findById(ASSESSMENT_ID)).thenReturn(Optional.of(assessment));
+        when(assessmentRepository.findByIdForUpdate(ASSESSMENT_ID)).thenReturn(Optional.of(assessment));
+        assertThrows(ResponseStatusException.class, () -> assessmentService.getAssessmentById(ASSESSMENT_ID, user));
+        assertThrows(ResponseStatusException.class, () -> assessmentService.saveDraft(ASSESSMENT_ID, request(Map.of()), user));
+    }
+
+    @Test
     void campaignParticipantLazilyCreatesAndSubmitsOneOwnedAssessment() {
         MaturityModel model = model(true);
         Campaign campaign = new Campaign();
@@ -460,6 +471,7 @@ class AssessmentServiceLifecycleTest {
         campaign.setMaturityModel(model);
         CampaignParticipant participant = new CampaignParticipant();
         participant.setId(51L);
+        participant.setUser(user);
         participant.setCampaign(campaign);
         when(dimensionResultRepository.findByAssessmentId(ASSESSMENT_ID))
                 .thenReturn(List.of());
@@ -470,7 +482,7 @@ class AssessmentServiceLifecycleTest {
         Assessment created = participant.getAssessment();
         assertEquals(ASSESSMENT_ID, opened.getId());
         assertEquals(AssessmentStatus.DRAFT, created.getStatus());
-        assertNull(created.getUser());
+        assertEquals(user, created.getUser());
         assertEquals(campaign, created.getCampaign());
         assertEquals(participant, created.getCampaignParticipant());
 
@@ -488,7 +500,7 @@ class AssessmentServiceLifecycleTest {
 
         assertEquals("COMPLETED", submitted.getStatus());
         assertTrue(submitted.getIsCompleted());
-        assertNull(created.getUser());
+        assertEquals(user, created.getUser());
         assertEquals(campaign, created.getCampaign());
         verify(assessmentRepository, times(1)).saveAndFlush(created);
     }
@@ -520,7 +532,7 @@ class AssessmentServiceLifecycleTest {
         assertEquals(HttpStatus.CONFLICT, retry.getStatusCode());
         verify(assessmentRepository, times(1)).save(draft);
         verify(assessmentRepository, never())
-                .findByUserIdAndMaturityModelIdAndStatus(any(), any(), any());
+                .findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(any(), any(), any());
     }
 
     @Test
@@ -566,7 +578,7 @@ class AssessmentServiceLifecycleTest {
         Assessment draft = draftAssessment();
 
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID,
                 MODEL_ID,
                 AssessmentStatus.DRAFT
@@ -616,7 +628,7 @@ class AssessmentServiceLifecycleTest {
         assertThrows(IllegalOperationException.class, () -> assessmentService.createAssessment(incoming, user));
         incoming.getQuestionResponses().get("D1_M1_101_1001").setChoiceIndex(0);
         Assessment draft = draftAssessment();
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(USER_ID, MODEL_ID, AssessmentStatus.DRAFT)).thenReturn(Optional.of(draft));
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(USER_ID, MODEL_ID, AssessmentStatus.DRAFT)).thenReturn(Optional.of(draft));
         assertEquals("COMPLETED", assessmentService.createAssessment(incoming, user).getStatus());
     }
 
@@ -630,7 +642,7 @@ class AssessmentServiceLifecycleTest {
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
         assertThrows(IllegalOperationException.class, () -> assessmentService.createAssessment(request(Map.of("D1_M1_101_1001", 3)), user));
         Assessment draft = draftAssessment();
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(USER_ID, MODEL_ID, AssessmentStatus.DRAFT)).thenReturn(Optional.of(draft));
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(USER_ID, MODEL_ID, AssessmentStatus.DRAFT)).thenReturn(Optional.of(draft));
         var result = assessmentService.createAssessment(request(Map.of("D1_M1_101_1001", 1, "D1_M1_101_1002", 1)), user);
         assertEquals("COMPLETED", result.getStatus());
         org.mockito.ArgumentCaptor<List<QuestionEvaluation>> saved = org.mockito.ArgumentCaptor.forClass(List.class);
@@ -646,7 +658,7 @@ class AssessmentServiceLifecycleTest {
         Assessment draft = draftAssessment();
 
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID,
                 MODEL_ID,
                 AssessmentStatus.DRAFT
@@ -1302,7 +1314,7 @@ class AssessmentServiceLifecycleTest {
         Assessment draft = draftAssessment();
 
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID,
                 MODEL_ID,
                 AssessmentStatus.DRAFT
@@ -1331,7 +1343,7 @@ class AssessmentServiceLifecycleTest {
         Assessment draft = draftAssessment();
 
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID, MODEL_ID, AssessmentStatus.DRAFT)).thenReturn(Optional.of(draft));
         when(dimensionResultRepository.findByAssessmentId(ASSESSMENT_ID)).thenReturn(List.of());
 
@@ -1391,7 +1403,7 @@ class AssessmentServiceLifecycleTest {
     void userAssessmentListIncludesMaturityModelVersion() {
         Assessment assessment = draftAssessment();
 
-        when(assessmentRepository.findByUserIdOrderByCreatedAtDescIdDesc(USER_ID))
+        when(assessmentRepository.findByCampaignIsNullAndUserIdOrderByCreatedAtDescIdDesc(USER_ID))
                 .thenReturn(List.of(assessment));
         when(dimensionResultRepository.findByAssessmentId(ASSESSMENT_ID))
                 .thenReturn(List.of());
@@ -1412,6 +1424,7 @@ class AssessmentServiceLifecycleTest {
 
         CampaignParticipant participant = new CampaignParticipant();
         participant.setId(51L);
+        participant.setUser(user);
         participant.setEmail("participant@example.com");
         participant.setCampaign(campaign);
 
@@ -1455,7 +1468,7 @@ class AssessmentServiceLifecycleTest {
         when(maturityModelRepository.findByBaseModelIdOrderByVersionAsc(legacyModelId))
                 .thenReturn(List.of(legacyModel, currentModel));
         when(assessmentRepository
-                .findByUserIdAndStatusAndMaturityModelIdInOrderByUpdatedAtDescIdDesc(
+                .findByCampaignIsNullAndUserIdAndStatusAndMaturityModelIdInOrderByUpdatedAtDescIdDesc(
                         eq(USER_ID),
                         eq(AssessmentStatus.DRAFT),
                         argThat(ids -> ids.containsAll(List.of(legacyModelId, MODEL_ID)))
@@ -1496,7 +1509,7 @@ class AssessmentServiceLifecycleTest {
 
         when(maturityModelRepository.findById(MODEL_ID))
                 .thenReturn(Optional.of(currentModel));
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID,
                 MODEL_ID,
                 AssessmentStatus.DRAFT
@@ -1507,12 +1520,12 @@ class AssessmentServiceLifecycleTest {
         AssessmentResponse response = assessmentService.saveDraft(request(Map.of()), user);
 
         assertEquals(MODEL_ID, response.getMaturityModelId());
-        verify(assessmentRepository).findByUserIdAndMaturityModelIdAndStatus(
+        verify(assessmentRepository).findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID,
                 MODEL_ID,
                 AssessmentStatus.DRAFT
         );
-        verify(assessmentRepository, never()).findByUserIdAndMaturityModelIdAndStatus(
+        verify(assessmentRepository, never()).findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID,
                 legacyModelId,
                 AssessmentStatus.DRAFT
@@ -1523,7 +1536,7 @@ class AssessmentServiceLifecycleTest {
     void ensuringDraftCreatesOneEmptyDraftForAnActiveModel() {
         MaturityModel activeModel = model(true);
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(activeModel));
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID,
                 MODEL_ID,
                 AssessmentStatus.DRAFT
@@ -1550,7 +1563,7 @@ class AssessmentServiceLifecycleTest {
         when(questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID))
                 .thenReturn(List.of(existingAnswer));
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(activeModel));
-        when(assessmentRepository.findByUserIdAndMaturityModelIdAndStatus(
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                 USER_ID,
                 MODEL_ID,
                 AssessmentStatus.DRAFT
@@ -1620,7 +1633,7 @@ class AssessmentServiceLifecycleTest {
         }));
         verify(assessmentRepository).save(draft);
         verify(assessmentRepository, never())
-                .findByUserIdAndMaturityModelIdAndStatus(any(), any(), any());
+                .findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(any(), any(), any());
     }
 
     @Test

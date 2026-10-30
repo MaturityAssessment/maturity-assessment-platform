@@ -34,6 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @Import({SecurityConfig.class, JwtAuthFilter.class, JwtUtils.class})
 class PasswordControllerSecurityTest {
+    @MockitoBean private com.master_thesis.maturity_assessment.auth.services.AccountProvisioningService provisioning;
+    @MockitoBean private com.master_thesis.maturity_assessment.campaigns.repository.CampaignParticipantRepository participants;
     @Autowired private MockMvc mvc;
     @MockitoBean private UserRepository users;
     @MockitoBean private AssessmentRepository assessments;

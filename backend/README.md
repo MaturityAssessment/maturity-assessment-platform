@@ -253,3 +253,13 @@ When changing an endpoint, follow the
 - [Hibernate Documentation](https://hibernate.org/orm/documentation/)
 - [JWT.io](https://jwt.io/)
 - [Lombok Documentation](https://projectlombok.org/)
+
+## Campaign account migration (V43)
+
+Deploy the frontend and backend together and apply V43 to the existing schema before serving traffic. Hibernate `update` alone is insufficient: the migration removes legacy constraints and adds the case-insensitive email index required by account provisioning. It deletes all existing campaigns, their participants, and associated assessment/evidence/result records; it preserves users and standalone assessments. Legacy invitation links stop working. Existing case-insensitive duplicate user emails must be resolved before the unique index can be created.
+
+The migration does not delete evidence blobs from disk or object storage. Any orphaned campaign files require separate housekeeping. Do not delete standalone evidence files.
+
+New campaign accounts require approval. Invitation notices are asynchronous after commit; approval credentials are sent synchronously and email failure rolls back approval. Password change is followed by required name and organization setup.
+
+Disposable database verification includes `PasswordPersistenceIntegrationTest` and `CampaignAccountMigrationTest`, using `PASSWORD_TEST_DB_URL` and `PASSWORD_TEST_DB_USER` as above.

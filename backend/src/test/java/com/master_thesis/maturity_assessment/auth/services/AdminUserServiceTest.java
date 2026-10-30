@@ -25,7 +25,7 @@ class AdminUserServiceTest {
     private final RefreshTokenService tokens = mock(RefreshTokenService.class);
     private final PasswordEmailService email = mock(PasswordEmailService.class);
     private final PasswordService passwords = new PasswordService(users, encoder, tokens, email, mock(EntityManager.class));
-    private final AdminUserService service = new AdminUserService(users, passwords, email);
+    private final AdminUserService service = new AdminUserService(users, new AccountProvisioningService(users, passwords, email, mock(EntityManager.class)));
 
     @Test
     void createsApprovedAccountWithNormalizedProfileAndEmailedTemporaryPassword() {
@@ -42,7 +42,7 @@ class AdminUserServiceTest {
         assertTrue(user.getTemporaryPasswordExpiresAt().isBefore(Instant.now().plus(25, ChronoUnit.HOURS)));
         ArgumentCaptor<String> password = ArgumentCaptor.forClass(String.class);
         var order = inOrder(users, email);
-        order.verify(users).saveAndFlush(user);
+        order.verify(users, times(2)).saveAndFlush(user);
         order.verify(email).sendWelcomePassword(eq("New@Example.COM"), password.capture());
         assertEquals(32, password.getValue().length());
         assertTrue(encoder.matches(password.getValue(), user.getPassword()));

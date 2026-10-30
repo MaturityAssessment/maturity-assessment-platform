@@ -60,10 +60,6 @@ public class Evidence {
     @JoinColumn(name = "uploaded_by_user_id")
     private User uploadedBy;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "uploaded_by_campaign_participant_id")
-    private CampaignParticipant uploadedByCampaignParticipant;
-
     @CreationTimestamp
     @Column(name = "uploaded_at", nullable = false, updatable = false)
     private LocalDateTime uploadedAt;

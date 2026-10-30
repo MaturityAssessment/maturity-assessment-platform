@@ -128,10 +128,10 @@ these are one method/path with two controller mappings.
 
 | Method | Path and reference |
 |---|---|
-| `GET` | [`/api/v1/campaign-response`](reference/campaign-responses.md#get-apiv1campaign-response) |
-| `PUT` | [`/api/v1/campaign-response`](reference/campaign-responses.md#put-apiv1campaign-response) |
-| `POST` | [`/api/v1/campaign-response/submit`](reference/campaign-responses.md#post-apiv1campaign-responsesubmit) |
-| `GET` | [`/api/v1/campaign-response/evidence/{evidenceId}/download`](reference/campaign-responses.md#get-apiv1campaign-responseevidenceevidenceiddownload) |
+| `GET` | [`/api/v1/campaign-response/{campaignId}`](reference/campaign-responses.md#get-apiv1campaign-responsecampaignid) |
+| `PUT` | [`/api/v1/campaign-response/{campaignId}`](reference/campaign-responses.md#put-apiv1campaign-responsecampaignid) |
+| `POST` | [`/api/v1/campaign-response/{campaignId}/submit`](reference/campaign-responses.md#post-apiv1campaign-responsecampaignidsubmit) |
+| `GET` | [`/api/v1/campaign-response/{campaignId}/evidence/{evidenceId}/download`](reference/campaign-responses.md#get-apiv1campaign-responsecampaignidevidenceevidenceiddownload) |
 
 ### Evidence
 
@@ -147,3 +147,5 @@ these are one method/path with two controller mappings.
 | Method | Path and reference |
 |---|---|
 | `POST` | [`/api/v1/assistant/chat`](reference/assistant.md#post-apiv1assistantchat) |
+
+Profile completion: `PUT /api/v1/user/me/profile` with required `name` and `organizationName` (maximum 255 characters each). Returns UserDTO including `profileCompletionRequired`.

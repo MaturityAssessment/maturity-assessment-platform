@@ -41,9 +41,10 @@ import static org.mockito.ArgumentMatchers.eq;
 @EnabledIfEnvironmentVariable(named = "PASSWORD_TEST_DB_URL", matches = ".+")
 @DataJpaTest(properties = {"spring.jpa.hibernate.ddl-auto=create-drop", "spring.flyway.enabled=false"})
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({PasswordService.class, AdminUserService.class, RefreshTokenService.class, PasswordPersistenceIntegrationTest.Config.class})
+@Import({AccountProvisioningService.class, PasswordService.class, AdminUserService.class, RefreshTokenService.class, PasswordPersistenceIntegrationTest.Config.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class PasswordPersistenceIntegrationTest {
+    @Autowired private AccountProvisioningService provisioning;
     @Autowired private PasswordService passwords;
     @Autowired private AdminUserService adminUsers;
     @Autowired private RefreshTokenService tokens;
@@ -53,11 +54,72 @@ class PasswordPersistenceIntegrationTest {
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private JdbcTemplate jdbc;
 
+    @Test
+    void hibernateSchemaDefaultsKeepExistingAccountsOutOfOnboarding() {
+        User user = createUser();
+        jdbc.update("UPDATE users SET profile_completion_required = DEFAULT, initial_credentials_pending = DEFAULT WHERE id = ?",
+                user.getId());
+        User stored = users.findById(user.getId()).orElseThrow();
+        assertFalse(stored.isProfileCompletionRequired());
+        assertFalse(stored.isInitialCredentialsPending());
+    }
+
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry properties) {
         properties.add("spring.datasource.url", () -> System.getenv("PASSWORD_TEST_DB_URL"));
         properties.add("spring.datasource.username", () -> System.getenv().getOrDefault("PASSWORD_TEST_DB_USER", "postgres"));
         properties.add("spring.datasource.password", () -> "");
+    }
+
+    @Test
+    void simultaneousInvitationsReuseOnePendingAccount() throws Exception {
+        jdbc.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_users_email_ci ON users(lower(email))");
+        String address = "concurrent-" + UUID.randomUUID() + "@example.com";
+        try (var pool = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            var start = new java.util.concurrent.CountDownLatch(1);
+            var one = pool.submit(() -> { start.await(); return provisioning.findOrCreateInvitee(address).getId(); });
+            var two = pool.submit(() -> { start.await(); return provisioning.findOrCreateInvitee(address.toUpperCase()).getId(); });
+            start.countDown();
+            assertEquals(one.get(10, java.util.concurrent.TimeUnit.SECONDS), two.get(10, java.util.concurrent.TimeUnit.SECONDS));
+        }
+        org.mockito.Mockito.verifyNoInteractions(email);
+    }
+
+    @Test
+    void campaignAccountWaitsForApprovalThenCompletesProfile() {
+        jdbc.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_users_email_ci ON users(lower(email))");
+        String address = "invite-" + UUID.randomUUID() + "@example.com";
+        User invited = provisioning.findOrCreateInvitee(address);
+        assertEquals(UserApprovalStatus.PENDING, invited.getApprovalStatus());
+        assertTrue(invited.isInitialCredentialsPending());
+        assertTrue(invited.isProfileCompletionRequired());
+        assertNull(invited.getName());
+        assertEquals(invited.getId(), provisioning.findOrCreateInvitee(address.toUpperCase()).getId());
+        org.mockito.Mockito.verifyNoInteractions(email);
+        User approved = provisioning.approve(invited.getId());
+        assertEquals(UserApprovalStatus.APPROVED, approved.getApprovalStatus());
+        assertTrue(approved.isPasswordChangeRequired());
+        assertFalse(approved.isInitialCredentialsPending());
+        verify(email).sendWelcomePassword(eq(address), anyString());
+        assertThrows(ResponseStatusException.class, () -> provisioning.approve(invited.getId()));
+        User completed = provisioning.completeProfile(invited.getId(), " Name ", " Org ");
+        assertEquals("Name", completed.getName());
+        assertEquals("Org", completed.getOrganizationName());
+        assertFalse(completed.isProfileCompletionRequired());
+    }
+
+    @Test
+    void failedApprovalMailKeepsPendingAccountRetryable() {
+        jdbc.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_users_email_ci ON users(lower(email))");
+        User invited = provisioning.findOrCreateInvitee("invite-" + UUID.randomUUID() + "@example.com");
+        doThrow(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE))
+                .when(email).sendWelcomePassword(anyString(), anyString());
+        assertThrows(ResponseStatusException.class, () -> provisioning.approve(invited.getId()));
+        User stored = users.findById(invited.getId()).orElseThrow();
+        assertEquals(UserApprovalStatus.PENDING, stored.getApprovalStatus());
+        assertTrue(stored.isInitialCredentialsPending());
+        org.mockito.Mockito.reset(email);
+        assertEquals(UserApprovalStatus.APPROVED, provisioning.approve(invited.getId()).getApprovalStatus());
     }
 
     @Test

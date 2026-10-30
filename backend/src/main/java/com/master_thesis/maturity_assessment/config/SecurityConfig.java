@@ -65,7 +65,7 @@ public class SecurityConfig {
                         .requestMatchers("/error", "/error/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/campaign-response", "/api/v1/campaign-response/**")
-                        .permitAll()
+                        .authenticated()
                         // Admin endpoints require ADMIN role
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         // Maturity model GET endpoints are public
@@ -146,8 +146,7 @@ public class SecurityConfig {
         configuration.setAllowedHeaders(Arrays.asList(
                 "Authorization",
                 "Content-Type",
-                "X-Requested-With",
-                "X-Campaign-Token"
+                "X-Requested-With"
         ));
         configuration.setAllowCredentials(true);
 

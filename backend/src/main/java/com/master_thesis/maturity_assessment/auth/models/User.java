@@ -39,6 +39,14 @@ public class User implements UserDetails {
     @Column(name = "temporary_password_expires_at")
     private Instant temporaryPasswordExpiresAt;
     
+    @Column(nullable = false)
+    @ColumnDefault("false")
+    private boolean profileCompletionRequired = false;
+
+    @Column(nullable = false)
+    @ColumnDefault("false")
+    private boolean initialCredentialsPending = false;
+
     private String name;
     
     private String organizationName;

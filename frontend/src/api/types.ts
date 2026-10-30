@@ -1,4 +1,5 @@
 export interface UserDTO {
+  profileCompletionRequired?: boolean;
   id: number;
   email: string;
   name?: string | null;
@@ -441,7 +442,7 @@ export interface CreateCampaignRequest {
 
 export interface CampaignInvitationResponse {
   participantId: number;
-  invitationToken: string;
+  campaignId: number;
 }
 
 export interface CampaignAssessmentSession {

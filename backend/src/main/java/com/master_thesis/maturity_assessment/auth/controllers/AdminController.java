@@ -51,6 +51,11 @@ public class AdminController {
         this.passwordService = passwordService;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.master_thesis.maturity_assessment.auth.services.AccountProvisioningService provisioning;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.master_thesis.maturity_assessment.campaigns.repository.CampaignParticipantRepository participants;
+
     @PostMapping("/{id}/reset-password")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> resetPassword(@PathVariable Long id) {
@@ -154,6 +159,10 @@ public class AdminController {
             return ResponseEntity.notFound().build();
         }
 
+        if (participants.existsByUserId(id)) {
+            throw new IllegalOperationException("USER_HAS_CAMPAIGN_MEMBERSHIPS",
+                    "Users with campaign memberships cannot be deleted.");
+        }
         List<Assessment> userAssessments = assessmentRepository.findByUserIdOrderByCreatedAtDescIdDesc(id);
         if (!userAssessments.isEmpty()) {
             assessmentRepository.deleteAll(userAssessments);
@@ -166,23 +175,12 @@ public class AdminController {
     @PatchMapping("/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserDTO> approvePendingUser(@PathVariable Long id) {
-        User user = userRepository.findById(id).orElse(null);
-        if (user == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        if (user.getApprovalStatus() != UserApprovalStatus.PENDING) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        user.setApprovalStatus(UserApprovalStatus.APPROVED);
-        user = userRepository.save(user);
-
-        return ResponseEntity.ok(toUserDTO(user));
+        return ResponseEntity.ok(toUserDTO(provisioning.approve(id)));
     }
 
     @PatchMapping("/{id}/reject")
     @PreAuthorize("hasRole('ADMIN')")
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<Void> rejectPendingUser(@PathVariable Long id) {
         User currentUser = getCurrentUser();
         if (currentUser == null) {
@@ -193,7 +191,7 @@ public class AdminController {
             return ResponseEntity.badRequest().build();
         }
 
-        User user = userRepository.findById(id).orElse(null);
+        User user = userRepository.findByIdForUpdate(id).orElse(null);
         if (user == null) {
             return ResponseEntity.notFound().build();
         }
@@ -202,6 +200,8 @@ public class AdminController {
             return ResponseEntity.badRequest().build();
         }
 
+        participants.deleteByUserId(id);
+        participants.flush();
         userRepository.delete(user);
         return ResponseEntity.ok().build();
     }
@@ -217,6 +217,7 @@ public class AdminController {
     private UserDTO toUserDTO(User user) {
         UserDTO dto = new UserDTO();
         dto.setId(user.getId());
+        dto.setProfileCompletionRequired(user.isProfileCompletionRequired());
         dto.setPasswordChangeRequired(user.isPasswordChangeRequired());
         dto.setEmail(user.getEmail());
         dto.setName(user.getName());

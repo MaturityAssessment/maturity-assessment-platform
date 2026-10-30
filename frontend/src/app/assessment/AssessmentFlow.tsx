@@ -101,7 +101,7 @@ export default function AssessmentFlow() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { user, completeHelpTour, dismissHelpTourPrompt } = useAuth();
+  const { user, handleLogout, completeHelpTour, dismissHelpTourPrompt } = useAuth();
   const [assessmentStep, setAssessmentStep] = useState<
     "intro" | "dashboard" | "review"
   >("intro");
@@ -147,13 +147,13 @@ export default function AssessmentFlow() {
   );
   const changesRequested =
     loadedAssessment?.status === "CHANGES_REQUESTED";
-  const campaignToken = routeContext?.campaignToken ?? null;
+  const campaignId = routeContext?.campaignId ?? null;
   const campaignPendingReview =
-    Boolean(campaignToken) && loadedAssessment?.status === "PENDING_REVIEW";
+    Boolean(campaignId) && loadedAssessment?.status === "PENDING_REVIEW";
   const completedAssessment =
     loadedAssessment?.status === "COMPLETED" ||
     Boolean(loadedAssessment?.isCompleted);
-  const capabilities = assessmentCapabilities(loadedAssessment, user, campaignToken);
+  const capabilities = assessmentCapabilities(loadedAssessment, user, campaignId);
   const evaluation = useEvaluation(loadedAssessment, maturityModel, capabilities.canEvaluate, capabilities.canEditEvaluation);
   const visibleDashboardTab = dashboardTab === "evaluation" && !capabilities.canEvaluate ? "overview" : dashboardTab;
   useEffect(() => {
@@ -315,7 +315,7 @@ export default function AssessmentFlow() {
   const dashboardTourSteps = useMemo(
     () =>
       buildAssessmentDashboardTourSteps({
-        isCampaign: Boolean(campaignToken),
+        isCampaign: Boolean(campaignId),
         completed: completedAssessment,
         changesRequested,
         savingOnLeave: assessmentAutosaveAvailable,
@@ -324,7 +324,7 @@ export default function AssessmentFlow() {
       }),
     [
       assessmentAutosaveAvailable,
-      campaignToken,
+      campaignId,
       changesRequested,
       completedAssessment,
     ]
@@ -367,17 +367,17 @@ export default function AssessmentFlow() {
     });
 
     return buildAssessmentQuestionTour(candidates, {
-      isCampaign: Boolean(campaignToken),
-      assistantEnabled: !campaignToken,
+      isCampaign: Boolean(campaignId),
+      assistantEnabled: !campaignId,
     });
   }, [
     activePracticeStep,
-    campaignToken,
+    campaignId,
     formData,
     loadedAssessment?.questionEvaluations,
   ]);
   const tourViewer = useMemo<AssessmentTourViewer>(() => {
-    if (campaignToken) return { kind: "campaign" };
+    if (campaignId) return { kind: "campaign" };
     if (!user) return null;
 
     return {
@@ -386,7 +386,7 @@ export default function AssessmentFlow() {
       completedTours: user.completedHelpTours ?? {},
       dismissedPrompts: user.dismissedHelpTourPrompts ?? {},
     };
-  }, [campaignToken, user]);
+  }, [campaignId, user]);
 
   const getTourSteps = useCallback(
     (view: AssessmentTourView): readonly AssessmentTourStep[] => {
@@ -400,7 +400,7 @@ export default function AssessmentFlow() {
     ? getAssessmentTourInvitationContent(tourInvitationView, {
         completed: completedAssessment,
         changesRequested,
-        assistantEnabled: !campaignToken,
+        assistantEnabled: !campaignId,
       })
     : null;
 
@@ -420,7 +420,7 @@ export default function AssessmentFlow() {
     respondentUpdatedResponseKeys: Array.from(
       respondentUpdatedResponseKeys
     ),
-    campaignToken,
+    campaignId,
     buildResponses: (currentFormData) =>
       collectQuestionResponses(practiceSteps, currentFormData),
     setEvidenceFiles,
@@ -430,7 +430,7 @@ export default function AssessmentFlow() {
     const initialContext = readAssessmentRouteContext(
       window.location.search
     );
-    if (!initialContext?.draftId && !initialContext?.campaignToken) {
+    if (!initialContext?.draftId && !initialContext?.campaignId) {
       router.replace("/assessment/setup");
       return;
     }
@@ -441,15 +441,10 @@ export default function AssessmentFlow() {
       setDraftLoadError(null);
 
       try {
-        const draft = initialContext.campaignToken
+        const draft = initialContext.campaignId
           ? (
               await apiClient.get<CampaignAssessmentSession>(
-                "/api/v1/campaign-response",
-                {
-                  headers: {
-                    "X-Campaign-Token": initialContext.campaignToken,
-                  },
-                }
+                `/api/v1/campaign-response/${initialContext.campaignId}`
               )
             ).data.assessment
           : (
@@ -480,7 +475,7 @@ export default function AssessmentFlow() {
       } catch (error) {
         console.error("Error loading initial assessment:", error);
         setDraftLoadError(
-          initialContext.campaignToken
+          initialContext.campaignId
             ? getApiErrorMessage(
                 error,
                 "This campaign invitation is invalid or no longer available."
@@ -498,7 +493,7 @@ export default function AssessmentFlow() {
   useEffect(() => {
     if (isLoadingDraft || !maturityModel || pathname === "/assessment") return;
 
-    if (completedAssessment && !capabilities.canEvaluate && (user || campaignToken)) {
+    if (completedAssessment && !capabilities.canEvaluate && (user || campaignId)) {
       router.replace(buildAssessmentOverviewHref(routeContext), {
         scroll: false,
       });
@@ -532,7 +527,7 @@ export default function AssessmentFlow() {
     completedAssessment,
     capabilities.canEvaluate,
     user,
-    campaignToken,
+    campaignId,
     isLoadingDraft,
     maturityModel,
     pathname,
@@ -560,7 +555,7 @@ export default function AssessmentFlow() {
         }
         if (
           !routeContext ||
-          (nextContext.campaignToken ? nextContext.campaignToken !== routeContext.campaignToken : nextContext.draftId !== routeContext.draftId)
+          (nextContext.campaignId ? nextContext.campaignId !== routeContext.campaignId : nextContext.draftId !== routeContext.draftId)
         ) {
           window.location.reload();
           return;
@@ -830,7 +825,7 @@ export default function AssessmentFlow() {
     }
     if (completedAssessment) {
       router.push(
-        campaignToken
+        campaignId
           ? buildAssessmentOverviewHref(routeContext)
           : "/dashboard"
       );
@@ -840,7 +835,7 @@ export default function AssessmentFlow() {
     setIsSavingAndLeaving(true);
     try {
       const saved = await autosave.flush();
-      if (saved && !campaignToken) {
+      if (saved && !campaignId) {
         router.push("/dashboard");
       }
     } finally {
@@ -946,14 +941,12 @@ export default function AssessmentFlow() {
       });
 
       const response = await apiClient.post<AssessmentResponse>(
-        campaignToken
-          ? "/api/v1/campaign-response/submit"
+        campaignId
+          ? `/api/v1/campaign-response/${campaignId}/submit`
           : `/api/v1/assessments/drafts/${routeContext.draftId}/submit`,
         formDataToSend,
         {
-          headers: campaignToken
-            ? { "X-Campaign-Token": campaignToken }
-            : getMultipartAuthHeaders(),
+          headers: getMultipartAuthHeaders(),
         }
       );
 
@@ -963,7 +956,7 @@ export default function AssessmentFlow() {
           ? "completed"
           : "pending";
 
-      if (campaignToken) {
+      if (campaignId) {
         setLoadedAssessment(result);
         setDashboardTab(result.status === "COMPLETED" ? "results" : "overview");
         setAssessmentStep("dashboard");
@@ -1115,7 +1108,7 @@ export default function AssessmentFlow() {
     const dismissedView = tourInvitationView;
     setTourInvitationView(null);
 
-    if (!dismissedView || campaignToken) return;
+    if (!dismissedView || campaignId) return;
 
     const identity = ASSESSMENT_TOUR_IDENTITIES[dismissedView];
     void dismissHelpTourPrompt(identity.key, identity.version).catch(
@@ -1126,13 +1119,13 @@ export default function AssessmentFlow() {
         );
       }
     );
-  }, [campaignToken, dismissHelpTourPrompt, tourInvitationView]);
+  }, [campaignId, dismissHelpTourPrompt, tourInvitationView]);
 
   const exitAssessmentTour = useCallback(() => {
     const finishedTour = activeTour;
     setActiveTour(null);
 
-    if (!finishedTour || campaignToken) return;
+    if (!finishedTour || campaignId) return;
 
     const identity = ASSESSMENT_TOUR_IDENTITIES[finishedTour.view];
     void completeHelpTour(identity.key, identity.version).catch(
@@ -1143,7 +1136,7 @@ export default function AssessmentFlow() {
         );
       }
     );
-  }, [activeTour, campaignToken, completeHelpTour]);
+  }, [activeTour, campaignId, completeHelpTour]);
 
   if (campaignPendingReview && maturityModel && !isLoadingDraft) {
     return (
@@ -1209,7 +1202,7 @@ export default function AssessmentFlow() {
           }}
           onDimensionSelect={openDimension}
           onLeave={handleSaveAndLeave}
-          showLeaveAction={!campaignToken}
+          showLeaveAction={!campaignId}
           onReview={() => saveDraftBeforeReview("dashboard")}
           onInputChange={handleInputChange}
           onClearAnswer={handleClearAnswer}
@@ -1311,8 +1304,8 @@ export default function AssessmentFlow() {
             </div>
           ) : null
         }
-        showUserMenu={!campaignToken && assessmentStep === "intro"}
-        showNavigationMenu={!campaignToken && assessmentStep === "intro"}
+        showUserMenu={!campaignId && assessmentStep === "intro"}
+        showNavigationMenu={!campaignId && assessmentStep === "intro"}
         sticky={
           isAssessmentPracticePath(pathname) ||
           isAssessmentModulePath(pathname)
@@ -1355,10 +1348,11 @@ export default function AssessmentFlow() {
               {draftLoadError}
             </p>
             <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
-              {campaignToken ? (
-                <Button type="button" onClick={() => window.location.reload()}>
-                  Try again
-                </Button>
+              {campaignId ? (
+                <>
+                  <Button type="button" onClick={() => window.location.reload()}>Try again</Button>
+                  <Button type="button" variant="outline" onClick={() => handleLogout(`/login?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`)}>Sign in with another account</Button>
+                </>
               ) : (
                 <>
                   <Button
@@ -1443,7 +1437,7 @@ export default function AssessmentFlow() {
               outstandingFlaggedCount={
                 capabilities.canEvaluate ? 0 : reviewCounts.outstandingFlaggedCount
               }
-              assistantEnabled={!campaignToken && capabilities.canEditResponses}
+              assistantEnabled={!campaignId && capabilities.canEditResponses}
               questionTourTargetIndexes={
                 questionTourModel.targetIndexes
               }

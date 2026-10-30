@@ -51,7 +51,7 @@ class CampaignInvitationEmailServiceTest {
         assertTrue(aliceMessage.getText().contains("Security (version 3)"));
         assertTrue(aliceMessage.getText().contains("31 Aug 2026 at 18:30 UTC"));
         assertTrue(aliceMessage.getText().contains(
-                "https://assessments.example.com/assessment?campaignToken=" + "A".repeat(43)
+                "https://assessments.example.com/assessment?campaignId=11"
         ));
         assertFalse(aliceMessage.getText().contains("bob@example.com"));
         assertFalse(aliceMessage.getText().contains("B".repeat(43)));
@@ -59,7 +59,7 @@ class CampaignInvitationEmailServiceTest {
         SimpleMailMessage bobMessage = messages.get(1);
         assertEquals("bob@example.com", bobMessage.getTo()[0]);
         assertTrue(bobMessage.getText().contains(
-                "https://assessments.example.com/assessment?campaignToken=" + "B".repeat(43)
+                "https://assessments.example.com/assessment?campaignId=11"
         ));
         assertFalse(bobMessage.getText().contains("alice@example.com"));
         assertFalse(bobMessage.getText().contains("A".repeat(43)));
@@ -93,11 +93,11 @@ class CampaignInvitationEmailServiceTest {
                 List.of(
                         new CampaignInvitationsCreatedEvent.Invitation(
                                 "alice@example.com",
-                                "A".repeat(43)
+                                11L, false, false
                         ),
                         new CampaignInvitationsCreatedEvent.Invitation(
                                 "bob@example.com",
-                                "B".repeat(43)
+                                11L, true, true
                         )
                 )
         );

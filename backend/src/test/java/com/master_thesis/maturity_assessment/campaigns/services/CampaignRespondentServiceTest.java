@@ -40,7 +40,6 @@ class CampaignRespondentServiceTest {
         evidenceService = mock(EvidenceService.class);
         service = new CampaignRespondentService(
                 participantRepository,
-                new CampaignInvitationTokenService(),
                 assessmentService,
                 mock(AssessmentEvidenceWorkflowService.class),
                 evidenceService
@@ -51,13 +50,16 @@ class CampaignRespondentServiceTest {
         campaign.setEndsAt(Instant.now().plusSeconds(3_600));
         participant = new CampaignParticipant();
         participant.setId(8L);
+        var user = new com.master_thesis.maturity_assessment.auth.models.User();
+        user.setId(2L);
+        participant.setUser(user);
         participant.setEmail("respondent@example.com");
         participant.setCampaign(campaign);
     }
 
     @Test
     void opensOnlyTheAssessmentOwnedByTheInvitationParticipant() {
-        when(participantRepository.findByInvitationTokenHashForUpdate(anyString()))
+        when(participantRepository.findForResponse(1L, 2L))
                 .thenReturn(Optional.of(participant));
         AssessmentResponse assessment = new AssessmentResponse();
         assessment.setId(31L);
@@ -66,7 +68,7 @@ class CampaignRespondentServiceTest {
         when(evidenceService.getEvidenceByAssessment(31L, participant))
                 .thenReturn(List.of());
 
-        CampaignAssessmentSessionResponse session = service.openAssessment("a".repeat(43));
+        CampaignAssessmentSessionResponse session = service.openAssessment(1L, participant.getUser());
 
         assertEquals("Security review", session.getCampaignName());
         assertEquals("respondent@example.com", session.getParticipantEmail());
@@ -77,12 +79,12 @@ class CampaignRespondentServiceTest {
     @Test
     void rejectsRevokedInvitationsBeforeCreatingAnAssessment() {
         participant.setRevokedAt(Instant.now());
-        when(participantRepository.findByInvitationTokenHashForUpdate(anyString()))
+        when(participantRepository.findForResponse(1L, 2L))
                 .thenReturn(Optional.of(participant));
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> service.openAssessment("b".repeat(43))
+                () -> service.openAssessment(1L, participant.getUser())
         );
 
         assertEquals(HttpStatus.GONE, exception.getStatusCode());
@@ -92,15 +94,28 @@ class CampaignRespondentServiceTest {
     @Test
     void rejectsExpiredCampaignsBeforeCreatingAnAssessment() {
         participant.getCampaign().setEndsAt(Instant.now().minusSeconds(1));
-        when(participantRepository.findByInvitationTokenHashForUpdate(anyString()))
+        when(participantRepository.findForResponse(1L, 2L))
                 .thenReturn(Optional.of(participant));
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> service.openAssessment("c".repeat(43))
+                () -> service.openAssessment(1L, participant.getUser())
         );
 
         assertEquals(HttpStatus.GONE, exception.getStatusCode());
+        verify(assessmentService, never()).ensureCampaignAssessment(participant);
+    }
+    @Test
+    void wrongAccountAndIncompleteAccountsCannotOpenCampaign() {
+        assertEquals(HttpStatus.FORBIDDEN, assertThrows(ResponseStatusException.class,
+                () -> service.openAssessment(1L, participant.getUser())).getStatusCode());
+        participant.getUser().setProfileCompletionRequired(true);
+        assertEquals(HttpStatus.FORBIDDEN, assertThrows(ResponseStatusException.class,
+                () -> service.openAssessment(1L, participant.getUser())).getStatusCode());
+        participant.getUser().setProfileCompletionRequired(false);
+        participant.getUser().setApprovalStatus(com.master_thesis.maturity_assessment.auth.models.UserApprovalStatus.PENDING);
+        assertEquals(HttpStatus.FORBIDDEN, assertThrows(ResponseStatusException.class,
+                () -> service.openAssessment(1L, participant.getUser())).getStatusCode());
         verify(assessmentService, never()).ensureCampaignAssessment(participant);
     }
 }

@@ -16,6 +16,7 @@ import java.util.Map;
 public class UserDTO {
     private Long id;
     private String email;
+    private boolean profileCompletionRequired;
     private String name;
     private String organizationName;
     private UserRole role;

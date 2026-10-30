@@ -104,6 +104,18 @@ class PasswordTokenSecurityTest {
         assertFalse(service.validateRefreshToken("refresh"));
     }
 
+    @Test
+    void incompleteProfileCannotAccessCampaignsButCanCompleteProfile() throws Exception {
+        User user = user(); user.setProfileCompletionRequired(true);
+        assertTrue(invokeFilter(user, "GET", "/api/v1/campaign-response/1", false)
+                .getContentAsString().contains("PROFILE_COMPLETION_REQUIRED"));
+        invokeFilter(user, "PUT", "/api/v1/user/me/profile", true);
+        SecurityContextHolder.clearContext();
+        user.setPasswordChangeRequired(true);
+        assertTrue(invokeFilter(user, "PUT", "/api/v1/user/me/profile", false)
+                .getContentAsString().contains("PASSWORD_CHANGE_REQUIRED"));
+    }
+
     private MockHttpServletResponse invokeFilter(User user, String method, String path, boolean expectChain) throws Exception {
         JwtAuthFilter filter = new JwtAuthFilter();
         filter.setJwtUtils(jwt);

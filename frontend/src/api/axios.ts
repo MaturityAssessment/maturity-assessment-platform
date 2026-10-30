@@ -1,3 +1,4 @@
+import { currentReturnTo } from "@/lib/authRedirect";
 import axios, {
   AxiosInstance,
   InternalAxiosRequestConfig,
@@ -80,8 +81,7 @@ apiClient.interceptors.response.use(
       originalRequest &&
       !originalRequest._retry &&
       !originalRequest.url?.includes("/auth/refresh") &&
-      !originalRequest.url?.includes("/auth/login") &&
-      !originalRequest.url?.includes("/campaign-response")
+      !originalRequest.url?.includes("/auth/login")
     ) {
       if (isRefreshing) {
         // If already refreshing, queue this request
@@ -115,7 +115,7 @@ apiClient.interceptors.response.use(
           typeof window !== "undefined" &&
           !window.location.pathname.includes("/login")
         ) {
-          window.location.href = "/filipevm/login";
+          window.location.href = `/filipevm/login?returnTo=${encodeURIComponent(currentReturnTo())}`;
         }
         return Promise.reject(error);
       }
@@ -155,7 +155,7 @@ apiClient.interceptors.response.use(
           typeof window !== "undefined" &&
           !window.location.pathname.includes("/login")
         ) {
-          window.location.href = "/filipevm/login";
+          window.location.href = `/filipevm/login?returnTo=${encodeURIComponent(currentReturnTo())}`;
         }
         return Promise.reject(refreshError);
       }

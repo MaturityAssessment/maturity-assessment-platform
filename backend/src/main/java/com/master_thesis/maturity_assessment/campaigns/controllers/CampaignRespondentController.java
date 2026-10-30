@@ -29,25 +29,26 @@ import java.io.IOException;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/campaign-response")
+@RequestMapping("/api/v1/campaign-response/{campaignId}")
 @RequiredArgsConstructor
 public class CampaignRespondentController {
 
-    public static final String TOKEN_HEADER = "X-Campaign-Token";
 
     private final CampaignRespondentService respondentService;
     private final ObjectMapper objectMapper;
 
     @GetMapping
     public ResponseEntity<CampaignAssessmentSessionResponse> openAssessment(
-            @RequestHeader(TOKEN_HEADER) String token
+            @PathVariable Long campaignId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.master_thesis.maturity_assessment.auth.models.User user
     ) {
-        return ResponseEntity.ok(respondentService.openAssessment(token));
+        return ResponseEntity.ok(respondentService.openAssessment(campaignId, user));
     }
 
     @PutMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<AssessmentResponse> saveDraft(
-            @RequestHeader(TOKEN_HEADER) String token,
+            @PathVariable Long campaignId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.master_thesis.maturity_assessment.auth.models.User user,
             @RequestPart("assessment") String assessmentJson,
             @RequestParam("evidenceMetadata") String evidenceMetadataJson,
             @RequestParam(value = "evidenceFile", required = false)
@@ -56,7 +57,7 @@ public class CampaignRespondentController {
             List<String> evidenceFileKeys
     ) throws IOException {
         return ResponseEntity.ok(respondentService.saveDraft(
-                token,
+                campaignId, user,
                 parseAssessment(assessmentJson),
                 parseEvidenceMetadata(evidenceMetadataJson),
                 evidenceFiles,
@@ -66,7 +67,8 @@ public class CampaignRespondentController {
 
     @PostMapping(value = "/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<AssessmentResponse> submitAssessment(
-            @RequestHeader(TOKEN_HEADER) String token,
+            @PathVariable Long campaignId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.master_thesis.maturity_assessment.auth.models.User user,
             @RequestPart("assessment") String assessmentJson,
             @RequestParam("evidenceMetadata") String evidenceMetadataJson,
             @RequestParam(value = "evidenceFile", required = false)
@@ -75,7 +77,7 @@ public class CampaignRespondentController {
             List<String> evidenceFileKeys
     ) throws IOException {
         return ResponseEntity.ok(respondentService.submitAssessment(
-                token,
+                campaignId, user,
                 parseAssessment(assessmentJson),
                 parseEvidenceMetadata(evidenceMetadataJson),
                 evidenceFiles,
@@ -85,10 +87,11 @@ public class CampaignRespondentController {
 
     @GetMapping("/evidence/{evidenceId}/download")
     public ResponseEntity<Resource> downloadEvidence(
-            @RequestHeader(TOKEN_HEADER) String token,
+            @PathVariable Long campaignId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.master_thesis.maturity_assessment.auth.models.User user,
             @PathVariable Long evidenceId
     ) throws IOException {
-        Resource resource = respondentService.downloadEvidence(token, evidenceId);
+        Resource resource = respondentService.downloadEvidence(campaignId, user, evidenceId);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .header(

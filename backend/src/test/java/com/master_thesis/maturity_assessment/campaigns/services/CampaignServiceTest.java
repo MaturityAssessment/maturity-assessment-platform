@@ -49,7 +49,7 @@ class CampaignServiceTest {
     private DimensionResultRepository dimensionResultRepository;
     private MaturityModelRepository maturityModelRepository;
     private ApplicationEventPublisher eventPublisher;
-    private CampaignInvitationTokenService invitationTokenService;
+    private com.master_thesis.maturity_assessment.auth.services.AccountProvisioningService provisioning;
     private CampaignService service;
     private User creator;
     private MaturityModel model;
@@ -62,14 +62,17 @@ class CampaignServiceTest {
         dimensionResultRepository = mock(DimensionResultRepository.class);
         maturityModelRepository = mock(MaturityModelRepository.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
-        invitationTokenService = new CampaignInvitationTokenService();
+        provisioning = mock(com.master_thesis.maturity_assessment.auth.services.AccountProvisioningService.class);
+        when(provisioning.findOrCreateInvitee(org.mockito.ArgumentMatchers.anyString())).thenAnswer(call -> {
+            User user = new User(); user.setId(55L); user.setEmail(call.getArgument(0)); return user;
+        });
         service = new CampaignService(
                 campaignRepository,
                 participantRepository,
                 assessmentRepository,
                 dimensionResultRepository,
                 maturityModelRepository,
-                invitationTokenService,
+                provisioning,
                 eventPublisher
         );
 
@@ -85,7 +88,7 @@ class CampaignServiceTest {
     }
 
     @Test
-    void createCampaignNormalizesParticipantsAndStoresOnlyTokenHashes() {
+    void createCampaignNormalizesParticipantsAndLinksRealUsers() {
         CreateCampaignRequest request = request(
                 List.of(" Alice@Example.com ", "BOB@example.com")
         );
@@ -119,11 +122,8 @@ class CampaignServiceTest {
                 ArgumentCaptor.forClass(List.class);
         verify(participantRepository).saveAll(participantCaptor.capture());
         List<CampaignParticipant> storedParticipants = participantCaptor.getValue();
-        String firstHash = storedParticipants.get(0).getInvitationTokenHash();
-        String secondHash = storedParticipants.get(1).getInvitationTokenHash();
-        assertTrue(firstHash.matches("[0-9a-f]{64}"));
-        assertTrue(secondHash.matches("[0-9a-f]{64}"));
-        assertNotEquals(firstHash, secondHash);
+        assertEquals("alice@example.com", storedParticipants.get(0).getUser().getEmail());
+        assertEquals("bob@example.com", storedParticipants.get(1).getUser().getEmail());
 
         ArgumentCaptor<CampaignInvitationsCreatedEvent> eventCaptor =
                 ArgumentCaptor.forClass(CampaignInvitationsCreatedEvent.class);
@@ -135,14 +135,7 @@ class CampaignServiceTest {
         assertEquals(2, event.invitations().size());
         assertEquals("alice@example.com", event.invitations().get(0).email());
         assertEquals("bob@example.com", event.invitations().get(1).email());
-        assertEquals(
-                firstHash,
-                invitationTokenService.hash(event.invitations().get(0).rawToken())
-        );
-        assertEquals(
-                secondHash,
-                invitationTokenService.hash(event.invitations().get(1).rawToken())
-        );
+        assertEquals(11L, event.invitations().get(0).campaignId());
     }
 
     @Test
@@ -287,13 +280,12 @@ class CampaignServiceTest {
     }
 
     @Test
-    void reissuingAnInvitationRotatesTheStoredHashAndReturnsRawTokenOnce() {
+    void invitationLinkUsesCampaignId() {
         Campaign campaign = campaign();
         CampaignParticipant participant = new CampaignParticipant();
         participant.setId(21L);
         participant.setCampaign(campaign);
         participant.setEmail("person@example.com");
-        participant.setInvitationTokenHash("a".repeat(64));
         when(participantRepository.findByIdAndCampaignIdAndCampaignCreatedById(
                 21L,
                 11L,
@@ -304,9 +296,7 @@ class CampaignServiceTest {
                 service.reissueInvitation(11L, 21L, creator);
 
         assertEquals(21L, invitation.getParticipantId());
-        assertTrue(invitation.getInvitationToken().matches("[A-Za-z0-9_-]{43}"));
-        assertTrue(participant.getInvitationTokenHash().matches("[0-9a-f]{64}"));
-        assertNotEquals("a".repeat(64), participant.getInvitationTokenHash());
+        assertEquals(11L, invitation.getCampaignId());
         verify(participantRepository).save(participant);
     }
 

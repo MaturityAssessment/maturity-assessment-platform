@@ -19,7 +19,7 @@ public class UserDetailsConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         return username -> {
-            User user = userRepository.findByEmail(username);
+            User user = userRepository.findByEmailIgnoreCase(username.trim()).orElse(null);
             if (user == null) {
                 throw new UsernameNotFoundException("User not found");
             }

@@ -255,7 +255,7 @@ public class EvidenceService {
                 synchronizedItem.setAssessment(assessment);
                 synchronizedItem.setPractice(practice);
                 synchronizedItem.setUploadedBy(user);
-                synchronizedItem.setUploadedByCampaignParticipant(campaignParticipant);
+                if (campaignParticipant != null) synchronizedItem.setUploadedBy(campaignParticipant.getUser());
                 synchronizedItem.setEvidenceType(EvidenceType.TEXT);
                 synchronizedItem.setDescription(text.trim());
             } else {
@@ -483,7 +483,7 @@ public class EvidenceService {
         evidence.setFileSize(file.getSize());
         evidence.setFileType(file.getContentType());
         evidence.setUploadedBy(user);
-        evidence.setUploadedByCampaignParticipant(campaignParticipant);
+        if (campaignParticipant != null) evidence.setUploadedBy(campaignParticipant.getUser());
         return evidence;
     }
 
@@ -517,7 +517,7 @@ public class EvidenceService {
         evidence.setFileSize(0L);
         evidence.setFileType("URL");
         evidence.setUploadedBy(user);
-        evidence.setUploadedByCampaignParticipant(campaignParticipant);
+        if (campaignParticipant != null) evidence.setUploadedBy(campaignParticipant.getUser());
         return evidence;
     }
 
@@ -556,7 +556,7 @@ public class EvidenceService {
     ) {
         Assessment assessment = assessmentRepository.findById(assessmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Assessment not found"));
-        boolean authenticatedOwner = user != null
+        boolean authenticatedOwner = assessment.getCampaign() == null && user != null
                 && user.getId() != null
                 && assessment.getUser() != null
                 && assessment.getUser().getId().equals(user.getId());
@@ -573,7 +573,7 @@ public class EvidenceService {
     private Assessment requireViewableAssessment(Long assessmentId, User user) {
         Assessment assessment = assessmentRepository.findById(assessmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Assessment not found"));
-        boolean isOwner = assessment.getUser() != null
+        boolean isOwner = assessment.getCampaign() == null && assessment.getUser() != null
                 && assessment.getUser().getId().equals(user.getId());
         AssessmentStatus status = assessment.getStatus();
         boolean isSubmitted = status != AssessmentStatus.DRAFT;

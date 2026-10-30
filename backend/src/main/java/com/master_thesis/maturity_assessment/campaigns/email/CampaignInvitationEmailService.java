@@ -59,8 +59,8 @@ public class CampaignInvitationEmailService {
             CampaignInvitationsCreatedEvent.Invitation invitation
     ) {
         String assessmentLink = frontendBaseUrl()
-                + "/assessment?campaignToken="
-                + invitation.rawToken();
+                + "/assessment?campaignId="
+                + invitation.campaignId();
         String modelVersion = event.maturityModelVersion() == null
                 ? ""
                 : " (version " + event.maturityModelVersion() + ")";
@@ -81,14 +81,18 @@ public class CampaignInvitationEmailService {
                 Start or resume your assessment:
                 %s
 
-                No account is required. This personal link is intended only for you.
+                %s
                 If you were not expecting this invitation, you can ignore this email.
                 """.formatted(
                 event.campaignName(),
                 event.maturityModelName(),
                 modelVersion,
                 DEADLINE_FORMAT.format(event.endsAt()),
-                assessmentLink
+                assessmentLink,
+                invitation.pendingApproval()
+                        ? "Your account awaits admin approval. " + (invitation.awaitingCredentials()
+                            ? "You will receive a temporary password when approved." : "Sign in with your existing credentials once approved.")
+                        : "Sign in with your invited email address to respond."
         ));
         return message;
     }

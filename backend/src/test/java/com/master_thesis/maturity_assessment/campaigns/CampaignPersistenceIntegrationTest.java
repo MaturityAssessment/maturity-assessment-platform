@@ -79,18 +79,18 @@ class CampaignPersistenceIntegrationTest {
         Evidence evidence = new Evidence();
         evidence.setAssessment(assessment);
         evidence.setPractice(practice);
-        evidence.setUploadedByCampaignParticipant(participant);
+        evidence.setUploadedBy(participant.getUser());
         Evidence savedEvidence = evidenceRepository.saveAndFlush(evidence);
 
-        CampaignParticipant loaded = participantRepository.findByInvitationTokenHash(hash('a'))
+        CampaignParticipant loaded = participantRepository.findByCampaignIdAndUserId(campaign.getId(), participant.getUser().getId())
                 .orElseThrow();
         CampaignParticipant locked = participantRepository
-                .findByInvitationTokenHashForUpdate(hash('a'))
+                .findForResponse(campaign.getId(), participant.getUser().getId())
                 .orElseThrow();
         assertEquals(campaign.getId(), loaded.getCampaign().getId());
         assertEquals(participant.getId(), locked.getId());
         assertEquals(assessment.getId(), loaded.getAssessment().getId());
-        assertEquals(participant.getId(), savedEvidence.getUploadedByCampaignParticipant().getId());
+        assertEquals(participant.getUser().getId(), savedEvidence.getUploadedBy().getId());
         assertFalse(loaded.hasCompleted());
         assertTrue(participantRepository.existsByCampaignIdAndEmailIgnoreCase(
                 campaign.getId(),
@@ -121,7 +121,7 @@ class CampaignPersistenceIntegrationTest {
         );
 
         assertEquals(participant.getEmail(), participant.getEmail().toLowerCase());
-        assertEquals(hash('a'), participant.getInvitationTokenHash());
+        assertNotNull(participant.getUser());
     }
 
     @Test
@@ -158,19 +158,19 @@ class CampaignPersistenceIntegrationTest {
     }
 
     @Test
-    void rejectsDuplicateInvitationTokenHash() {
+    void allowsStandaloneAndMultipleCampaignDraftsForSameUserAndModel() {
         User owner = saveOwner();
         MaturityModel model = saveModel();
-        saveParticipant(saveCampaign(owner, model), uniqueEmail(), hash('a'));
-
-        assertThrows(
-                DataIntegrityViolationException.class,
-                () -> saveParticipant(
-                        saveCampaign(owner, model),
-                        uniqueEmail(),
-                        hash('a')
-                )
-        );
+        String email = uniqueEmail();
+        Campaign first = saveCampaign(owner, model);
+        Campaign second = saveCampaign(owner, model);
+        CampaignParticipant one = saveParticipant(first, email, "");
+        CampaignParticipant two = saveParticipant(second, email, "");
+        saveCampaignAssessment(first, one, model, AssessmentStatus.DRAFT);
+        saveCampaignAssessment(second, two, model, AssessmentStatus.DRAFT);
+        insertCampaignAssessment(model.getId(), null, null, one.getUser().getId());
+        assertNotNull(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
+                one.getUser().getId(), model.getId(), AssessmentStatus.DRAFT).orElseThrow());
     }
 
     @Test
@@ -257,12 +257,12 @@ class CampaignPersistenceIntegrationTest {
                 () -> jdbcTemplate.update(
                         """
                         INSERT INTO campaign_participants (
-                            campaign_id, email, invitation_token_hash
+                            campaign_id, email, user_id
                         ) VALUES (?, ?, ?)
                         """,
                         Long.MAX_VALUE,
                         uniqueEmail(),
-                        hash('a')
+                        Long.MAX_VALUE
                 )
         );
     }
@@ -310,7 +310,7 @@ class CampaignPersistenceIntegrationTest {
     }
 
     @Test
-    void rejectsAssessmentWithBothRespondentSources() {
+    void rejectsAssessmentOwnedByDifferentUserThanMembership() {
         User owner = saveOwner();
         MaturityModel model = saveModel();
         Campaign campaign = saveCampaign(owner, model);
@@ -369,65 +369,6 @@ class CampaignPersistenceIntegrationTest {
                 () -> jdbcTemplate.update(
                         "DELETE FROM campaigns WHERE id = ?",
                         campaign.getId()
-                )
-        );
-    }
-
-    @Test
-    void rejectsEvidenceWithBothUploaderSources() {
-        User owner = saveOwner();
-        MaturityModel model = saveModel();
-        Campaign campaign = saveCampaign(owner, model);
-        CampaignParticipant participant = saveParticipant(campaign, uniqueEmail(), hash('a'));
-        Assessment assessment = saveCampaignAssessment(
-                campaign,
-                participant,
-                model,
-                AssessmentStatus.DRAFT
-        );
-        Practice practice = savePractice();
-
-        assertThrows(
-                DataIntegrityViolationException.class,
-                () -> insertEvidence(
-                        assessment.getId(),
-                        practice.getId(),
-                        owner.getId(),
-                        participant.getId()
-                )
-        );
-    }
-
-    @Test
-    void rejectsEvidenceUploadedByDifferentCampaignParticipant() {
-        User owner = saveOwner();
-        MaturityModel model = saveModel();
-        Campaign campaign = saveCampaign(owner, model);
-        CampaignParticipant assessmentParticipant = saveParticipant(
-                campaign,
-                uniqueEmail(),
-                hash('a')
-        );
-        CampaignParticipant otherParticipant = saveParticipant(
-                campaign,
-                uniqueEmail(),
-                hash('b')
-        );
-        Assessment assessment = saveCampaignAssessment(
-                campaign,
-                assessmentParticipant,
-                model,
-                AssessmentStatus.DRAFT
-        );
-        Practice practice = savePractice();
-
-        assertThrows(
-                DataIntegrityViolationException.class,
-                () -> insertEvidence(
-                        assessment.getId(),
-                        practice.getId(),
-                        null,
-                        otherParticipant.getId()
                 )
         );
     }
@@ -533,7 +474,10 @@ class CampaignPersistenceIntegrationTest {
         CampaignParticipant participant = new CampaignParticipant();
         participant.setCampaign(campaign);
         participant.setEmail(email);
-        participant.setInvitationTokenHash(tokenHash);
+        participant.setUser(userRepository.findByEmailIgnoreCase(email.trim()).orElseGet(() -> {
+            User user = new User(); user.setEmail(email.trim().toLowerCase()); user.setPassword("!");
+            user.setRole(UserRole.USER); return userRepository.saveAndFlush(user);
+        }));
         return participantRepository.saveAndFlush(participant);
     }
 
@@ -552,6 +496,7 @@ class CampaignPersistenceIntegrationTest {
         assessment.setMaturityModelId(model.getId());
         assessment.setCampaign(campaign);
         assessment.setCampaignParticipant(participant);
+        assessment.setUser(participant.getUser());
         Assessment saved = assessmentRepository.saveAndFlush(assessment);
         participant.setAssessment(saved);
         return saved;
@@ -590,30 +535,6 @@ class CampaignPersistenceIntegrationTest {
                 userId,
                 campaignId,
                 participantId
-        );
-    }
-
-    private void insertEvidence(
-            Long assessmentId,
-            Long practiceId,
-            Long uploadedByUserId,
-            Long uploadedByParticipantId
-    ) {
-        jdbcTemplate.update(
-                """
-                INSERT INTO evidence (
-                    assessment_id,
-                    practice_id,
-                    evidence_type,
-                    uploaded_at,
-                    uploaded_by_user_id,
-                    uploaded_by_campaign_participant_id
-                ) VALUES (?, ?, 'FILE', CURRENT_TIMESTAMP, ?, ?)
-                """,
-                assessmentId,
-                practiceId,
-                uploadedByUserId,
-                uploadedByParticipantId
         );
     }
 

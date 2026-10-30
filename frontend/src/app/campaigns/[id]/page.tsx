@@ -98,8 +98,8 @@ export default function CampaignDetailPage() {
       const response = await apiClient.post<CampaignInvitationResponse>(
         `/api/v1/campaigns/${params.id}/participants/${participantId}/invitation`
       );
-      const invitationUrl = new URL("/assessment", window.location.origin);
-      invitationUrl.searchParams.set("campaignToken", response.data.invitationToken);
+      const invitationUrl = new URL("/filipevm/assessment", window.location.origin);
+      invitationUrl.searchParams.set("campaignId", String(response.data.campaignId));
       try {
         await navigator.clipboard.writeText(invitationUrl.toString());
       } catch {

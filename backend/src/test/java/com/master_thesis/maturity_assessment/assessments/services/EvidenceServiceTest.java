@@ -197,10 +197,18 @@ class EvidenceServiceTest {
     }
 
     @Test
-    void campaignEvidenceUsesTheParticipantUploaderIdentity() throws Exception {
+    void ordinaryEvidenceRoutesCannotReadCampaignEvidence() {
+        assessment.setCampaign(new com.master_thesis.maturity_assessment.campaigns.models.Campaign());
+        assertEquals(HttpStatus.FORBIDDEN, assertThrows(ResponseStatusException.class,
+                () -> evidenceService.getEvidenceByAssessment(ASSESSMENT_ID, owner)).getStatusCode());
+    }
+
+    @Test
+    void campaignEvidenceUsesRealUserIdentity() throws Exception {
         CampaignParticipant participant = new CampaignParticipant();
         participant.setId(77L);
-        assessment.setUser(null);
+        participant.setUser(owner);
+        assessment.setUser(owner);
         assessment.setCampaignParticipant(participant);
         when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID))
                 .thenReturn(List.of());
@@ -217,8 +225,7 @@ class EvidenceServiceTest {
 
         ArgumentCaptor<Evidence> evidenceCaptor = ArgumentCaptor.forClass(Evidence.class);
         verify(evidenceRepository).save(evidenceCaptor.capture());
-        assertEquals(participant, evidenceCaptor.getValue().getUploadedByCampaignParticipant());
-        assertEquals(null, evidenceCaptor.getValue().getUploadedBy());
+        assertEquals(owner, evidenceCaptor.getValue().getUploadedBy());
     }
 
     @Test

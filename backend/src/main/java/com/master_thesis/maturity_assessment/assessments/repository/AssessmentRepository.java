@@ -19,15 +19,27 @@ import java.util.Optional;
 public interface AssessmentRepository extends JpaRepository<Assessment, Long> {
     List<Assessment> findByUserIdOrderByCreatedAtDescIdDesc(Long userId);
 
+    List<Assessment> findByCampaignIsNullAndUserIdOrderByCreatedAtDescIdDesc(Long userId);
+
     List<Assessment> findByOverallMaturityLevel(String maturityLevel);
 
     List<Assessment> findByStatusOrderByUpdatedAtDescIdDesc(AssessmentStatus status);
 
     List<Assessment> findByUserIdAndStatusOrderByUpdatedAtDescIdDesc(Long userId, AssessmentStatus status);
 
+    List<Assessment> findByCampaignIsNullAndUserIdAndStatusOrderByUpdatedAtDescIdDesc(Long userId, AssessmentStatus status);
+
     Optional<Assessment> findByUserIdAndMaturityModelIdAndStatus(Long userId, Long maturityModelId, AssessmentStatus status);
 
+    Optional<Assessment> findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(Long userId, Long maturityModelId, AssessmentStatus status);
+
     List<Assessment> findByUserIdAndStatusAndMaturityModelIdInOrderByUpdatedAtDescIdDesc(
+            Long userId,
+            AssessmentStatus status,
+            Collection<Long> maturityModelIds
+    );
+
+    List<Assessment> findByCampaignIsNullAndUserIdAndStatusAndMaturityModelIdInOrderByUpdatedAtDescIdDesc(
             Long userId,
             AssessmentStatus status,
             Collection<Long> maturityModelIds

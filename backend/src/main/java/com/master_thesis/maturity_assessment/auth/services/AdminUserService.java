@@ -14,15 +14,12 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class AdminUserService {
     private final UserRepository userRepository;
-    private final PasswordService passwordService;
-    private final PasswordEmailService passwordEmailService;
+    private final AccountProvisioningService provisioning;
 
     public AdminUserService(UserRepository userRepository,
-                            PasswordService passwordService,
-                            PasswordEmailService passwordEmailService) {
+                            AccountProvisioningService provisioning) {
+        this.provisioning = provisioning;
         this.userRepository = userRepository;
-        this.passwordService = passwordService;
-        this.passwordEmailService = passwordEmailService;
     }
 
     @Transactional
@@ -38,7 +35,7 @@ public class AdminUserService {
         user.setOrganizationName(request.getOrganizationName().trim());
         user.setRole(request.getRole() == null ? UserRole.USER : request.getRole());
         user.setApprovalStatus(UserApprovalStatus.APPROVED);
-        String temporaryPassword = passwordService.assignTemporaryPassword(user);
+        user.setPassword("!");
         try {
             // Detect a concurrent duplicate before sending credentials. Mail failure rolls back the insert.
             userRepository.saveAndFlush(user);
@@ -49,7 +46,7 @@ public class AdminUserService {
             }
             throw exception;
         }
-        passwordEmailService.sendWelcomePassword(user.getEmail(), temporaryPassword);
+        provisioning.issueWelcomeCredentials(user);
         return user;
     }
 }

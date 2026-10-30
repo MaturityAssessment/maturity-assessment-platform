@@ -49,7 +49,7 @@ public class CampaignService {
     private final AssessmentRepository assessmentRepository;
     private final DimensionResultRepository dimensionResultRepository;
     private final MaturityModelRepository maturityModelRepository;
-    private final CampaignInvitationTokenService invitationTokenService;
+    private final com.master_thesis.maturity_assessment.auth.services.AccountProvisioningService provisioning;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
@@ -135,7 +135,7 @@ public class CampaignService {
         Campaign savedCampaign = campaignRepository.save(campaign);
 
         List<CampaignInvitationsCreatedEvent.Invitation> invitations = new ArrayList<>();
-        List<CampaignParticipant> participants = normalizedEmails.stream()
+        List<CampaignParticipant> participants = normalizedEmails.stream().sorted()
                 .map(email -> newParticipant(savedCampaign, email, invitations))
                 .toList();
         List<CampaignParticipant> savedParticipants = participantRepository.saveAll(participants);
@@ -187,11 +187,9 @@ public class CampaignService {
                     "Invitations cannot be issued after the campaign has ended."
             );
         }
-        CampaignInvitationTokenService.IssuedToken issued = invitationTokenService.issue();
-        participant.setInvitationTokenHash(issued.tokenHash());
         participant.setRevokedAt(null);
         participantRepository.save(participant);
-        return new CampaignInvitationResponse(participant.getId(), issued.rawToken());
+        return new CampaignInvitationResponse(participant.getId(), campaignId);
     }
 
     private CampaignParticipant newParticipant(
@@ -199,12 +197,14 @@ public class CampaignService {
             String email,
             List<CampaignInvitationsCreatedEvent.Invitation> invitations
     ) {
-        CampaignInvitationTokenService.IssuedToken issued = invitationTokenService.issue();
         CampaignParticipant participant = new CampaignParticipant();
         participant.setCampaign(campaign);
         participant.setEmail(email);
-        participant.setInvitationTokenHash(issued.tokenHash());
-        invitations.add(new CampaignInvitationsCreatedEvent.Invitation(email, issued.rawToken()));
+        User user = provisioning.findOrCreateInvitee(email);
+        participant.setUser(user);
+        invitations.add(new CampaignInvitationsCreatedEvent.Invitation(email, campaign.getId(),
+                user.getApprovalStatus() != com.master_thesis.maturity_assessment.auth.models.UserApprovalStatus.APPROVED,
+                user.isInitialCredentialsPending()));
         return participant;
     }
 

@@ -15,6 +15,6 @@ public record CampaignInvitationsCreatedEvent(
         invitations = List.copyOf(invitations);
     }
 
-    public record Invitation(String email, String rawToken) {
+    public record Invitation(String email, Long campaignId, boolean pendingApproval, boolean awaitingCredentials) {
     }
 }

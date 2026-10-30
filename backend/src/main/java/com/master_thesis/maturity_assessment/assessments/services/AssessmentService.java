@@ -691,7 +691,7 @@ public class AssessmentService {
         }
         User lockedUser = lockUserForDraftCreation(user);
         Optional<Assessment> existing = assessmentRepository
-                .findByUserIdAndMaturityModelIdAndStatus(
+                .findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                         lockedUser.getId(),
                         maturityModelId,
                         AssessmentStatus.DRAFT
@@ -711,7 +711,7 @@ public class AssessmentService {
 
     @Transactional
     public AssessmentResponse ensureCampaignAssessment(CampaignParticipant participant) {
-        if (participant == null || participant.getId() == null
+        if (participant == null || participant.getId() == null || participant.getUser() == null
                 || participant.getCampaign() == null
                 || participant.getCampaign().getMaturityModel() == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Campaign invitation is invalid.");
@@ -720,7 +720,7 @@ public class AssessmentService {
         Assessment assessment = participant.getAssessment();
         if (assessment == null) {
             assessment = new Assessment();
-            assessment.setUser(null);
+            assessment.setUser(participant.getUser());
             assessment.setCampaign(participant.getCampaign());
             assessment.setCampaignParticipant(participant);
             assessment.setMaturityModelId(participant.getCampaign().getMaturityModel().getId());
@@ -1061,7 +1061,7 @@ public class AssessmentService {
     private Assessment requireOwnedRespondentAssessmentForUpdate(Long draftId, User user) {
         Assessment assessment = assessmentRepository.findByIdForUpdate(draftId)
                 .orElseThrow(() -> new ResourceNotFoundException("Draft assessment not found"));
-        if (assessment.getUser() == null
+        if (assessment.getCampaign() != null || assessment.getUser() == null
                 || user == null
                 || user.getId() == null
                 || !assessment.getUser().getId().equals(user.getId())) {
@@ -1269,7 +1269,7 @@ public class AssessmentService {
     private Assessment getOrCreateDraftAssessment(User user, Long maturityModelId) {
         User lockedUser = lockUserForDraftCreation(user);
         return assessmentRepository
-                .findByUserIdAndMaturityModelIdAndStatus(
+                .findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
                         lockedUser.getId(),
                         maturityModelId,
                         AssessmentStatus.DRAFT
@@ -1291,7 +1291,7 @@ public class AssessmentService {
             User user,
             CampaignParticipant campaignParticipant
     ) {
-        assessment.setUser(user);
+        assessment.setUser(campaignParticipant == null ? user : campaignParticipant.getUser());
         assessment.setMaturityModelId(request.getMaturityModelId());
         if (campaignParticipant != null) {
             assessment.setCampaign(campaignParticipant.getCampaign());
@@ -1301,7 +1301,7 @@ public class AssessmentService {
 
     public List<AssessmentResponse> getDraftsByUser(User user) {
         List<Assessment> assessments = assessmentRepository
-                .findByUserIdAndStatusOrderByUpdatedAtDescIdDesc(user.getId(), AssessmentStatus.DRAFT);
+                .findByCampaignIsNullAndUserIdAndStatusOrderByUpdatedAtDescIdDesc(user.getId(), AssessmentStatus.DRAFT);
         List<AssessmentResponse> responses = assessments.stream()
                 .map(assessment -> convertToResponse(assessment, List.of()))
                 .collect(Collectors.toList());
@@ -1311,7 +1311,7 @@ public class AssessmentService {
 
     public AssessmentResponse getDraftByMaturityModel(Long maturityModelId, User user) {
         Assessment assessment = assessmentRepository
-                .findByUserIdAndMaturityModelIdAndStatus(user.getId(), maturityModelId, AssessmentStatus.DRAFT)
+                .findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(user.getId(), maturityModelId, AssessmentStatus.DRAFT)
                 .orElseThrow(() -> new ResourceNotFoundException("Draft assessment not found"));
         AssessmentResponse response = convertToResponse(assessment, List.of());
         enrichModelMetadata(response);
@@ -1334,7 +1334,7 @@ public class AssessmentService {
         lineageModelIds.add(selectedModel.getId());
 
         List<AssessmentResponse> responses = assessmentRepository
-                .findByUserIdAndStatusAndMaturityModelIdInOrderByUpdatedAtDescIdDesc(
+                .findByCampaignIsNullAndUserIdAndStatusAndMaturityModelIdInOrderByUpdatedAtDescIdDesc(
                         user.getId(),
                         AssessmentStatus.DRAFT,
                         lineageModelIds
@@ -1347,7 +1347,7 @@ public class AssessmentService {
     }
 
     public List<AssessmentResponse> getAssessmentsByUser(User user) {
-        List<Assessment> assessments = assessmentRepository.findByUserIdOrderByCreatedAtDescIdDesc(user.getId());
+        List<Assessment> assessments = assessmentRepository.findByCampaignIsNullAndUserIdOrderByCreatedAtDescIdDesc(user.getId());
         List<AssessmentResponse> list = assessments.stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
@@ -1378,7 +1378,7 @@ public class AssessmentService {
             assessment = assessmentRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Assessment not found"));
             
-            if (assessment.getUser() == null
+            if (assessment.getCampaign() != null || assessment.getUser() == null
                     || !assessment.getUser().getId().equals(user.getId())) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
             }
@@ -2049,6 +2049,7 @@ public class AssessmentService {
     public Map<String, Object> getOpenAnswerQuestions(Long assessmentId, User user) {
         Assessment assessment = assessmentRepository.findById(assessmentId)
                 .orElseThrow(() -> new RuntimeException("Assessment not found"));
+        getAssessmentById(assessmentId, user);
         return responseValues(
                 questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(assessmentId), assessment.getMaturityModelId()
         );
@@ -2059,7 +2060,7 @@ public class AssessmentService {
                 .orElseThrow(() -> new RuntimeException("Assessment not found"));
 
         boolean isCuratorOrAdmin = RoleUtils.hasRequiredRole(user.getRole(), UserRole.CURATOR);
-        boolean isOwner = assessment.getUser() != null
+        boolean isOwner = assessment.getCampaign() == null && assessment.getUser() != null
                 && assessment.getUser().getId().equals(user.getId());
 
         if (!isCuratorOrAdmin && !isOwner) {

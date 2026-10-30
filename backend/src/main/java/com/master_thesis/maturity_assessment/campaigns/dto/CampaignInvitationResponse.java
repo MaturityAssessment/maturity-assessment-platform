@@ -7,5 +7,5 @@ import lombok.Data;
 @AllArgsConstructor
 public class CampaignInvitationResponse {
     private Long participantId;
-    private String invitationToken;
+    private Long campaignId;
 }

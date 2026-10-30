@@ -42,19 +42,15 @@ public interface CampaignParticipantRepository extends JpaRepository<CampaignPar
             @Param("completedStatuses") Collection<AssessmentStatus> completedStatuses
     );
 
-    @EntityGraph(attributePaths = { "campaign", "campaign.maturityModel", "assessment" })
-    Optional<CampaignParticipant> findByInvitationTokenHash(String invitationTokenHash);
+    boolean existsByUserId(Long userId);
+    void deleteByUserId(Long userId);
+
+    @EntityGraph(attributePaths = { "campaign", "campaign.maturityModel", "user" })
+    Optional<CampaignParticipant> findByCampaignIdAndUserId(Long campaignId, Long userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @EntityGraph(attributePaths = { "campaign", "campaign.maturityModel", "assessment" })
-    @Query("""
-            SELECT participant
-            FROM CampaignParticipant participant
-            WHERE participant.invitationTokenHash = :invitationTokenHash
-            """)
-    Optional<CampaignParticipant> findByInvitationTokenHashForUpdate(
-            @Param("invitationTokenHash") String invitationTokenHash
-    );
+    @Query("SELECT p FROM CampaignParticipant p WHERE p.campaign.id = :campaignId AND p.user.id = :userId")
+    Optional<CampaignParticipant> findForResponse(@Param("campaignId") Long campaignId, @Param("userId") Long userId);
 
     @EntityGraph(attributePaths = { "campaign", "campaign.createdBy" })
     Optional<CampaignParticipant> findByIdAndCampaignIdAndCampaignCreatedById(

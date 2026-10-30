@@ -53,7 +53,7 @@ credentials cannot log in, refresh, or use an existing access token.
 | Curator/admin | Requires `CURATOR` or `ADMIN` |
 | Admin | Requires `ADMIN` |
 | Owner | Requires the relevant user/resource ownership check as well as authentication |
-| Campaign token | Requires `X-Campaign-Token`, independently of user login |
+| Campaign respondent | Approved, fully set up user with membership in the requested campaign |
 
 Roles do not override every ownership restriction. Campaign management is scoped
 to the creator, including for admins. Exact-draft writes require the respondent
@@ -67,17 +67,7 @@ every operation under it is public.
 
 ## Campaign invitations
 
-Campaign respondents send:
-
-```http
-X-Campaign-Token: <invitation-token>
-```
-
-These endpoints do not require a platform account or bearer token. The invitation
-grants access to one campaign participant's assessment. Invalid tokens return
-`404`; revoked invitations and ended campaigns return `410`. Reissuing an
-invitation replaces its token, invalidating the old one. Tokens are not returned
-by campaign list/detail endpoints. See [campaign responses](reference/campaign-responses.md).
+Campaign respondents use normal bearer authentication. Campaign-created accounts await admin approval; approval sends fresh temporary credentials. Password change and name/organization completion are required before application access. Existing users retain their credentials and approval status. Campaign links identify the campaign and never authorize anonymous access. See [campaign responses](reference/campaign-responses.md).
 
 ## Handling access failures
 

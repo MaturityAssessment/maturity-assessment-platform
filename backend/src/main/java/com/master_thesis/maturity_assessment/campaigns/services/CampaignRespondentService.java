@@ -27,14 +27,13 @@ import java.util.List;
 public class CampaignRespondentService {
 
     private final CampaignParticipantRepository participantRepository;
-    private final CampaignInvitationTokenService invitationTokenService;
     private final AssessmentService assessmentService;
     private final AssessmentEvidenceWorkflowService evidenceWorkflowService;
     private final EvidenceService evidenceService;
 
     @Transactional
-    public CampaignAssessmentSessionResponse openAssessment(String rawToken) {
-        CampaignParticipant participant = requireActiveParticipant(rawToken, true);
+    public CampaignAssessmentSessionResponse openAssessment(Long campaignId, com.master_thesis.maturity_assessment.auth.models.User user) {
+        CampaignParticipant participant = requireActiveParticipant(campaignId, user, true);
         AssessmentResponse assessment = assessmentService.ensureCampaignAssessment(participant);
         assessment.setEvidence(
                 evidenceService.getEvidenceByAssessment(assessment.getId(), participant)
@@ -50,13 +49,13 @@ public class CampaignRespondentService {
 
     @Transactional(rollbackFor = Exception.class)
     public AssessmentResponse saveDraft(
-            String rawToken,
+            Long campaignId, com.master_thesis.maturity_assessment.auth.models.User user,
             AssessmentRequest request,
             List<EvidenceSubmissionItemRequest> metadata,
             List<MultipartFile> evidenceFiles,
             List<String> evidenceFileKeys
     ) throws IOException {
-        CampaignParticipant participant = requireActiveParticipant(rawToken, true);
+        CampaignParticipant participant = requireActiveParticipant(campaignId, user, true);
         assessmentService.ensureCampaignAssessment(participant);
         return evidenceWorkflowService.saveCampaignDraft(
                 request,
@@ -69,13 +68,13 @@ public class CampaignRespondentService {
 
     @Transactional(rollbackFor = Exception.class)
     public AssessmentResponse submitAssessment(
-            String rawToken,
+            Long campaignId, com.master_thesis.maturity_assessment.auth.models.User user,
             AssessmentRequest request,
             List<EvidenceSubmissionItemRequest> metadata,
             List<MultipartFile> evidenceFiles,
             List<String> evidenceFileKeys
     ) throws IOException {
-        CampaignParticipant participant = requireActiveParticipant(rawToken, true);
+        CampaignParticipant participant = requireActiveParticipant(campaignId, user, true);
         assessmentService.ensureCampaignAssessment(participant);
         return evidenceWorkflowService.submitCampaignAssessment(
                 request,
@@ -87,22 +86,20 @@ public class CampaignRespondentService {
     }
 
     @Transactional(readOnly = true)
-    public Resource downloadEvidence(String rawToken, Long evidenceId) throws IOException {
-        CampaignParticipant participant = requireActiveParticipant(rawToken, false);
+    public Resource downloadEvidence(Long campaignId, com.master_thesis.maturity_assessment.auth.models.User user, Long evidenceId) throws IOException {
+        CampaignParticipant participant = requireActiveParticipant(campaignId, user, false);
         return evidenceService.downloadEvidence(evidenceId, participant);
     }
 
-    private CampaignParticipant requireActiveParticipant(String rawToken, boolean lock) {
-        String tokenHash;
-        try {
-            tokenHash = invitationTokenService.hash(rawToken);
-        } catch (IllegalArgumentException exception) {
-            throw new ResourceNotFoundException("Campaign invitation not found");
+    private CampaignParticipant requireActiveParticipant(Long campaignId, com.master_thesis.maturity_assessment.auth.models.User user, boolean lock) {
+        if (user == null || !user.isEnabled() || user.isPasswordChangeRequired() || user.isProfileCompletionRequired()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account setup and approval are required.");
         }
         CampaignParticipant participant = (lock
-                ? participantRepository.findByInvitationTokenHashForUpdate(tokenHash)
-                : participantRepository.findByInvitationTokenHash(tokenHash))
-                .orElseThrow(() -> new ResourceNotFoundException("Campaign invitation not found"));
+                ? participantRepository.findForResponse(campaignId, user.getId())
+                : participantRepository.findByCampaignIdAndUserId(campaignId, user.getId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "This account is not invited to the campaign. Sign in with the invited account."));
         if (participant.getRevokedAt() != null) {
             throw new ResponseStatusException(
                     HttpStatus.GONE,

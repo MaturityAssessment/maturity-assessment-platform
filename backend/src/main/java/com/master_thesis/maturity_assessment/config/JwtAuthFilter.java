@@ -80,6 +80,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                 "PASSWORD_CHANGE_REQUIRED", "Change your temporary password before continuing."));
                         return;
                     }
+                    if (userDetails instanceof User user && user.isProfileCompletionRequired()
+                            && !isPasswordChangeRequest(request)
+                            && !("PUT".equals(request.getMethod()) && "/api/v1/user/me/profile".equals(request.getServletPath()))) {
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        response.setContentType("application/json");
+                        new ObjectMapper().writeValue(response.getWriter(), new ErrorResponse(
+                                "PROFILE_COMPLETION_REQUIRED", "Complete your name and organization before continuing."));
+                        return;
+                    }
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,

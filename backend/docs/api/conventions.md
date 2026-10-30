@@ -49,7 +49,7 @@ The common error body is:
 | `400` | Invalid fields, incompatible payload, or rejected business operation |
 | `401` | Missing/invalid authentication or insufficient role permissions |
 | `403` | Pending account at login/refresh, or service-level ownership denial |
-| `404` | Explicit not-found checks, invalid campaign token |
+| `404` | Explicit not-found checks |
 | `409` | Assessment is in the wrong state or a respondent change conflicts with review |
 | `410` | Campaign ended or invitation revoked |
 | `413` | Upload/request size limit exceeded |
@@ -92,7 +92,7 @@ Use the evidence download endpoint for files and the `url` field for URL evidenc
 
 `CORS_ALLOWED_ORIGINS` configures comma-separated browser origins, defaulting to
 `http://localhost:3000`. Allowed headers include `Authorization`, `Content-Type`,
-`X-Requested-With`, and `X-Campaign-Token`; allowed methods include GET, POST,
+and `X-Requested-With`; allowed methods include GET, POST,
 PUT, PATCH, DELETE, and OPTIONS. CORS does not replace authentication or ownership
 checks. Environment setup belongs in the [backend README](../../README.md).
 

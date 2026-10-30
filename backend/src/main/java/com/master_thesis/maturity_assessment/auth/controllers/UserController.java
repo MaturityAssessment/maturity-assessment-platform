@@ -36,6 +36,18 @@ public class UserController {
         this.passwordService = passwordService;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.master_thesis.maturity_assessment.auth.services.AccountProvisioningService provisioning;
+
+    @PutMapping("/me/profile")
+    public ResponseEntity<UserDTO> completeProfile(
+            @Valid @RequestBody com.master_thesis.maturity_assessment.auth.dto.CompleteProfileRequest request,
+            Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        return ResponseEntity.ok(toUserDTO(provisioning.completeProfile(
+                user.getId(), request.name(), request.organizationName())));
+    }
+
     @PutMapping("/me/password")
     public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request,
                                              Authentication authentication) {
@@ -124,6 +136,7 @@ public class UserController {
     private UserDTO toUserDTO(User user) {
         UserDTO userDTO = new UserDTO();
         userDTO.setId(user.getId());
+        userDTO.setProfileCompletionRequired(user.isProfileCompletionRequired());
         userDTO.setPasswordChangeRequired(user.isPasswordChangeRequired());
         userDTO.setName(user.getName());
         userDTO.setOrganizationName(user.getOrganizationName());

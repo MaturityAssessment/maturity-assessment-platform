@@ -35,7 +35,7 @@ type LatestAssessmentState = {
   formData: AssessmentData;
   evidenceFiles: AssessmentEvidenceByField;
   respondentUpdatedResponseKeys: string[];
-  campaignToken?: string | null;
+  campaignId?: string | null;
   buildResponses: (
     formData: AssessmentData
   ) => Record<string, QuestionResponseRequest>;
@@ -66,7 +66,7 @@ export default function useAssessmentAutosave({
   formData,
   evidenceFiles,
   respondentUpdatedResponseKeys,
-  campaignToken = null,
+  campaignId = null,
   buildResponses,
   setEvidenceFiles,
   debounceMs = 1_000,
@@ -84,7 +84,7 @@ export default function useAssessmentAutosave({
     formData,
     evidenceFiles,
     respondentUpdatedResponseKeys,
-    campaignToken,
+    campaignId,
     buildResponses,
   });
   const setEvidenceFilesRef = useRef(setEvidenceFiles);
@@ -103,7 +103,7 @@ export default function useAssessmentAutosave({
     formData,
     evidenceFiles,
     respondentUpdatedResponseKeys,
-    campaignToken,
+    campaignId,
     buildResponses,
   };
   setEvidenceFilesRef.current = setEvidenceFiles;
@@ -142,7 +142,7 @@ export default function useAssessmentAutosave({
       maturityModelId: latest.maturityModelId,
       questionResponses: latest.buildResponses({ ...latest.formData }),
       evidenceFiles: cloneEvidenceSnapshot(latest.evidenceFiles),
-      campaignToken: latest.campaignToken,
+      campaignId: latest.campaignId,
       respondentUpdatedResponseKeys:
         latest.respondentUpdatedResponseKeys,
     };
@@ -173,13 +173,10 @@ export default function useAssessmentAutosave({
     });
 
     const response = await apiClient.put<AssessmentResponse>(
-      snapshot.campaignToken
-        ? "/api/v1/campaign-response"
+      snapshot.campaignId
+        ? `/api/v1/campaign-response/${snapshot.campaignId}`
         : `/api/v1/assessments/drafts/${snapshot.draftId}`,
-      payload,
-      snapshot.campaignToken
-        ? { headers: { "X-Campaign-Token": snapshot.campaignToken } }
-        : undefined
+      payload
     );
 
     const current = latestRef.current;

@@ -4,13 +4,13 @@ import type { EvaluationQuestion, QuestionReviewDraft } from "./types";
 export function assessmentCapabilities(
   assessment: AssessmentResponse | null,
   user: Pick<UserDTO, "id" | "role"> | null | undefined,
-  campaignToken?: string | null,
+  campaignId?: string | null,
 ) {
-  const evaluator = !campaignToken && (user?.role === "CURATOR" || user?.role === "ADMIN");
+  const evaluator = !campaignId && (user?.role === "CURATOR" || user?.role === "ADMIN");
   const submitted = !!assessment && (["PENDING_REVIEW", "CHANGES_REQUESTED", "COMPLETED"].includes(assessment.status || "") || assessment.isCompleted);
   const canEvaluate = !!(evaluator && submitted);
   const canEditEvaluation = canEvaluate && assessment?.status === "PENDING_REVIEW" && !assessment.isCompleted;
-  const owner = !!campaignToken || (!!user && (assessment?.userId === user.id || (!evaluator && assessment?.userId == null)));
+  const owner = !!campaignId || (!!user && (assessment?.userId === user.id || (!evaluator && assessment?.userId == null)));
   const canEditResponses = !!assessment && owner && !assessment.isCompleted &&
     (assessment.status === "DRAFT" || assessment.status === "CHANGES_REQUESTED");
   return { canEvaluate, canEditEvaluation, canEditResponses };

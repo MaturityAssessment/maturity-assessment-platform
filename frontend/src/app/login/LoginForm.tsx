@@ -1,5 +1,6 @@
 "use client";
 
+import { safeReturnTo } from "@/lib/authRedirect";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -48,7 +49,7 @@ export default function LoginForm({
 
       await refreshUserData();
 
-      router.push("/dashboard");
+      router.push(safeReturnTo(new URLSearchParams(window.location.search).get("returnTo")));
     } catch (error: any) {
       if (error.errorCode === "ACCOUNT_PENDING_APPROVAL") {
         setError(

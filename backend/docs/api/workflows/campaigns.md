@@ -1,64 +1,17 @@
 # Campaign workflow
 
-[API documentation](../README.md) · [Management reference](../reference/campaigns.md)
-· [Respondent reference](../reference/campaign-responses.md)
+[API documentation](../README.md) · [Management](../reference/campaigns.md) · [Responses](../reference/campaign-responses.md)
 
-## Create and distribute invitations
+1. An approved user creates a campaign using an active model, deadline, and unique email addresses. Management remains restricted to its creator.
+2. Existing accounts are matched case-insensitively without changing their credentials or approval. Missing accounts become permanent `USER` accounts awaiting admin approval, with no name or organization yet.
+3. Invitation notices are sent after commit. Pending users are told approval is required; new users receive their temporary password only when approved. SMTP invitation failures are logged; the creator can copy the link again.
+4. An admin approves a new account. Credential email failure rolls back approval so it can be retried. Rejection deletes the pending account and its memberships.
+5. The invitee opens `/assessment?campaignId=...` under the configured frontend base URL and signs in with the invited account. New users change their temporary password, sign in again, and complete name and organization. The campaign destination survives these steps.
+6. The frontend opens `GET /api/v1/campaign-response/{campaignId}`, creating one draft per membership if necessary. Save with `PUT` at the same path and submit with `POST .../submit`, using bearer authentication and the existing assessment/evidence multipart format.
+7. Download files through `GET /api/v1/campaign-response/{campaignId}/evidence/{evidenceId}/download`.
 
-1. Sign in. Any authenticated role can create a campaign; later management is
-   restricted to its creator.
-2. Select an active model through `GET /api/v1/maturity-model/active`.
-3. Call `POST /api/v1/campaigns` with a name, future `endsAt`, exact model ID,
-   and unique participant email addresses. Store the returned campaign and
-   participant IDs.
-4. When mail is enabled, initial invitations are queued for asynchronous delivery
-   after creation. The response confirms campaign creation, not email delivery.
+Campaign discovery remains email-based. No invited-campaign list is added. The creator's copy-link action returns a stable campaign link, which still requires the invited account. Old anonymous links no longer work.
 
-The email contains a frontend `/assessment?campaignToken=...` link. That query
-parameter is consumed by the frontend; API calls send the value in
-`X-Campaign-Token`. Backend mail/frontend URL configuration is described in the
-[backend README](../../../README.md#gmail-campaign-invitations).
+Wrong-account access returns `403`; revoked memberships and expired campaigns return `410` for reads, writes, and downloads. Submitted assessments reject edits with `409`. Returned assessments can be corrected before the deadline. Standalone assessment routes do not grant campaign respondent access.
 
-For a replacement invitation, call
-`POST /api/v1/campaigns/{campaignId}/participants/{participantId}/invitation`.
-Use the returned raw token in the replacement link. This rotates the token and
-does not send an email. Calling it again invalidates the previous replacement.
-Never expect list/detail endpoints to reveal existing tokens.
-
-## Respond without a platform account
-
-1. Send `GET /api/v1/campaign-response` with `X-Campaign-Token`. Opening the
-   invitation creates the participant's draft if absent.
-2. Read the session's `assessment.maturityModelId` and load the public full model.
-   Invitations stay tied to the campaign's selected version.
-3. Save with `PUT /api/v1/campaign-response`: use the same answer-map and evidence
-   metadata format as individual assessments, with the campaign-token header.
-4. Submit with `POST /api/v1/campaign-response/submit`. An automatic model completes
-   immediately; a manual model enters `PENDING_REVIEW`.
-5. Use `/api/v1/campaign-response/evidence/{evidenceId}/download` for file evidence.
-
-Save and submit require `assessment` and `evidenceMetadata` multipart parts. Send
-the full snapshot and retain existing evidence IDs. See the
-[assessment workflow](assessments.md) for response keys and review transitions.
-There is no campaign-specific reset or standalone evidence deletion endpoint.
-
-An unknown token returns `404`; a revoked invitation or ended campaign returns
-`410`. Expiry applies to session reads and downloads as well as writes. A
-submitted assessment rejects edits with `409`. If a reviewer sends it back, the
-participant can reopen the same invitation, correct flagged items, and resubmit
-before the deadline.
-
-## Monitor and review
-
-Read `GET /api/v1/campaigns/{id}` for participant progress. “Completed participant”
-means submitted, including responses awaiting review. Use
-`GET /api/v1/campaigns/{id}/results` for aggregates from completed evaluations;
-its evaluated count distinguishes finished reviews from submissions.
-
-Curators/admins review submitted campaign assessments using the ordinary
-[assessment review endpoints](assessments.md#review-a-manual-assessment).
-Campaign ownership alone does not grant curator review permissions.
-
-Deletion is allowed only while the campaign has no participant assessments.
-Simply opening an invitation creates a draft and therefore prevents campaign
-deletion, even before answers are submitted.
+Creators monitor participant progress and campaign results as before. Curators/admins retain review access to submitted assessments. Campaign deletion remains restricted to campaigns without assessments; user deletion is blocked when campaign memberships exist.

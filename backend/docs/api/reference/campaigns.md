@@ -37,8 +37,7 @@ required, nonblank, at most 150 characters. `participantEmails` must contain
 1–1,000 valid addresses, each at most 255 characters. Addresses are normalized
 to lowercase/trimmed and must be unique after normalization.
 
-**Response:** `201`, [campaign detail](#campaign-contracts). Participant token
-values are not included. Initial invitations are dispatched asynchronously after
+**Response:** `201`, [campaign detail](#campaign-contracts). Missing invitees are created as pending User accounts; existing accounts keep their approval status. Initial invitations are dispatched asynchronously after
 commit when email is enabled; a successful API response does not confirm delivery.
 The current email implementation has no persisted delivery status or retry API.
 
@@ -68,19 +67,12 @@ assessment exists, even an empty draft created by opening an invitation.
 
 ## POST /api/v1/campaigns/{campaignId}/participants/{participantId}/invitation
 
-Replace a participant's invitation token.
+Return a stable authenticated invitation link and clear any membership revocation.
 
 **Request:** Numeric campaign and participant IDs; no body.
-**Response:** `200`:
+**Response:** `200`: `{"participantId":12,"campaignId":3}`.
 
-```json
-{"participantId":12,"invitationToken":"<new-invitation-token>"}
-```
-
-The previous token stops working and any `revokedAt` value is cleared. The raw
-replacement token is returned once; list/detail endpoints expose no token. This
-operation does not send a replacement email. The caller must deliver the new link
-through its intended invitation flow. A retry rotates the token again.
+Construct `/assessment?campaignId=3` under the configured frontend base URL. This operation does not send email or change account credentials or approval.
 **Errors:** `404` participant/campaign missing or not owned; `400 CAMPAIGN_ENDED`
 after the campaign deadline.
 
@@ -95,7 +87,7 @@ after the campaign deadline.
 Campaign timestamps are ISO instants. Participant assessment fields may be null
 before first opening the invitation. `completed` and `completedParticipantCount`
 represent submitted responses (`PENDING_REVIEW` or `COMPLETED`), not just finished
-evaluations. Detail does not return raw invitation tokens or assessment answers.
+evaluations. Detail does not return assessment answers.
 
 Example detail excerpt:
 

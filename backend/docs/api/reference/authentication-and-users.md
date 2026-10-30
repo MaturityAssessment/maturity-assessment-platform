@@ -162,3 +162,9 @@ The backend restricts these
 sessions to reading `/user/me`, changing `/user/me/password`, and authentication
 login/refresh. Other bearer-authenticated requests return
 `403 PASSWORD_CHANGE_REQUIRED` until the temporary password is replaced.
+
+## PUT /api/v1/user/me/profile
+
+Requires an approved authenticated user whose mandatory password change is complete. Body: `{"name":"Your name","organizationName":"Your organization"}`. Both fields are required, trimmed, and limited to 255 characters. Returns UserDTO with `profileCompletionRequired: false`. All user responses now expose this flag. Until it is cleared, application requests return `403 PROFILE_COMPLETION_REQUIRED`.
+
+Campaign-created accounts receive credentials on admin approval, with the existing 24-hour temporary-password expiry. Approval rolls back if email fails. Rejecting a pending account removes its campaign memberships. Deleting an account with memberships returns `USER_HAS_CAMPAIGN_MEMBERSHIPS`.

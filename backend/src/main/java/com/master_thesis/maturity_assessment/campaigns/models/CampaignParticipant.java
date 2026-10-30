@@ -29,8 +29,8 @@ import java.util.Locale;
 @Table(name = "campaign_participants")
 @Data
 @NoArgsConstructor
-@ToString(exclude = { "campaign", "assessment" })
-@EqualsAndHashCode(exclude = { "campaign", "assessment" })
+@ToString(exclude = { "campaign", "assessment", "user" })
+@EqualsAndHashCode(exclude = { "campaign", "assessment", "user" })
 public class CampaignParticipant {
 
     @Id
@@ -44,8 +44,9 @@ public class CampaignParticipant {
     @Column(nullable = false, length = 255)
     private String email;
 
-    @Column(name = "invitation_token_hash", nullable = false, unique = true, length = 64)
-    private String invitationTokenHash;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private com.master_thesis.maturity_assessment.auth.models.User user;
 
     @Column(name = "revoked_at")
     private Instant revokedAt;
@@ -66,9 +67,6 @@ public class CampaignParticipant {
     protected void normalizeIdentityFields() {
         if (email != null) {
             email = email.trim().toLowerCase(Locale.ROOT);
-        }
-        if (invitationTokenHash != null) {
-            invitationTokenHash = invitationTokenHash.trim().toLowerCase(Locale.ROOT);
         }
     }
 

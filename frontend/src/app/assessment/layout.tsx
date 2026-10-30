@@ -1,6 +1,8 @@
 "use client";
 
-import { Suspense } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
+import { Suspense, useEffect } from "react";
 import { useSearchParams, usePathname } from "next/navigation";
 import AssessmentFlow from "./AssessmentFlow";
 
@@ -23,5 +25,15 @@ export default function AssessmentLayout({
 
 function AssessmentSession() {
   const search = useSearchParams();
-  return <AssessmentFlow key={search.get("campaignToken") || search.get("draftId") || "none"} />;
+  const { isAuthenticated } = useAuth();
+  const router = useRouter();
+  const campaignId = search.get("campaignId");
+  useEffect(() => {
+    if (campaignId && isAuthenticated === false) {
+      router.replace(`/login?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+    }
+  }, [campaignId, isAuthenticated, router]);
+  if (search.has("campaignToken")) return <p className="p-8">This invitation is no longer valid. Request a new campaign invitation.</p>;
+  if (campaignId && !isAuthenticated) return <p className="p-8">Sign in to open your campaign assessment...</p>;
+  return <AssessmentFlow key={search.get("campaignId") || search.get("draftId") || "none"} />;
 }
