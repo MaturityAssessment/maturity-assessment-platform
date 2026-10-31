@@ -69,17 +69,23 @@ frontend/src/
 
 ## Environment Variables
 
-### Backend (application.properties)
+### Backend (`backend/.env`)
 
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/maturity-db
-spring.datasource.username=postgres
-spring.datasource.password=postgres
-jwt.access-token.expiration=1800000
-jwt.refresh-token.expiration=2592000000
+Copy `backend/.env.template` to `backend/.env` and set local values:
+
+```dotenv
+DB_URL=jdbc:postgresql://localhost:5432/maturity-db
+DB_USERNAME=maturity_app
+DB_PASSWORD=choose-a-local-password
+JWT_SECRET=replace-with-a-generated-secret-of-at-least-32-bytes
+SPRING_FLYWAY_ENABLED=false
+APP_MAIL_ENABLED=false
 ```
 
-### Frontend (.env)
+`application.properties` imports this file and holds shared defaults and Spring
+mappings. Do not put local credentials there.
+
+### Frontend (`frontend/.env.local`)
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8080
