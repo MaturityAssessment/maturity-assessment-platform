@@ -18,6 +18,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/context";
 import logo from "../../../images/map-logo-big.png";
 import UserMenu from "./UserMenu";
+import LogoHomeLink from "./LogoHomeLink";
 
 interface NavigationItem {
   href: string;
@@ -76,14 +77,14 @@ export default function SideNavbar() {
       data-help-tour="dashboard-side-nav"
       className="flex h-screen w-64 shrink-0 flex-col border-r border-gray-200 bg-white px-4 py-6"
     >
-      <Link href="/dashboard" className="mb-8 block px-2" aria-label="Maturity Assessment Platform home">
+      <LogoHomeLink className="mb-8 block px-2">
         <Image
           src={logo}
           alt="Maturity Assessment Platform"
           className="h-auto w-44 object-contain"
           priority
         />
-      </Link>
+      </LogoHomeLink>
 
       <nav aria-label="Main navigation" className="space-y-2">
         {visibleItems.map((item) => {

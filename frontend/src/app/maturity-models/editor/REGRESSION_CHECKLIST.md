@@ -11,6 +11,8 @@ or question configuration.
 - Resume and discard browser drafts for both new and existing models.
 - Autosave dirty documents under the existing user/model key after 500 ms.
 - Preserve unload, link-navigation, cancel, and dirty-import confirmations.
+- Click the header logo with dirty edits: cancelling keeps the editor open;
+  confirming goes to the dashboard and preserves the resumable browser draft.
 
 ## Editing
 

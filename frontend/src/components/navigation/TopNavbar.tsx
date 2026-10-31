@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import logoIcon from "../../../images/map-logo-icon.png";
 import UserMenu from "./UserMenu";
+import LogoHomeLink from "./LogoHomeLink";
 
 interface TopNavbarProps {
   title: React.ReactNode;
@@ -17,6 +18,7 @@ interface TopNavbarProps {
   showUserMenu?: boolean;
   showNavigationMenu?: boolean;
   sticky?: boolean;
+  beforeNavigateHome?: () => Promise<boolean>;
 }
 
 export default function TopNavbar({
@@ -26,6 +28,7 @@ export default function TopNavbar({
   backButton,
   showUserMenu = true,
   sticky = false,
+  beforeNavigateHome,
 }: TopNavbarProps) {
   return (
     <header
@@ -45,7 +48,9 @@ export default function TopNavbar({
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             </Link>
           )}
-          <Image src={logoIcon} alt="Maturity Assessment Platform" className="h-11 w-11 shrink-0 object-contain" priority />
+          <LogoHomeLink beforeNavigateHome={beforeNavigateHome}>
+            <Image src={logoIcon} alt="Maturity Assessment Platform" className="h-11 w-11 shrink-0 object-contain" priority />
+          </LogoHomeLink>
           <div className="min-w-0">
             <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">{title}</h1>
             {subtitle && <p className="text-gray-600">{subtitle}</p>}

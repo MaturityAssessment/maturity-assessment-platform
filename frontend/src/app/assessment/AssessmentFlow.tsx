@@ -816,6 +816,19 @@ export default function AssessmentFlow() {
     setAssessmentStep("dashboard");
   };
 
+  const prepareToGoHome = async () => {
+    if (isSavingAndLeaving || isPreparingReview || isSubmitting) return false;
+
+    setIsSavingAndLeaving(true);
+    try {
+      if (capabilities.canEditResponses && !await autosave.flush()) return false;
+      if (capabilities.canEditEvaluation && !await evaluation.flush()) return false;
+      return true;
+    } finally {
+      setIsSavingAndLeaving(false);
+    }
+  };
+
   const handleSaveAndLeave = async () => {
     if (isSavingAndLeaving || isPreparingReview) return;
 
@@ -1203,6 +1216,7 @@ export default function AssessmentFlow() {
           }}
           onDimensionSelect={openDimension}
           onLeave={handleSaveAndLeave}
+          beforeNavigateHome={prepareToGoHome}
           showLeaveAction={!campaignId}
           onReview={() => saveDraftBeforeReview("dashboard")}
           onInputChange={handleInputChange}
@@ -1245,6 +1259,7 @@ export default function AssessmentFlow() {
       }
     >
       <TopNavbar
+        beforeNavigateHome={prepareToGoHome}
         title={maturityModel?.name || "Maturity Assessment Platform"}
         subtitle={
           capabilities.canEvaluate

@@ -91,6 +91,7 @@ type AssessmentDashboardProps = {
   onTabChange: (tab: AssessmentDashboardTab) => void;
   onDimensionSelect: (dimension: AssessmentDimensionSummary) => void;
   onLeave: () => void;
+  beforeNavigateHome?: () => Promise<boolean>;
   showLeaveAction?: boolean;
   onReview: () => void;
   onRetrySave: () => void;
@@ -141,6 +142,7 @@ export default function AssessmentDashboard({
   onTabChange,
   onDimensionSelect,
   onLeave,
+  beforeNavigateHome,
   showLeaveAction = true,
   onReview,
   onRetrySave,
@@ -171,6 +173,7 @@ export default function AssessmentDashboard({
   return (
     <div className="min-h-screen bg-slate-50">
       <TopNavbarWithTabs
+        beforeNavigateHome={beforeNavigateHome}
         title={formatAssessmentTitle(model.name)}
         subtitle={model.domain?.name}
         rightActions={

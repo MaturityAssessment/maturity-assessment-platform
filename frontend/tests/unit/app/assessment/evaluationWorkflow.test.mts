@@ -126,11 +126,22 @@ test("remarks-only autosaves, unload warnings, and navigation failure protection
     h.listeners.get("beforeunload")!({ preventDefault: () => { warned = true; } }); assert.equal(warned, true);
     h.setPut(async () => { throw new Error("Offline"); });
     let prevented = false;
-    h.listeners.get("click")!({ button: 0, target: { closest: () => ({ href: "http://localhost/evaluate", target: "", hasAttribute: () => false }) }, preventDefault: () => { prevented = true; }, stopPropagation() {} });
+    h.listeners.get("click")!({ button: 0, target: { closest: () => ({ href: "http://localhost/dashboard", target: "", hasAttribute: () => false, getAttribute: () => null }) }, preventDefault: () => { prevented = true; }, stopPropagation() {} });
     await h.render().flush(); assert.equal(prevented, true); assert.equal(h.pushes.length, 0);
     h.setPut(async () => ({})); await h.render().flush();
     assert.deepEqual(h.requests.at(-1)?.data.questionEvaluations, {});
     assert.equal(h.requests.at(-1)?.data.evaluatorInsight, "Final remarks");
     warned = false; h.listeners.get("beforeunload")!({ preventDefault: () => { warned = true; } }); assert.equal(warned, false);
+  } finally { h.dispose(); }
+});
+
+test("page-managed home saving takes precedence over the evaluation link guard", () => {
+  const h = harness();
+  try {
+    h.render().updateRemarks("Pending review"); h.render();
+    h.listeners.get("click")!({ button: 0, target: { closest: () => ({ getAttribute: () => "page" }) },
+      preventDefault() { assert.fail("The home link owns saving both responses and evaluation"); }, stopPropagation() { assert.fail("The home link must receive the click"); } });
+    assert.equal(h.requests.length, 0);
+    assert.deepEqual(h.pushes, []);
   } finally { h.dispose(); }
 });

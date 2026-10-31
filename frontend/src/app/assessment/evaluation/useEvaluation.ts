@@ -85,6 +85,7 @@ export default function useEvaluation(assessment: AssessmentResponse | null, mod
     };
     const leaveLink = (event: MouseEvent) => {
       const link = (event.target as Element)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (link?.getAttribute("data-navigation-guard") === "page") return;
       if (!isDirty() || !link || link.target === "_blank" || link.hasAttribute("download") || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
       const url = new URL(link.href, window.location.href);
       if (url.origin === window.location.origin && url.pathname.startsWith("/assessment") && url.searchParams.get("draftId") === String(latest.current.id)) return;
