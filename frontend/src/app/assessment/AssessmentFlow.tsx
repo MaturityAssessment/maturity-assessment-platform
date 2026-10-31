@@ -50,6 +50,7 @@ import {
 import {
   getFieldName,
   getAssessmentPracticeProgress,
+  sumAssessmentCompletionIssues,
   isAnswered,
   isDependentQuestionDisabled,
   isPracticeRequiredComplete,
@@ -1527,6 +1528,7 @@ function buildDimensionNavigationModules(
     );
 
     return {
+      ...sumAssessmentCompletionIssues(practices),
       key: getModuleKey(dimensionIndex, moduleIndex, module.code),
       name: module.name,
       number: moduleIndex + 1,

@@ -172,3 +172,37 @@ test("respondent note evidence renders as editable text and reviewer text withou
   assert.ok(reviewed.includes(text));
   assert.doesNotMatch(reviewed, /Download|href=/);
 });
+
+const NavigationMenu = load(resolve(sourceRoot, "app/assessment/AssessmentNavigationMenu.tsx")).default;
+const ModuleOverview = load(resolve(sourceRoot, "app/assessment/AssessmentModuleOverview.tsx")).default;
+const completionPractice = { key: "practice-1", name: "Control practice", order: 0, answeredCount: 6, totalEnabledQuestions: 6, isRequiredComplete: false, isFullyAnswered: false, outstandingFlaggedCount: 0, missingRequiredAnswerCount: 0, invalidAnswerCount: 0, missingEvidenceCount: 1 };
+const completionModule = { key: "module-1", name: "Control module", number: 1, answeredCount: 6, totalQuestions: 6, completedPracticeCount: 0, totalPractices: 1, isRequiredComplete: false, isFullyAnswered: false, outstandingFlaggedCount: 0, missingRequiredAnswerCount: 0, invalidAnswerCount: 0, missingEvidenceCount: 1, practices: [completionPractice] };
+const navigationProps = { dimensionName: "Governance", modules: [completionModule], activeModuleKey: "module-1", activePracticeKey: "practice-1", onModuleSelect: noOp, onPracticeSelect: noOp };
+
+test("respondent navigation names missing evidence for current and previously visited practices", () => {
+  const html = renderToStaticMarkup(createElement(NavigationMenu, navigationProps));
+  assert.match(html, /aria-label="Module 1, Control module, Required evidence missing"/);
+  assert.match(html, /aria-label="Control practice, Current · Required evidence missing"/);
+  assert.doesNotMatch(html, /Incomplete · 6\/6 answered|All questions answered|<span className=&quot;/);
+  const visited = renderToStaticMarkup(createElement(NavigationMenu, { ...navigationProps, activePracticeKey: "next", modules: [{ ...completionModule, practices: [completionPractice, { ...completionPractice, key: "next", name: "Next practice" }] }] }));
+  assert.match(visited, /aria-label="Control practice, Required evidence missing"/);
+});
+
+test("module overview keeps answer progress while explaining the evidence blocker", () => {
+  const html = renderToStaticMarkup(createElement(ModuleOverview, { modelName: "Model", dimension: { name: "Governance" }, module: { name: "Control module" }, moduleNumber: 1, moduleCount: 1, navigationModules: [completionModule], activeModuleKey: "module-1", onOverview: noOp, onModuleSelect: noOp, onPracticeSelect: noOp }));
+  assert.match(html, /6\/6 answered/);
+  assert.match(html, /Required evidence missing/);
+  assert.match(html, /text-amber-700/);
+  assert.match(html, /Continue module/);
+});
+
+test("navigation clears evidence warnings once supplied and preserves evaluator progress", () => {
+  const readyPractice = { ...completionPractice, missingEvidenceCount: 0, isRequiredComplete: true, isFullyAnswered: true };
+  const readyModule = { ...completionModule, missingEvidenceCount: 0, isRequiredComplete: true, isFullyAnswered: true, practices: [readyPractice] };
+  const html = renderToStaticMarkup(createElement(NavigationMenu, { ...navigationProps, modules: [readyModule] }));
+  assert.doesNotMatch(html, /Required evidence missing/);
+  assert.match(html, /All questions answered/);
+  const evaluator = renderToStaticMarkup(createElement(NavigationMenu, { ...navigationProps, modules: [{ ...completionModule, reviewProgress: "5/6 ready", practices: [{ ...completionPractice, reviewProgress: "5/6 ready" }] }] }));
+  assert.match(evaluator, /5\/6 ready/);
+  assert.doesNotMatch(evaluator, /Required evidence missing/);
+});

@@ -7,7 +7,13 @@ import type {
   QuestionEvaluationResponse,
 } from "../../api/types";
 import type { AssessmentPracticeStep } from "./AssessmentStep";
-import { isPracticeRequiredComplete, isDependentQuestionDisabled } from "./assessmentFlowUtils.ts";
+import {
+  isPracticeRequiredComplete,
+  isDependentQuestionDisabled,
+  getPracticeCompletionIssues,
+  sumAssessmentCompletionIssues,
+  type AssessmentCompletionIssues,
+} from "./assessmentFlowUtils.ts";
 import { isReviewedItemUpdated } from "./assessmentReviewFeedback.ts";
 
 export type DashboardQuestionStatus =
@@ -15,7 +21,7 @@ export type DashboardQuestionStatus =
   | "in-progress"
   | "completed";
 
-export type AssessmentDimensionSummary = {
+export type AssessmentDimensionSummary = AssessmentCompletionIssues & {
   key: string;
   dimension: Dimension;
   practiceCount: number;
@@ -30,7 +36,7 @@ export type AssessmentDimensionSummary = {
   adjustedCount: number;
 };
 
-export type AssessmentDashboardSummary = {
+export type AssessmentDashboardSummary = AssessmentCompletionIssues & {
   answeredCount: number;
   totalCount: number;
   unansweredCount: number;
@@ -101,6 +107,8 @@ export function buildAssessmentDashboardSummary(
     );
 
     return {
+      ...sumAssessmentCompletionIssues(dimensionSteps.map((step) =>
+        getPracticeCompletionIssues(step, formData, evidenceByField))),
       key: dimension.id || `dimension-${dimensionIndex}`,
       dimension,
       practiceCount: dimensionSteps.length,
@@ -146,6 +154,9 @@ export function buildAssessmentDashboardSummary(
 
   return {
     ...totals,
+    ...sumAssessmentCompletionIssues(
+      dimensions.filter((dimension) => dimension.status !== "not-started")
+    ),
     flaggedCount: Object.values(questionEvaluations).filter(
       (evaluation) => evaluation.validationStatus === "FLAGGED"
     ).length,

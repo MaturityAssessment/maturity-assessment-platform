@@ -8,6 +8,8 @@ import {
   getAssessmentPracticeRailState,
   getAssessmentPracticeRouteChangeAction,
   getFieldName,
+  getAssessmentCompletionIssueLabel,
+  sumAssessmentCompletionIssues,
 } from "../../../../src/app/assessment/assessmentFlowUtils.ts";
 
 function buildStep(questions: Question[]): AssessmentPracticeStep {
@@ -198,6 +200,10 @@ test("required evidence affects completion without changing answered progress", 
 
   assert.equal(withoutEvidence.answeredCount, 1);
   assert.equal(withoutEvidence.isRequiredComplete, false);
+  assert.equal(withoutEvidence.missingEvidenceCount, 1);
+  assert.equal(getAssessmentCompletionIssueLabel(withoutEvidence), "Required evidence missing");
+  assert.equal(withEvidence.missingEvidenceCount, 0);
+  assert.equal(getAssessmentCompletionIssueLabel(withEvidence), "");
   assert.equal(withEvidence.answeredCount, 1);
   assert.equal(withEvidence.isRequiredComplete, true);
 });
@@ -361,4 +367,44 @@ test("empty practices need no evidence and dependency cycles are inactive", () =
   const hidden = buildStep([parent, child]);
   hidden.practice.requiresEvidence = true;
   assert.equal(getAssessmentPracticeProgress(hidden, {}, new Map()).isRequiredComplete, true);
+  assert.equal(getAssessmentPracticeProgress(hidden, {}, new Map()).missingEvidenceCount, 0);
+});
+
+test("completion hints prioritize missing and invalid answers before practice evidence", () => {
+  const step = buildStep([
+    { id: 1, text: "Required", type: "boolean", required: true, weight: 1, help: "" },
+    { id: 2, text: "Number", type: "numeric", rangeMin: 0, rangeMax: 10, weight: 1, help: "" },
+    { id: 3, text: "Optional", type: "boolean", weight: 1, help: "" },
+  ]);
+  step.practice.requiresEvidence = true;
+  const progress = getAssessmentPracticeProgress(step, { [getFieldName(step, step.practice.questions[1])]: 11 }, new Map());
+  assert.equal(progress.missingRequiredAnswerCount, 1);
+  assert.equal(progress.invalidAnswerCount, 1);
+  assert.equal(progress.missingEvidenceCount, 0);
+  assert.equal(getAssessmentCompletionIssueLabel(progress), "1 required answer missing · 1 answer needs correction");
+  const total = sumAssessmentCompletionIssues([progress, progress]);
+  assert.equal(getAssessmentCompletionIssueLabel(total), "2 required answers missing · 2 answers need correction");
+
+  const requiredField = getFieldName(step, step.practice.questions[0]);
+  const numericField = getFieldName(step, step.practice.questions[1]);
+  const invalid = getAssessmentPracticeProgress(step, { [requiredField]: 0, [numericField]: 11 }, new Map());
+  assert.equal(invalid.missingEvidenceCount, 0);
+  assert.equal(invalid.isRequiredComplete, false);
+
+  // Optional unanswered items do not delay the evidence warning.
+  const answered = getAssessmentPracticeProgress(step, { [requiredField]: 0 }, new Map());
+  assert.equal(answered.answeredCount, 1);
+  assert.equal(answered.missingEvidenceCount, 1);
+  assert.equal(answered.isRequiredComplete, false);
+  assert.equal(getAssessmentCompletionIssueLabel(answered), "Required evidence missing");
+  assert.equal(getAssessmentPracticeProgress(step, {}, new Map()).missingEvidenceCount, 0);
+});
+
+test("invalid evidence remains missing and optional evidence does not create a blocker", () => {
+  const step = buildStep([{ id: 1, text: "Optional", type: "boolean", weight: 1, help: "" }]);
+  step.practice.requiresEvidence = true;
+  const evidence = new Map([["practice_10_evidence", [{ id: "bad", practiceId: 10, type: "link" as const, url: "http://example.com", description: "", file: null }]]]);
+  assert.equal(getAssessmentPracticeProgress(step, {}, evidence).missingEvidenceCount, 1);
+  step.practice.requiresEvidence = false;
+  assert.equal(getAssessmentCompletionIssueLabel(getAssessmentPracticeProgress(step, {}, evidence)), "");
 });

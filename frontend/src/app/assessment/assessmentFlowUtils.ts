@@ -98,24 +98,73 @@ export function isPracticeRequiredComplete(
   formData: AssessmentData,
   evidenceFiles: AssessmentEvidenceByField
 ) {
+  const issues = getPracticeCompletionIssues(step, formData, evidenceFiles);
+  return (
+    issues.missingRequiredAnswerCount === 0 &&
+    issues.invalidAnswerCount === 0 &&
+    issues.missingEvidenceCount === 0
+  );
+}
+
+export interface AssessmentCompletionIssues {
+  missingRequiredAnswerCount: number;
+  invalidAnswerCount: number;
+  missingEvidenceCount: number;
+}
+
+export function getPracticeCompletionIssues(
+  step: AssessmentPracticeStep,
+  formData: AssessmentData,
+  evidenceFiles: AssessmentEvidenceByField
+): AssessmentCompletionIssues {
   const enabledQuestions = getEnabledQuestions(step, formData);
+  const missingRequiredAnswerCount = enabledQuestions.filter(
+    (question) => question.required && !isQuestionComplete(formData[getFieldName(step, question)])
+  ).length;
+  const invalidAnswerCount = enabledQuestions.filter(
+    (question) => !isQuestionResponseValid(question, formData[getFieldName(step, question)])
+  ).length;
+  return {
+    missingRequiredAnswerCount,
+    invalidAnswerCount,
+    // Show the practice evidence blocker only once its answers are ready.
+    missingEvidenceCount:
+      missingRequiredAnswerCount === 0 && invalidAnswerCount === 0 &&
+      enabledQuestions.length > 0 && step.practice.requiresEvidence &&
+      !hasValidEvidenceItems(evidenceFiles.get(getPracticeEvidenceField(step.practice.id)))
+        ? 1 : 0,
+  };
+}
 
-  if (enabledQuestions.length > 0 && step.practice.requiresEvidence &&
-      !hasValidEvidenceItems(evidenceFiles.get(getPracticeEvidenceField(step.practice.id)))) return false;
-  return enabledQuestions.every((question) => {
-    const fieldName = getFieldName(step, question);
-    const complete = isQuestionComplete(formData[fieldName]);
-    if (question.required && !complete) {
-      return false;
-    }
+export function sumAssessmentCompletionIssues(
+  items: AssessmentCompletionIssues[]
+): AssessmentCompletionIssues {
+  return items.reduce(
+    (total, item) => ({
+      missingRequiredAnswerCount: total.missingRequiredAnswerCount + item.missingRequiredAnswerCount,
+      invalidAnswerCount: total.invalidAnswerCount + item.invalidAnswerCount,
+      missingEvidenceCount: total.missingEvidenceCount + item.missingEvidenceCount,
+    }),
+    { missingRequiredAnswerCount: 0, invalidAnswerCount: 0, missingEvidenceCount: 0 }
+  );
+}
 
-    if (!isQuestionResponseValid(question, formData[fieldName])) {
-      return false;
-    }
-
-
-    return true;
-  });
+export function getAssessmentCompletionIssueLabel(issues: AssessmentCompletionIssues) {
+  const labels: string[] = [];
+  if (issues.missingRequiredAnswerCount > 0) {
+    labels.push(`${issues.missingRequiredAnswerCount} required answer${issues.missingRequiredAnswerCount === 1 ? "" : "s"} missing`);
+  }
+  if (issues.invalidAnswerCount > 0) {
+    labels.push(`${issues.invalidAnswerCount} answer${issues.invalidAnswerCount === 1 ? " needs" : "s need"} correction`);
+  }
+  if (issues.missingEvidenceCount > 0) {
+    labels.push(
+      issues.missingEvidenceCount === 1
+        ? "Required evidence missing"
+        : `Required evidence missing for ${issues.missingEvidenceCount} completed practices`
+    );
+  }
+  return labels.join(" · ");
 }
 
 export function isPracticeFullyAnswered(
@@ -147,7 +196,7 @@ export function isPracticeFullyAnswered(
   );
 }
 
-export interface AssessmentPracticeProgress {
+export interface AssessmentPracticeProgress extends AssessmentCompletionIssues {
   answeredCount: number;
   totalEnabledQuestions: number;
   isRequiredComplete: boolean;
@@ -162,6 +211,7 @@ export function getAssessmentPracticeProgress(
   const enabledQuestions = getEnabledQuestions(step, formData);
 
   return {
+    ...getPracticeCompletionIssues(step, formData, evidenceFiles),
     answeredCount: enabledQuestions.reduce((count, question) => {
       const fieldName = getFieldName(step, question);
       return (

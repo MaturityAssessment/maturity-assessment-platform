@@ -13,6 +13,7 @@ import {
 import type { Dimension, Module } from "@/api/types";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import AssessmentCompletionNotice from "./AssessmentCompletionNotice";
 import AssessmentNavigationMenu, {
   type AssessmentNavigationModule,
 } from "./AssessmentNavigationMenu";
@@ -186,6 +187,9 @@ export default function AssessmentModuleOverview({
                       style={{ width: `${progressPercentage}%` }}
                     />
                   </div>
+                  {!navigationModule.reviewProgress && (
+                    <AssessmentCompletionNotice issues={navigationModule} className="mt-2" />
+                  )}
                 </div>
               )}
             </div>
@@ -240,6 +244,9 @@ export default function AssessmentModuleOverview({
                           {practice.reviewProgress ? ` · ${practice.reviewProgress}` : (practice.answeredCount > 0 &&
                             ` · ${practice.answeredCount} answered`)}
                         </span>
+                        {!practice.reviewProgress && (
+                          <AssessmentCompletionNotice issues={practice} className="mt-1" />
+                        )}
                       </span>
 
                       <PracticeStatus

@@ -105,6 +105,58 @@ test("starts with unanswered enabled questions and excludes inactive dependencie
   assert.equal(summary.dimensions[0].requiredComplete, false);
   assert.equal(summary.dimensions[0].optionalUnansweredCount, 0);
   assert.equal(summary.dimensions[0].status, "not-started");
+  assert.equal(summary.missingRequiredAnswerCount, 0);
+  assert.equal(summary.dimensions[0].missingRequiredAnswerCount, 2);
+  assert.equal(summary.missingEvidenceCount, 0);
+  assert.equal(summary.dimensions[0].missingEvidenceCount, 0);
+});
+
+test("overall warnings include only started dimensions and update as work begins", () => {
+  const optionalPractice = {
+    ...practice,
+    id: 20,
+    questions: [{ ...questionOne, required: false }],
+  };
+  const optionalModule = { ...module, practices: [optionalPractice] };
+  const untouchedDimension = {
+    ...dimension,
+    id: "D2",
+    modules: [optionalModule],
+  };
+  const allSteps = [...steps, {
+    key: "practice-20",
+    dimension: untouchedDimension,
+    module: optionalModule,
+    practice: optionalPractice,
+  }];
+  const twoDimensions = { ...model, dimensions: [dimension, untouchedDimension] };
+  const data: AssessmentData = { D1_M1_10_100: 0 };
+  const summary = buildAssessmentDashboardSummary(twoDimensions, allSteps, data, emptyEvidence);
+  assert.equal(summary.dimensions[0].status, "in-progress");
+  assert.equal(summary.dimensions[1].status, "not-started");
+  assert.equal(summary.dimensions[1].missingEvidenceCount, 1);
+  assert.equal(summary.missingEvidenceCount, 0);
+  assert.equal(summary.missingRequiredAnswerCount, 1);
+
+  const started = buildAssessmentDashboardSummary(twoDimensions, allSteps,
+    { ...data, D2_M1_20_100: 0 }, emptyEvidence);
+  assert.equal(started.dimensions[1].status, "in-progress");
+  assert.equal(started.missingEvidenceCount, 1);
+  assert.equal(started.missingRequiredAnswerCount, 1);
+});
+
+test("dashboard counts evidence blockers only for practices whose required answers are ready", () => {
+  const secondPractice = { ...practice, id: 20, code: "P2", name: "Second practice" };
+  const secondStep = { ...steps[0], key: "practice-20", practice: secondPractice };
+  const summary = buildAssessmentDashboardSummary(model, [...steps, secondStep], {
+    D1_M1_10_100: 0,
+    D1_M1_10_101: 1,
+    D1_M1_20_100: 0,
+  }, emptyEvidence);
+  assert.equal(summary.missingRequiredAnswerCount, 1);
+  assert.equal(summary.missingEvidenceCount, 1);
+  assert.equal(summary.dimensions[0].missingEvidenceCount, 1);
+  assert.equal(summary.dimensions[0].requiredComplete, false);
 });
 
 test("tracks valid answers separately from answers still missing evidence", () => {
@@ -126,6 +178,9 @@ test("tracks valid answers separately from answers still missing evidence", () =
   assert.equal(summary.dimensions[0].requiredComplete, false);
   assert.equal(summary.dimensions[0].optionalUnansweredCount, 1);
   assert.equal(summary.dimensions[0].status, "in-progress");
+  assert.equal(summary.missingEvidenceCount, 1);
+  assert.equal(summary.dimensions[0].missingEvidenceCount, 1);
+  assert.equal(summary.missingRequiredAnswerCount, 0);
 });
 
 test("completes required items with evidence while quietly tracking an optional blank", () => {
@@ -146,6 +201,19 @@ test("completes required items with evidence while quietly tracking an optional 
   assert.equal(summary.dimensions[0].requiredComplete, true);
   assert.equal(summary.dimensions[0].optionalUnansweredCount, 1);
   assert.equal(summary.dimensions[0].status, "completed");
+  assert.equal(summary.missingEvidenceCount, 0);
+});
+
+test("all answers can be complete while dashboard still identifies missing practice evidence", () => {
+  const data: AssessmentData = { D1_M1_10_100: 0, D1_M1_10_101: 1 };
+  const summary = buildAssessmentDashboardSummary(model, steps, data, emptyEvidence);
+  assert.equal(summary.progressPercentage, 100);
+  assert.equal(summary.missingEvidenceCount, 1);
+  assert.equal(summary.missingRequiredAnswerCount, 0);
+  assert.equal(summary.dimensions[0].requiredComplete, false);
+  const ready = buildAssessmentDashboardSummary(model, steps, data, suppliedEvidence);
+  assert.equal(ready.missingEvidenceCount, 0);
+  assert.equal(ready.dimensions[0].requiredComplete, true);
 });
 
 test("counts ordinary answers and excludes dependencies disabled by a No answer", () => {

@@ -2,9 +2,13 @@
 
 import { Check, ChevronDown, Flag, Layers3 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getAssessmentPracticeRailState } from "./assessmentFlowUtils";
+import {
+  getAssessmentPracticeRailState,
+  getAssessmentCompletionIssueLabel,
+  type AssessmentCompletionIssues,
+} from "./assessmentFlowUtils";
 
-export type AssessmentNavigationPractice = {
+export type AssessmentNavigationPractice = AssessmentCompletionIssues & {
   reviewProgress?: string;
   key: string;
   name: string;
@@ -17,7 +21,7 @@ export type AssessmentNavigationPractice = {
   outstandingFlaggedCount: number;
 };
 
-export type AssessmentNavigationModule = {
+export type AssessmentNavigationModule = AssessmentCompletionIssues & {
   reviewProgress?: string;
   key: string;
   name: string;
@@ -154,6 +158,7 @@ function ModuleButton({
   compact?: boolean;
   onSelect: (moduleKey: string) => void;
 }) {
+  const completionIssue = module.reviewProgress ? "" : getAssessmentCompletionIssueLabel(module);
   const supportingLabel =
     module.totalPractices === 0
       ? "No practices"
@@ -161,6 +166,8 @@ function ModuleButton({
         ? `${module.outstandingFlaggedCount} change${
             module.outstandingFlaggedCount === 1 ? "" : "s"
           } left`
+      : completionIssue
+        ? completionIssue
       : module.isFullyAnswered
         ? "All questions answered"
         : module.isRequiredComplete
@@ -172,7 +179,7 @@ function ModuleButton({
       type="button"
       onClick={() => onSelect(module.key)}
       aria-expanded={active}
-      aria-label={`Module ${module.number}, ${module.name}{module.reviewProgress && <span className="block text-xs font-normal text-indigo-600">{module.reviewProgress}</span>}, ${supportingLabel}`}
+      aria-label={`Module ${module.number}, ${module.name}, ${module.reviewProgress ? `${module.reviewProgress}, ` : ""}${supportingLabel}`}
       className={cn(
         "group flex min-w-0 items-center text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400",
         compact
@@ -218,8 +225,10 @@ function ModuleButton({
         </span>
         <span
           className={cn(
-            "block truncate text-[11px] leading-4",
-            active
+            "block text-[11px] leading-4",
+            completionIssue && module.outstandingFlaggedCount === 0
+              ? "font-medium text-amber-700"
+            : active
               ? "font-medium text-indigo-600"
               : module.isRequiredComplete
                 ? "text-emerald-600"
@@ -278,11 +287,14 @@ function PracticeList({
         const complete = state === "completed";
         const behindIncomplete = state === "behind-incomplete";
         const progressLabel = practice.reviewProgress || `${practice.answeredCount}/${practice.totalEnabledQuestions} answered`;
+        const completionIssue = practice.reviewProgress ? "" : getAssessmentCompletionIssueLabel(practice);
         const supportingLabel =
           practice.outstandingFlaggedCount > 0
             ? `${practice.outstandingFlaggedCount} change${
                 practice.outstandingFlaggedCount === 1 ? "" : "s"
               } left`
+            : completionIssue
+              ? `${active ? "Current · " : ""}${completionIssue}`
             : active
           ? `Current · ${progressLabel}`
           : complete
@@ -371,13 +383,14 @@ function PracticeList({
                 </span>
                 <span
                   className={cn(
-                    "mt-0.5 block truncate text-[10px] leading-3",
+                    "mt-0.5 block text-[10px] leading-3",
                     active && "font-semibold text-indigo-600",
                     complete && "text-indigo-500",
                     behindIncomplete && "font-medium text-amber-700",
                     practice.outstandingFlaggedCount > 0 &&
                       "font-semibold text-orange-700",
-                    state === "following" && "text-slate-400"
+                    state === "following" && "text-slate-400",
+                    completionIssue && practice.outstandingFlaggedCount === 0 && "font-medium text-amber-700"
                   )}
                 >
                   {supportingLabel}

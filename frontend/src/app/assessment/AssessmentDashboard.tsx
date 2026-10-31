@@ -44,6 +44,7 @@ import {
 } from "./assessmentDashboard";
 import type { AssessmentDimensionSummary } from "./assessmentDashboard";
 import AssessmentSaveIndicator from "./AssessmentSaveIndicator";
+import AssessmentCompletionNotice from "./AssessmentCompletionNotice";
 import type { AssessmentSaveStatus } from "./assessmentAutosave";
 import type { AssessmentTourInvitationContent } from "./assessmentTour";
 import AssessmentFeedbackReviewTab from "./AssessmentFeedbackReviewTab";
@@ -522,6 +523,9 @@ function OverviewTab({
                         <span title={getDimensionDescription(dimension)} className="mt-1 block truncate text-sm leading-5 text-slate-500">
                           {getDimensionDescription(dimension)}
                         </span>
+                        {!completed && dimension.status !== "not-started" && (
+                          <AssessmentCompletionNotice issues={dimension} className="mt-1" />
+                        )}
                       </span>
 
                       <span className="text-sm sm:text-right">
@@ -857,6 +861,7 @@ function ProgressCard({
         summary={summary}
         showFeedbackSegments={changesRequested}
       />
+      <AssessmentCompletionNotice issues={summary} className="mt-3 rounded-lg bg-amber-50 px-3 py-2" />
 
       <dl className="mt-3 space-y-2">
         <ProgressLegendRow
