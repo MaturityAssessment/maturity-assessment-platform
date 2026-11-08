@@ -15,6 +15,7 @@ import ModelPageState, {
   getModelErrorMessage,
 } from "./ModelPageState";
 import ModelRepositoryHeader from "./ModelRepositoryHeader";
+import ModelSettingsAction from "./ModelSettingsAction";
 import { selectModelIdentity } from "./modelRepository";
 
 function formatCreatedAt(value: string) {
@@ -114,6 +115,7 @@ export default function MaturityModelPage() {
             <ModelRepositoryHeader
               model={identity}
               modelRootId={modelRootId}
+              actions={<ModelSettingsAction model={identity} onSaved={setVersions} />}
             />
 
             <section

@@ -86,6 +86,7 @@ export default function MaturityModelEditorPage({
         <OverviewStep
           document={state.document}
           domains={domains}
+          editing={editing}
           onChange={editor.replaceDocument}
         />
       )}

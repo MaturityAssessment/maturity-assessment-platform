@@ -95,6 +95,20 @@ The response includes `updateMode: "VERSIONED"` and the source's
 model reference. Activating the new version deactivates other active versions in
 that lineage; it does not deactivate unrelated models in the domain.
 
+## Update model settings
+
+Set the name, description, and domain during creation. To change them later,
+select **Settings** on the model page as curator/admin. The modal opens with the
+current details; edit them and choose **Save changes**. Cancel, Escape, or the
+backdrop dismisses unsaved changes. Closing is disabled while saving.
+
+The client sends `PUT /api/v1/maturity-model/{id}/settings` with the complete
+`name`, `description`, and `domainId`, then refreshes the model header and version
+list from the returned summaries. All versions receive the settings without
+creating a revision or changing activation. Version editing, restored drafts,
+and imported workbooks preserve the saved settings. The domain selector uses
+`GET /api/v1/domain`; failed loading can be retried without losing form changes.
+
 ## Inspect and retire versions
 
 Use `GET /api/v1/maturity-model/{id}/versions` for version history and

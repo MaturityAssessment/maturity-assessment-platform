@@ -74,6 +74,84 @@ class MaturityModelServiceTest {
     }
 
     @Test
+    void updateMaturityModelSettings_updatesEveryVersionFromAnyVersionId() {
+        MaturityModel first = existingModel(10L, 10L, 1, domain());
+        MaturityModel second = existingModel(20L, 10L, 2, domain());
+        first.setIsActive(true);
+        when(maturityModelRepository.findById(20L)).thenReturn(Optional.of(second));
+        when(maturityModelRepository.findByBaseModelIdOrderByVersionAsc(10L))
+                .thenReturn(List.of(first, second));
+
+        Domain newDomain = domain();
+        newDomain.setId(7L);
+        newDomain.setName("New category");
+        when(domainRepository.findById(7L)).thenReturn(Optional.of(newDomain));
+        var response = service.updateMaturityModelSettings(20L, "  Renamed model  ", "  Shared description  ", 7L);
+
+        assertEquals(List.of("Renamed model", "Renamed model"),
+                response.stream().map(item -> item.getName()).toList());
+        assertEquals(List.of(10L, 20L), response.stream().map(item -> item.getId()).toList());
+        assertEquals(List.of("Shared description", "Shared description"),
+                response.stream().map(item -> item.getDescription()).toList());
+        assertEquals(List.of(7L, 7L), response.stream().map(item -> item.getDomainId()).toList());
+        assertEquals(List.of("New category", "New category"), response.stream().map(item -> item.getDomainName()).toList());
+        assertEquals(1, first.getVersion());
+        assertEquals(2, second.getVersion());
+        assertTrue(first.getIsActive());
+        assertFalse(second.getIsActive());
+        verify(maturityModelRepository).saveAll(List.of(first, second));
+        verify(maturityModelRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void updateMaturityModelSettings_supportsLegacyRootWithoutBaseModelId() {
+        MaturityModel root = existingModel(10L, null, 1, domain());
+        when(maturityModelRepository.findById(10L)).thenReturn(Optional.of(root));
+        when(maturityModelRepository.findByBaseModelIdOrderByVersionAsc(10L)).thenReturn(List.of(root));
+
+        when(domainRepository.findById(domain().getId())).thenReturn(Optional.of(domain()));
+        assertEquals("Renamed", service.updateMaturityModelSettings(10L, "Renamed", "Description", domain().getId()).get(0).getName());
+        verify(maturityModelRepository).saveAll(List.of(root));
+    }
+
+    @Test
+    void updateMaturityModelSettings_rejectsMissingBlankAndOversizedNames() {
+        for (String name : new String[] { null, "", "   ", "x".repeat(151) }) {
+            assertThrows(IllegalOperationException.class, () -> service.updateMaturityModelSettings(10L, name, "Description", 1L));
+        }
+        verify(maturityModelRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void updateMaturityModelSettings_rejectsMissingBlankAndOversizedDescriptions() {
+        for (String description : new String[] { null, "", "   ", "x".repeat(2001) }) {
+            assertThrows(IllegalOperationException.class,
+                    () -> service.updateMaturityModelSettings(10L, "Name", description, 1L));
+        }
+        verify(maturityModelRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void updateMaturityModelSettings_rejectsMissingAndUnknownDomainsWithoutChangingModel() {
+        assertThrows(IllegalOperationException.class,
+                () -> service.updateMaturityModelSettings(10L, "Name", "Description", null));
+        when(domainRepository.findById(999L)).thenReturn(Optional.empty());
+        assertThrows(IllegalOperationException.class,
+                () -> service.updateMaturityModelSettings(10L, "Name", "Description", 999L));
+        verify(maturityModelRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void updateMaturityModelSettings_rejectsUnknownModel() {
+        when(maturityModelRepository.findById(999L)).thenReturn(Optional.empty());
+        when(domainRepository.findById(1L)).thenReturn(Optional.of(domain()));
+        var error = assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> service.updateMaturityModelSettings(999L, "New name", "Description", 1L));
+        assertEquals(404, error.getStatusCode().value());
+        verify(maturityModelRepository, never()).saveAll(any());
+    }
+
+    @Test
     void getActiveMaturityModels_returnsEveryActiveModelInTheRequestedDomain() {
         Domain domain = domain();
         MaturityModel first = existingModel(10L, 10L, 1, domain);
@@ -162,8 +240,17 @@ class MaturityModelServiceTest {
         });
         when(maturityModelRepository.save(any(MaturityModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
+        existing.setName("Renamed while editor was open");
+        existing.setDescription("Updated shared description");
+        update.setName("Stale or edited name");
+        update.setDescription("Stale description");
+        update.setDomainId(999L);
         MaturityModelDTO response = service.updateMaturityModel(10L, update);
 
+        assertEquals("Renamed while editor was open", response.getName());
+        assertEquals("Renamed while editor was open", existing.getName());
+        assertEquals("Updated shared description", response.getDescription());
+        assertEquals(domain.getId(), response.getDomainId());
         assertEquals("VERSIONED", response.getUpdateMode());
         assertEquals(2, response.getVersion());
         assertEquals(10L, response.getBaseModelId());

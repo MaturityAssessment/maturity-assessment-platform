@@ -149,6 +149,12 @@ export function useMaturityModelEditor(
           if (resume) {
             const restoredBaseline = saved.version === 2 ? saved.baseline : baseline;
             const restored = saved.version === 2 ? saved.document : reconcileDocument(saved.document, null, baseline);
+            for (const document of [restored, restoredBaseline]) {
+              if (!document) continue;
+              document.name = baseline.name;
+              document.description = baseline.description;
+              document.domainId = baseline.domainId;
+            }
             initialize(restored, true, true, restoredBaseline, saved.version === 2 ? saved.provenance : "legacy");
             dispatch({
               type: "notice",
@@ -440,7 +446,9 @@ export function useMaturityModelEditor(
           response.data.document as MaturityModelEditorDocument,
           editing
         );
-        if (editing && state.document?.domainId && !imported.domainId) {
+        if (editing && state.document) {
+          imported.name = state.document.name;
+          imported.description = state.document.description;
           imported.domainId = state.document.domainId;
         }
         const reconciled = editing ? reconcileDocument(imported, state.document, state.baseline) : imported;

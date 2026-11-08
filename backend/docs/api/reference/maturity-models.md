@@ -69,6 +69,11 @@ mapping rules, gating rules, dependencies, or text limits.
 
 ## POST /api/v1/maturity-model/{id}/versions/editor
 
+The model name, description, and domain are inherited from the saved source
+version. Values supplied by browser drafts or workbook imports do not overwrite
+these settings. Use `PUT /{id}/settings` from the model page to change them for
+all versions.
+
 **Access:** Curator/admin. **Request:** Numeric source-version `id` and complete
 JSON editor document. This is not a partial update.
 **Response:** New inactive MaturityModelDTO in the same lineage, with new `id`,
@@ -122,6 +127,29 @@ not exposed by the current controller.
 **Errors:** `400 MATURITY_MODEL_IN_USE` when assessments use that exact version.
 Other database relationships can also prevent deletion and produce `500`.
 
+## PUT /api/v1/maturity-model/{id}/settings
+
+Update the name, description, and domain across all versions in a model lineage
+without creating a version or changing activation, assessment links, or scoring.
+
+**Access:** Curator/admin.
+**Request:** Numeric `id` of any version in the lineage; complete JSON settings:
+
+```json
+{"name":"Engineering maturity","description":"Assess engineering capabilities.","domainId":1}
+```
+
+Name and description are trimmed and required. Name is limited to 150 characters
+and description to 2,000 characters after trimming. `domainId` must identify an
+existing domain. All three fields are required; this is not a partial update.
+**Response:** `200 OK`, array of [model summaries](#model-summary) for the updated
+versions, ordered by version ascending, including the new domain appearance.
+Repeating the same update is safe.
+**Errors:** `400 MODEL_NAME_REQUIRED` or `400 MODEL_DESCRIPTION_REQUIRED` for
+null/blank text; `400 TEXT_TOO_LONG` for oversized text; `400 DOMAIN_REQUIRED`
+for a missing domain; `400 DOMAIN_NOT_FOUND` for an unknown domain; `404` when
+the model does not exist. Validation failures do not modify any version.
+
 ## PUT /api/v1/maturity-model/{id}/activate
 
 **Access:** Curator/admin. **Request:** Numeric model/version `id`; no body.
@@ -141,6 +169,9 @@ JSON MaturityModelDTO hierarchy.
 `assessmentUsageCount`. Despite the PUT method, this endpoint **always creates a
 new version**, even when the source has no assessments. It does not replace the
 source in place. A retry can create another version; use the returned model ID.
+The new version inherits the source's current name, description, and domain;
+these fields in the request are ignored. Use `PUT /{id}/settings` to update the
+whole model lineage.
 
 ## Editor document
 

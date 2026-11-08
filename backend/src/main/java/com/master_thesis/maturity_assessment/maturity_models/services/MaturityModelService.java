@@ -33,6 +33,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -109,6 +111,41 @@ public class MaturityModelService {
                                                 Comparator.nullsLast(Integer::compareTo)))
                                 .map(this::convertToSummary)
                                 .collect(Collectors.toList());
+        }
+
+        @Transactional
+        public List<MaturityModelSummaryDTO> updateMaturityModelSettings(
+                        Long id, String name, String description, Long domainId) {
+                if (name == null || name.isBlank()) {
+                        throw new IllegalOperationException("MODEL_NAME_REQUIRED", "Model name is required.");
+                }
+                String normalizedName = name.trim();
+                TextLimits.requireAtMost(normalizedName, TextLimits.NAME, "Model name");
+                if (description == null || description.isBlank()) {
+                        throw new IllegalOperationException("MODEL_DESCRIPTION_REQUIRED", "Model description is required.");
+                }
+                String normalizedDescription = description.trim();
+                TextLimits.requireAtMost(normalizedDescription, TextLimits.DESCRIPTION, "Model description");
+                if (domainId == null) {
+                        throw new IllegalOperationException("DOMAIN_REQUIRED", "Please select a domain.");
+                }
+                Domain domain = domainRepository.findById(domainId)
+                                .orElseThrow(() -> new IllegalOperationException("DOMAIN_NOT_FOUND", "The selected domain does not exist."));
+                MaturityModel model = maturityModelRepository.findById(id)
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "Maturity model not found"));
+                List<MaturityModel> lineage = maturityModelRepository
+                                .findByBaseModelIdOrderByVersionAsc(resolveLineageRoot(model));
+                if (lineage.isEmpty()) {
+                        lineage = List.of(model);
+                }
+                lineage.forEach(version -> {
+                        version.setName(normalizedName);
+                        version.setDescription(normalizedDescription);
+                        version.setDomain(domain);
+                });
+                maturityModelRepository.saveAll(lineage);
+                return lineage.stream().map(this::convertToSummary).collect(Collectors.toList());
         }
 
         public List<MaturityModelDTO> getActiveMaturityModels(Long domainId) {
@@ -1577,6 +1614,12 @@ public class MaturityModelService {
                         Long id,
                         MaturityModelDTO maturityModelDTO,
                         User creator) {
+                MaturityModel existingModel = maturityModelRepository.findById(id)
+                                .orElseThrow(() -> new RuntimeException("Maturity model not found"));
+                // Settings belong to the lineage; version edits may contain stale values.
+                maturityModelDTO.setName(existingModel.getName());
+                maturityModelDTO.setDescription(existingModel.getDescription());
+                maturityModelDTO.setDomainId(existingModel.getDomain() != null ? existingModel.getDomain().getId() : null);
                 prepareAndValidatePublicCodes(maturityModelDTO);
                 validateTextLengths(maturityModelDTO);
                 validateMaturityModelLevels(maturityModelDTO);
@@ -1584,20 +1627,13 @@ public class MaturityModelService {
                 validateGatingRules(maturityModelDTO);
                 validateMaturityModelQuestions(maturityModelDTO);
 
-                MaturityModel existingModel = maturityModelRepository.findById(id)
-                                .orElseThrow(() -> new RuntimeException("Maturity model not found"));
-
                 int assessmentUsageCount = assessmentRepository.findByMaturityModelId(id).size();
                 Long lineageRoot = resolveLineageRoot(existingModel);
                 int nextVersion = resolveNextVersion(existingModel, lineageRoot);
 
                 MaturityModel newModel = convertFromDTO(maturityModelDTO);
                 newModel.setCreatedBy(creator);
-                String resolvedName = maturityModelDTO.getName() != null
-                                && !maturityModelDTO.getName().isBlank()
-                                ? maturityModelDTO.getName().trim()
-                                : existingModel.getName();
-                newModel.setName(resolvedName);
+                newModel.setName(existingModel.getName());
                 newModel.setVersion(nextVersion);
                 newModel.setIsActive(false);
 

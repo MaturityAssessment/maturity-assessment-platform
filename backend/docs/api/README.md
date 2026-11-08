@@ -83,6 +83,7 @@ these are one method/path with two controller mappings.
 | `POST` | [`/api/v1/maturity-model/{id}/versions/editor`](reference/maturity-models.md#post-apiv1maturity-modelidversionseditor) |
 | `POST` | [`/api/v1/maturity-model/editor/parse-upload`](reference/maturity-models.md#post-apiv1maturity-modeleditorparse-upload) |
 | `DELETE` | [`/api/v1/maturity-model/{id}`](reference/maturity-models.md#delete-apiv1maturity-modelid) |
+| `PUT` | [`/api/v1/maturity-model/{id}/settings`](reference/maturity-models.md#put-apiv1maturity-modelidsettings) |
 | `PUT` | [`/api/v1/maturity-model/{id}/activate`](reference/maturity-models.md#put-apiv1maturity-modelidactivate) |
 | `PUT` | [`/api/v1/maturity-model/{id}/deactivate`](reference/maturity-models.md#put-apiv1maturity-modeliddeactivate) |
 | `PUT` | [`/api/v1/maturity-model/{id}`](reference/maturity-models.md#put-apiv1maturity-modelid) |

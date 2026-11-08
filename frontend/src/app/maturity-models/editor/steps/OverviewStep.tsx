@@ -16,10 +16,12 @@ import { TEXT_LIMITS } from "@/config/textLimits";
 export default function OverviewStep({
   document,
   domains,
+  editing,
   onChange,
 }: {
   document: MaturityModelEditorDocument;
   domains: Domain[];
+  editing: boolean;
   onChange: (document: MaturityModelEditorDocument) => void;
 }) {
   const [changelogImportError, setChangelogImportError] = useState<
@@ -46,57 +48,61 @@ export default function OverviewStep({
   return (
     <Panel
       title="Model overview"
-      description="Set the context people need to recognize and use this model."
+      description={editing ? "Add release notes and configure evaluation for this version. Manage the model name, description, and domain in model settings." : "Set the context people need to recognize and use this model."}
     >
       <div className="grid gap-6 lg:grid-cols-2">
-        <label className={labelClass}>
-          Model name *
-          <input
-            id="model-name"
-            className={inputClass}
-            value={document.name}
-            maxLength={TEXT_LIMITS.name}
-            onChange={(event) =>
-              onChange({ ...document, name: event.target.value })
-            }
-          />
-        </label>
-        <label className={labelClass}>
-          Domain *
-          <select
-            id="model-domain"
-            className={inputClass}
-            value={document.domainId ?? ""}
-            onChange={(event) =>
-              onChange({
-                ...document,
-                domainId: event.target.value
-                  ? Number(event.target.value)
-                  : undefined,
-              })
-            }
-          >
-            <option value="">Select a domain</option>
-            {domains.map((domain) => (
-              <option key={domain.id} value={domain.id}>
-                {domain.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className={`${labelClass} lg:col-span-2`}>
-          Description *
-          <textarea
-            id="model-description"
-            rows={5}
-            className={inputClass}
-            value={document.description}
-            maxLength={TEXT_LIMITS.description}
-            onChange={(event) =>
-              onChange({ ...document, description: event.target.value })
-            }
-          />
-        </label>
+        {!editing && (
+          <>
+            <label className={labelClass}>
+              Model name *
+              <input
+                id="model-name"
+                className={inputClass}
+                value={document.name}
+                maxLength={TEXT_LIMITS.name}
+                onChange={(event) =>
+                  onChange({ ...document, name: event.target.value })
+                }
+              />
+            </label>
+            <label className={labelClass}>
+              Domain *
+              <select
+                id="model-domain"
+                className={inputClass}
+                value={document.domainId ?? ""}
+                onChange={(event) =>
+                  onChange({
+                    ...document,
+                    domainId: event.target.value
+                      ? Number(event.target.value)
+                      : undefined,
+                  })
+                }
+              >
+                <option value="">Select a domain</option>
+                {domains.map((domain) => (
+                  <option key={domain.id} value={domain.id}>
+                    {domain.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={`${labelClass} lg:col-span-2`}>
+              Description *
+              <textarea
+                id="model-description"
+                rows={5}
+                className={inputClass}
+                value={document.description}
+                maxLength={TEXT_LIMITS.description}
+                onChange={(event) =>
+                  onChange({ ...document, description: event.target.value })
+                }
+              />
+            </label>
+          </>
+        )}
         <div className="lg:col-span-2">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>

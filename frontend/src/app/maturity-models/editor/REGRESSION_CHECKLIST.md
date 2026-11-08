@@ -67,3 +67,12 @@ or question configuration.
 - Evidence descriptions stop at 500 characters and evidence URLs at 1,000.
 - Evaluator insight stops at 2,000 characters.
 - Spreadsheet imports and direct API requests exceeding a limit are rejected with a clear validation error.
+
+## Shared model settings
+
+- Creation offers name, description, and domain; version editing offers release notes and evaluation settings.
+- Model page Settings opens a prefilled modal for curators/admins; ordinary users have no settings action.
+- Saving updates the name, description, domain label, and domain appearance across all versions without creating a version or changing activation.
+- Cancel, Escape, backdrop, and the close button discard unsaved changes; closing is blocked during a save.
+- Empty fields, failed domain loading, and failed saving keep the modal open with actionable feedback.
+- Restoring an old browser draft or importing a workbook while editing preserves the current shared settings.

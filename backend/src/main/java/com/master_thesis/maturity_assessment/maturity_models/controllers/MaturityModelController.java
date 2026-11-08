@@ -2,6 +2,7 @@ package com.master_thesis.maturity_assessment.maturity_models.controllers;
 
 import com.master_thesis.maturity_assessment.auth.models.User;
 import com.master_thesis.maturity_assessment.maturity_models.dto.MaturityModelDTO;
+import com.master_thesis.maturity_assessment.maturity_models.dto.UpdateMaturityModelSettingsRequest;
 import com.master_thesis.maturity_assessment.maturity_models.dto.MaturityModelSummaryDTO;
 import com.master_thesis.maturity_assessment.maturity_models.dto.CsvUploadResponse;
 import com.master_thesis.maturity_assessment.maturity_models.dto.MaturityModelEditorDTO;
@@ -145,6 +146,13 @@ public class MaturityModelController {
     public ResponseEntity<MaturityModelDTO> deleteMaturityModel(@PathVariable Long id) {
         MaturityModelDTO createdModel = maturityModelService.deleteMaturityModel(id);
         return ResponseEntity.ok(createdModel);
+    }
+
+    @PutMapping("/{id}/settings")
+    @PreAuthorize("hasAnyRole('CURATOR', 'ADMIN')")
+    public ResponseEntity<List<MaturityModelSummaryDTO>> updateMaturityModelSettings(
+            @PathVariable Long id, @RequestBody UpdateMaturityModelSettingsRequest request) {
+        return ResponseEntity.ok(maturityModelService.updateMaturityModelSettings(id, request.name(), request.description(), request.domainId()));
     }
 
     @PutMapping("/{id}/activate")
