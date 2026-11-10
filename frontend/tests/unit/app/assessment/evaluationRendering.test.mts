@@ -154,15 +154,20 @@ test("evaluation navigation shows reviewed progress, flagged segment and complet
 });
 
 
-test("respondent note evidence renders as editable text and reviewer text without link or download actions", () => {
+test("respondent notes open an editor while review remains readable without link or download actions", () => {
   const Upload = load(resolve(sourceRoot, "components/assessment/EvidenceUpload.tsx")).default;
   const Review = load(resolve(sourceRoot, "app/assessment/evaluation/EvidenceReviewList.tsx")).default;
   const text = "Annual review\n\tGovernance owner";
   const note = { id: "note", practiceId: 10, type: "text", description: text, file: null, url: "" };
   const editable = renderToStaticMarkup(createElement(Upload, { practiceId: 10, items: [note], onItemsChange: noOp }));
-  assert.match(editable, /<textarea/);
-  assert.match(editable, /maxLength="10000"/);
+  assert.match(editable, /Edit evidence/);
+  assert.match(editable, /Reference questions/);
+  assert.doesNotMatch(editable, /<textarea/);
   assert.match(editable, /Add note/);
+  const Editor = load(resolve(sourceRoot, "components/assessment/EvidenceItemEditor.tsx")).default;
+  const editor = renderToStaticMarkup(createElement(Editor, { initialItem: note, isNew: true, onSave: noOp, onCancel: noOp }));
+  assert.match(editor, /<textarea/);
+  assert.match(editor, /maxLength="10000"/);
   const readonly = renderToStaticMarkup(createElement(Upload, { practiceId: 10, items: [note], onItemsChange: noOp, readOnly: true }));
   assert.match(readonly, /Respondent note/);
   assert.ok(readonly.includes(text));
@@ -171,6 +176,41 @@ test("respondent note evidence renders as editable text and reviewer text withou
   assert.match(reviewed, /Respondent note/);
   assert.ok(reviewed.includes(text));
   assert.doesNotMatch(reviewed, /Download|href=/);
+});
+
+test("question evidence stays separate from answer locks and labels inactive references", () => {
+  const QuestionEvidence = load(resolve(sourceRoot, "components/assessment/QuestionEvidence.tsx")).default;
+  const References = load(resolve(sourceRoot, "components/assessment/EvidenceQuestionReferences.tsx")).EvidenceQuestionReferenceChips;
+  const items = [{ id: "note", evidenceId: 7, practiceId: 10, type: "text", description: "Evidence note", file: null, url: "", referencedQuestionIds: [100] }];
+  const props = { questionId: 100, practiceId: 10, items, onItemsChange: noOp };
+  const editable = renderToStaticMarkup(createElement(QuestionEvidence, props));
+  assert.match(editable, /Add evidence/);
+  assert.match(editable, /Respondent note/);
+  const readonly = renderToStaticMarkup(createElement(QuestionEvidence, { ...props, readOnly: true }));
+  assert.doesNotMatch(readonly, /Add evidence/);
+  assert.match(readonly, /Respondent note/);
+  const inactive = renderToStaticMarkup(createElement(QuestionEvidence, { ...props, inactive: true }));
+  assert.doesNotMatch(inactive, /Add evidence/);
+  assert.match(inactive, /Inactive/);
+  const unrelated = renderToStaticMarkup(createElement(QuestionEvidence, { ...props, questionId: 101 }));
+  assert.doesNotMatch(unrelated, /Respondent note/);
+  const chips = renderToStaticMarkup(createElement(References, { referencedQuestionIds: [100], questions: [{ id: 100, code: "Q1", text: "Policy recorded?" }], inactiveQuestionIds: new Set([100]) }));
+  assert.match(chips, /Q1: Policy recorded\?/);
+  assert.match(chips, /Inactive/);
+});
+
+test("editing references in an open editor preserves a file identity received from autosave", () => {
+  const { mergeEvidenceEdit } = load(resolve(sourceRoot, "components/assessment/EvidenceItemEditor.tsx"));
+  const file = new File(["Policy"], "policy.txt", { type: "text/plain" });
+  const original = { id: "file", practiceId: 10, type: "file", description: "Policy", url: "", file, fileName: file.name, referencedQuestionIds: [100] };
+  const current = { ...original, evidenceId: 77, file: null, downloadUrl: "/api/v1/evidence/77/download" };
+  const result = mergeEvidenceEdit(current, { ...original, referencedQuestionIds: [100, 101] }, original);
+  assert.equal(result.evidenceId, 77);
+  assert.equal(result.file, null);
+  assert.equal(result.downloadUrl, current.downloadUrl);
+  assert.deepEqual(result.referencedQuestionIds, [100, 101]);
+  const replacement = new File(["Revised policy"], "revised.txt", { type: "text/plain" });
+  assert.equal(mergeEvidenceEdit(current, { ...original, file: replacement }, original).file, replacement);
 });
 
 const NavigationMenu = load(resolve(sourceRoot, "app/assessment/AssessmentNavigationMenu.tsx")).default;

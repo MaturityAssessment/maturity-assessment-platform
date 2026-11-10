@@ -3,6 +3,7 @@ import type {
   Evidence,
 } from "@/api/types";
 import type { AssessmentEvidenceByField } from "./assessmentEvidence";
+import { sameQuestionReferences } from "./evidenceReferences.ts";
 
 export type AssessmentSaveStatus = "saved" | "saving" | "error";
 
@@ -72,7 +73,7 @@ export function cloneEvidenceSnapshot(
   return new Map(
     Array.from(evidence, ([field, items]) => [
       field,
-      items.map((item) => ({ ...item })),
+      items.map((item) => ({ ...item, referencedQuestionIds: [...(item.referencedQuestionIds || [])] })),
     ])
   );
 }
@@ -137,9 +138,12 @@ function reconcileEvidenceItem(
     current.description === sent.description
       ? persisted.description || ""
       : current.description;
+  const referencedQuestionIds = sameQuestionReferences(current.referencedQuestionIds, sent.referencedQuestionIds)
+    ? [...(persisted.referencedQuestionIds ?? current.referencedQuestionIds ?? [])]
+    : [...(current.referencedQuestionIds || [])];
 
   if (current.type === "text") {
-    return { ...current, evidenceId: persisted.id, description };
+    return { ...current, evidenceId: persisted.id, description, referencedQuestionIds };
   }
 
   if (current.type === "link") {
@@ -147,6 +151,7 @@ function reconcileEvidenceItem(
       ...current,
       evidenceId: persisted.id,
       description,
+      referencedQuestionIds,
       url:
         current.url === sent.url ? persisted.url || "" : current.url,
       downloadUrl: undefined,
@@ -158,6 +163,7 @@ function reconcileEvidenceItem(
     ...current,
     evidenceId: persisted.id,
     description,
+    referencedQuestionIds,
     file: fileChangedDuringSave ? current.file : null,
     fileName: fileChangedDuringSave
       ? current.fileName

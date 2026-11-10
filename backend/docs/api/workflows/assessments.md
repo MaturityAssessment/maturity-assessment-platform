@@ -15,6 +15,10 @@
    keys from that version. Save with `PUT /api/v1/assessments/drafts/{draftId}`.
    Each save sends the complete answer map and retained/new evidence snapshot.
    Omission removes saved content; do not send just the changed question.
+   Each evidence item may include `referencedQuestionIds` for questions in its
+   practice. Adding from a question preselects it; reusing an item only changes
+   its references. Omit the field to preserve existing references or send `[]`
+   to clear them. Inactive questions retain their references.
 5. Submit with `POST /api/v1/assessments/drafts/{draftId}/submit` using the same
    multipart contract. Complete visible required questions and attach evidence to each active practice
    that requires it (at least one visible child makes a practice active).
@@ -72,6 +76,11 @@ Open the existing `CHANGES_REQUESTED` row by ID. Read reviewer notes and update
 flagged content. Preserve accepted answers and justifications unchanged, and
 include the complete retained evidence snapshot. Save using the existing exact
 draft ID, adding corrected keys to `respondentUpdatedResponseKeys`.
+
+Changing only an evidence item's question references saves those links but does
+not record flagged content as corrected in the respondent UI. Update the answer
+or evidence content before resubmitting. References to inactive questions remain
+visible with an inactive label and are not removed by dependency changes.
 
 Resubmit that same ID after every flagged item has been recorded as updated. The
 assessment returns to review for a manual model. Do not call “ensure draft” to

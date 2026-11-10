@@ -15,7 +15,9 @@ import com.master_thesis.maturity_assessment.maturity_models.models.Dimension;
 import com.master_thesis.maturity_assessment.maturity_models.models.MaturityModel;
 import com.master_thesis.maturity_assessment.maturity_models.models.Module;
 import com.master_thesis.maturity_assessment.maturity_models.models.Practice;
+import com.master_thesis.maturity_assessment.maturity_models.models.Question;
 import com.master_thesis.maturity_assessment.maturity_models.repository.PracticeRepository;
+import com.master_thesis.maturity_assessment.maturity_models.repository.QuestionRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -59,6 +61,8 @@ class EvidenceServiceTest {
     private AssessmentRepository assessmentRepository;
     @Mock
     private PracticeRepository practiceRepository;
+    @Mock
+    private QuestionRepository questionRepository;
 
     private EvidenceService evidenceService;
     private User owner;
@@ -71,7 +75,8 @@ class EvidenceServiceTest {
                 evidenceRepository,
                 fileStorageService,
                 assessmentRepository,
-                practiceRepository
+                practiceRepository,
+                questionRepository
         );
         ReflectionTestUtils.setField(evidenceService, "maxRequestFileSize", 250L * 1024 * 1024);
 
@@ -87,7 +92,7 @@ class EvidenceServiceTest {
 
         practice = practiceForModel();
 
-        when(assessmentRepository.findById(ASSESSMENT_ID)).thenReturn(Optional.of(assessment));
+        lenient().when(assessmentRepository.findById(ASSESSMENT_ID)).thenReturn(Optional.of(assessment));
         lenient().when(practiceRepository.findById(PRACTICE_ID)).thenReturn(Optional.of(practice));
 
         AtomicLong ids = new AtomicLong(100);
@@ -422,6 +427,96 @@ class EvidenceServiceTest {
                 () -> evidenceService.downloadEvidence(1L, owner));
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
         org.mockito.Mockito.verifyNoInteractions(fileStorageService);
+    }
+
+    @Test
+    void referencesRoundTripAndOmissionPreservesWhileEmptyClears() throws Exception {
+        Question first = referenceQuestion(41L, practice);
+        Question second = referenceQuestion(42L, practice);
+        when(questionRepository.findAllById(any())).thenReturn(List.of(second, first));
+        Evidence retained = urlEvidence(1L, "https://example.com");
+        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of(retained));
+        EvidenceSubmissionItemRequest request = urlItem(1L, "", "https://example.com");
+        request.setReferencedQuestionIds(List.of(42L, 41L));
+        assertEquals(List.of(41L, 42L), synchronize(request).getFirst().getReferencedQuestionIds());
+        request.setReferencedQuestionIds(null);
+        assertEquals(List.of(41L, 42L), synchronize(request).getFirst().getReferencedQuestionIds());
+        request.setReferencedQuestionIds(List.of());
+        assertEquals(List.of(), synchronize(request).getFirst().getReferencedQuestionIds());
+        assertEquals(0, retained.getReferencedQuestions().size());
+        org.mockito.Mockito.verifyNoInteractions(fileStorageService);
+    }
+
+    @Test
+    void rejectsInvalidReferencesBeforeStoringAnyFiles() throws Exception {
+        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of());
+        when(questionRepository.findAllById(any())).thenReturn(List.of(referenceQuestion(41L, practice)));
+        EvidenceSubmissionItemRequest upload = new EvidenceSubmissionItemRequest();
+        upload.setPracticeId(PRACTICE_ID);
+        upload.setType(EvidenceType.FILE);
+        upload.setItemKey("upload");
+        EvidenceSubmissionItemRequest bad = urlItem(null, "", "https://example.com");
+        bad.setReferencedQuestionIds(List.of(999L));
+        assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
+                () -> evidenceService.synchronizeEvidence(ASSESSMENT_ID, MODEL_ID, owner,
+                        List.of(upload, bad), List.of(new MockMultipartFile("file", "policy.txt", "text/plain", new byte[]{1})),
+                        List.of("upload"), true)).getStatusCode());
+        verify(fileStorageService, org.mockito.Mockito.never()).storeFile(any(), any(), any());
+    }
+
+    @Test
+    void rejectsDuplicatesNullsAndQuestionsFromOtherPractices() {
+        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of());
+        EvidenceSubmissionItemRequest request = urlItem(null, "", "https://example.com");
+        for (List<Long> ids : List.of(List.of(41L, 41L), java.util.Arrays.asList(41L, null), List.of(0L), List.of(-1L))) {
+            request.setReferencedQuestionIds(ids);
+            assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
+                    () -> synchronize(request)).getStatusCode());
+        }
+        Practice other = practiceForModel();
+        other.setId(999L);
+        when(questionRepository.findAllById(any())).thenReturn(List.of(referenceQuestion(41L, other)));
+        request.setReferencedQuestionIds(List.of(41L));
+        assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
+                () -> synchronize(request)).getStatusCode());
+    }
+
+    @Test
+    void campaignReferencesUseTheSameValidationAndResponseContract() throws Exception {
+        CampaignParticipant participant = new CampaignParticipant();
+        participant.setId(77L);
+        participant.setUser(owner);
+        assessment.setCampaignParticipant(participant);
+        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of());
+        when(questionRepository.findAllById(any())).thenReturn(List.of(referenceQuestion(41L, practice)));
+        EvidenceSubmissionItemRequest request = textItem("Shared evidence");
+        request.setReferencedQuestionIds(List.of(41L));
+        List<EvidenceDTO> result = evidenceService.synchronizeCampaignEvidence(ASSESSMENT_ID, MODEL_ID,
+                participant, List.of(request), List.of(), List.of(), true);
+        assertEquals(List.of(41L), result.getFirst().getReferencedQuestionIds());
+    }
+
+    @Test
+    void referenceIdsRejectJacksonCoercion() throws Exception {
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        for (String ids : List.of("[1.5]", "[\"41\"]", "[true]", "[0]", "[-1]", "[9223372036854775808]", "41", "{}")) {
+            assertThrows(com.fasterxml.jackson.core.JsonProcessingException.class,
+                    () -> mapper.readValue("{\"referencedQuestionIds\":" + ids + "}", EvidenceSubmissionItemRequest.class));
+        }
+        assertEquals(List.of(41L), mapper.readValue("{\"referencedQuestionIds\":[41]}",
+                EvidenceSubmissionItemRequest.class).getReferencedQuestionIds());
+    }
+
+    private List<EvidenceDTO> synchronize(EvidenceSubmissionItemRequest request) throws Exception {
+        return evidenceService.synchronizeEvidence(ASSESSMENT_ID, MODEL_ID, owner,
+                List.of(request), List.of(), List.of(), true);
+    }
+
+    private Question referenceQuestion(Long id, Practice ownerPractice) {
+        Question question = new Question();
+        question.setId(id);
+        question.setPractice(ownerPractice);
+        return question;
     }
 
     private EvidenceSubmissionItemRequest textItem(String text) {

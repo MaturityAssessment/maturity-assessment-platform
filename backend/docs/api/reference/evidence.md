@@ -59,6 +59,7 @@ snapshot saves to coordinate answer/evidence edits in the respondent workflow.
     "itemKey": "upload-1",
     "clientKey": "local-item-1",
     "practiceId": 42,
+    "referencedQuestionIds": [100, 101],
     "type": "FILE",
     "description": "Code review policy"
   },
@@ -81,6 +82,7 @@ snapshot saves to coordinate answer/evidence edits in the respondent workflow.
 | Field | Meaning |
 |---|---|
 | `practiceId` | Required; practice must belong to the assessment's exact model |
+| `referencedQuestionIds` | Optional array of unique positive integer question IDs in this practice; omitted/null preserves existing references, `[]` clears them, and new items default to `[]` |
 | `type` | Required: `FILE`, `URL`, or `TEXT` |
 | `evidenceId` | Include to retain/update an existing item in this assessment |
 | `itemKey` | Required for a new file; matches one `evidenceFileKey`; can replace an existing file |
@@ -97,6 +99,15 @@ moved to another practice or changed to a different evidence type.
 Respondent notes use `type: "TEXT"` with the note in `description`, without a URL
 or uploaded file. They count as practice evidence and share the five-item limit
 with files and links. Notes are included in review and local-agent text extraction.
+
+Evidence remains owned by its practice. References only explain which questions
+an item supports: one item may reference several questions, and each question
+may reference several items without copying uploads or consuming extra slots.
+References may target unanswered or inactive questions and survive answer changes.
+They do not introduce question-level evidence requirements or change scoring.
+IDs from another practice/model version, unknown IDs, duplicates, null elements,
+strings, and non-integer IDs return `400`. References are validated before new
+files are stored, within the same transaction as the evidence snapshot.
 
 Example adding one file to an otherwise evidence-free draft:
 
@@ -142,6 +153,7 @@ Content-Type header.
   "clientKey": null,
   "assessmentId": 25,
   "practiceId": 42,
+  "referencedQuestionIds": [100, 101],
   "description": "Code review policy",
   "evidenceType": "FILE",
   "fileName": "policy.pdf",
@@ -157,3 +169,5 @@ The response uses `id` and `evidenceType`; metadata writes use `evidenceId` and
 `type`. For URL items, use `url` instead of trying to download a file. When using
 campaign authentication, construct the campaign download path from the evidence
 ID; the ordinary `downloadUrl` is not a campaign-token route.
+
+`referencedQuestionIds` is always an array (including `[]`) in responses.

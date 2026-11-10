@@ -1,29 +1,16 @@
 "use client";
 
-import { useRef, useState } from "react";
-import {
-  Download,
-  ExternalLink,
-  FilePlus2,
-  Link2,
-  StickyNote,
-  ShieldCheck,
-  Trash2,
-} from "lucide-react";
-import { AssessmentEvidenceInputItem } from "@/api/types";
-import apiClient from "@/api/axios";
+import { useState } from "react";
+import { FilePlus2, Link2, StickyNote, Pencil, Trash2 } from "lucide-react";
+import type { AssessmentEvidenceInputItem } from "@/api/types";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { TEXT_LIMITS } from "@/config/textLimits";
-import {
-  ACCEPTED_EVIDENCE_TYPES,
-  createEvidenceClientId,
-  isValidEvidenceItem,
-  MAX_EVIDENCE_FILE_SIZE,
-  MAX_EVIDENCE_ITEMS_PER_PRACTICE,
-} from "@/app/assessment/assessmentEvidence";
+import { createEvidenceClientId, hasValidEvidenceItems, MAX_EVIDENCE_ITEMS_PER_PRACTICE } from "@/app/assessment/assessmentEvidence";
+import EvidenceDialog from "./EvidenceDialog";
+import EvidenceItemDetails from "./EvidenceItemDetails";
+import EvidenceItemEditor, { mergeEvidenceEdit, type EvidenceEditorSave } from "./EvidenceItemEditor";
+import type { EvidenceReferenceProps } from "./EvidenceQuestionReferences";
 
-interface EvidenceUploadProps {
+interface EvidenceUploadProps extends EvidenceReferenceProps {
   practiceId: number;
   items: AssessmentEvidenceInputItem[];
   onItemsChange: (items: AssessmentEvidenceInputItem[]) => void;
@@ -32,387 +19,70 @@ interface EvidenceUploadProps {
   readOnly?: boolean;
 }
 
-export default function EvidenceUpload({
-  practiceId,
-  items,
-  onItemsChange,
-  required = false,
-  allowedType = "both",
-  readOnly = false,
-}: EvidenceUploadProps) {
-  const addFilesRef = useRef<HTMLInputElement>(null);
+type EditorState = { item: AssessmentEvidenceInputItem; referencesOnly: boolean; isNew: boolean };
+
+export default function EvidenceUpload({ practiceId, items, onItemsChange, required = false,
+  allowedType = "both", readOnly = false, questions = [], inactiveQuestionIds }: EvidenceUploadProps) {
+  const [editor, setEditor] = useState<EditorState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const remainingSlots = MAX_EVIDENCE_ITEMS_PER_PRACTICE - items.length;
-  const hasRequiredEvidence = items.some(
-    (item) =>
-      (allowedType === "both" || item.type === allowedType) &&
-      isValidEvidenceItem(item)
-  );
-
-  const validateFile = (file: File) => {
-    if (!ACCEPTED_EVIDENCE_TYPES.includes(file.type)) {
-      return `File type not allowed: ${file.name}`;
-    }
-    if (file.size <= 0 || file.size > MAX_EVIDENCE_FILE_SIZE) {
-      return `File must be larger than 0 bytes and no more than 50MB: ${file.name}`;
-    }
-    return null;
-  };
-
-  const handleAddFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setError(null);
-    const selected = Array.from(event.target.files || []);
-    event.target.value = "";
-    if (selected.length === 0) return;
-    if (selected.length > remainingSlots) {
-      setError(`You can add ${Math.max(remainingSlots, 0)} more evidence item(s).`);
-      return;
-    }
-    for (const file of selected) {
-      const validationError = validateFile(file);
-      if (validationError) {
-        setError(validationError);
-        return;
-      }
-    }
-    onItemsChange([
-      ...items,
-      ...selected.map((file) => ({
-        id: createEvidenceClientId(),
-        practiceId,
-        type: "file" as const,
-        description: "",
-        file,
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        url: "",
-      })),
-    ]);
-  };
-
-  const addLink = () => {
+  const add = (type: AssessmentEvidenceInputItem["type"]) => {
     if (remainingSlots <= 0) return;
-    setError(null);
-    onItemsChange([
-      ...items,
-      {
-        id: createEvidenceClientId(),
-        practiceId,
-        type: "link",
-        description: "",
-        file: null,
-        url: "",
-      },
-    ]);
+    setEditor({ isNew: true, referencesOnly: false, item: {
+      id: createEvidenceClientId(), practiceId, type, description: "", file: null, url: "", referencedQuestionIds: [],
+    } });
   };
-
-  const addNote = () => {
-    if (remainingSlots <= 0) return;
-    setError(null);
-    onItemsChange([...items, {
-      id: createEvidenceClientId(), practiceId, type: "text",
-      description: "", file: null, url: "",
-    }]);
-  };
-
-  const updateItem = (
-    itemId: string,
-    update: Partial<AssessmentEvidenceInputItem>
-  ) => {
-    setError(null);
-    onItemsChange(
-      items.map((item) => (item.id === itemId ? { ...item, ...update } : item))
-    );
-  };
-
-  const replaceFile = (
-    item: AssessmentEvidenceInputItem,
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    const validationError = validateFile(file);
-    if (validationError) {
-      setError(validationError);
-      return;
+  const save: EvidenceEditorSave = (draft, original) => {
+    if (!editor || readOnly) return;
+    if (editor.isNew) {
+      if (items.length >= MAX_EVIDENCE_ITEMS_PER_PRACTICE) { setError("A practice can contain at most five evidence items."); return; }
+      onItemsChange([...items, draft]);
+    } else {
+      onItemsChange(items.map(item => item.id !== draft.id ? item : editor.referencesOnly
+        ? { ...item, referencedQuestionIds: [...(draft.referencedQuestionIds || [])] }
+        : mergeEvidenceEdit(item, draft, original)));
     }
-    updateItem(item.id, {
-      file,
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type,
-    });
+    setError(null);
+    setEditor(null);
   };
 
-  const downloadPersistedFile = async (item: AssessmentEvidenceInputItem) => {
-    if (!item.evidenceId) return;
-    try {
-      const campaignId =
-        typeof window === "undefined"
-          ? null
-          : new URLSearchParams(window.location.search).get("campaignId");
-      const response = await apiClient.get(
-        campaignId
-          ? `/api/v1/campaign-response/${campaignId}/evidence/${item.evidenceId}/download`
-          : `/api/v1/evidence/${item.evidenceId}/download`,
-        {
-          responseType: "blob",
-        }
-      );
-      const objectUrl = URL.createObjectURL(response.data);
-      const anchor = document.createElement("a");
-      anchor.href = objectUrl;
-      anchor.download = item.fileName || `evidence-${item.evidenceId}`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(objectUrl);
-    } catch (downloadError) {
-      console.error("Error downloading evidence:", downloadError);
-      setError("Could not download this evidence file.");
-    }
-  };
-
-  return (
-    <div className="space-y-3">
-      {items.length === 0 && (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white/80 px-5 py-6 text-center">
-          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
-            {allowedType === "link" ? (
-              <Link2 className="h-5 w-5" />
-            ) : (
-              <FilePlus2 className="h-5 w-5" />
-            )}
-          </div>
-          <p className="mt-3 text-sm font-semibold text-slate-900">
-            {allowedType === "file"
-              ? "Upload supporting files"
-              : allowedType === "link"
-                ? "Add a secure evidence link"
-                : "Attach evidence"}
-          </p>
-          <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-slate-500">
-            {allowedType === "file"
-              ? "PDF, Office, image, or text files up to 50MB each."
-              : allowedType === "link"
-                ? "Use a complete HTTPS link your reviewer can access."
-                : "Upload a file, add a secure HTTPS link, or write a note."}
-          </p>
-        </div>
-      )}
-
-      {items.length > 0 && (
-        <div className="space-y-3">
-          {items.map((item, index) => (
-            <div
-              key={item.id}
-              className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-indigo-600">
-                    {item.type === "file" ? "File" : item.type === "text" ? "Respondent note" : "Secure link"} {index + 1}
-                  </p>
-                  {item.type === "file" && (
-                    <p className="mt-1 truncate text-sm font-medium text-gray-900">
-                      {item.fileName || item.file?.name || "Selected file"}
-                    </p>
-                  )}
-                </div>
-                {!readOnly && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      onItemsChange(items.filter((candidate) => candidate.id !== item.id))
-                    }
-                    aria-label="Remove evidence item"
-                  >
-                    <Trash2 className="h-4 w-4 text-red-600" />
-                  </Button>
-                )}
-              </div>
-
-              {item.type === "file" ? (
-                <div className="mt-3 space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {item.evidenceId && !item.file && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => downloadPersistedFile(item)}
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        Download
-                      </Button>
-                    )}
-                    {!readOnly && (
-                      <label className="inline-flex cursor-pointer items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
-                        {item.evidenceId ? "Replace file" : "Choose another file"}
-                        <input
-                          type="file"
-                          className="sr-only"
-                          accept={ACCEPTED_EVIDENCE_TYPES.join(",")}
-                          onChange={(event) => replaceFile(item, event)}
-                        />
-                      </label>
-                    )}
-                    {item.fileSize != null && (
-                      <span className="text-xs text-gray-500">
-                        {formatFileSize(item.fileSize)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ) : item.type === "link" ? (
-                <div className="mt-3 flex gap-2">
-                  {readOnly ? (
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="min-w-0 flex-1 truncate text-sm font-medium text-indigo-700 underline"
-                    >
-                      {item.url}
-                    </a>
-                  ) : (
-                    <Input
-                      type="url"
-                      value={item.url}
-                      maxLength={TEXT_LIMITS.url}
-                      onChange={(event) =>
-                        updateItem(item.id, { url: event.target.value })
-                      }
-                      placeholder="https://example.com/evidence"
-                    />
-                  )}
-                  {item.url.trim().startsWith("https://") && (
-                    <Button type="button" variant="outline" size="icon" asChild>
-                      <a href={item.url} target="_blank" rel="noreferrer">
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    </Button>
-                  )}
-                </div>
-              ) : null}
-
-              {item.type === "text" ? (
-                readOnly ? <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">{item.description}</p> : (
-                  <label className="mt-3 block text-xs font-medium text-slate-600">
-                    Note text
-                    <textarea
-                      className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      rows={4}
-                      value={item.description}
-                      maxLength={TEXT_LIMITS.evidenceNote}
-                      onChange={(event) => updateItem(item.id, { description: event.target.value })}
-                      placeholder="Describe the evidence or provide context for your answers."
-                    />
-                  </label>
-                )
-              ) : readOnly ? (
-                item.description && (
-                  <p className="mt-3 text-xs leading-5 text-slate-600">
-                    {item.description}
-                  </p>
-                )
-              ) : (
-                <Input
-                  className="mt-3"
-                  value={item.description}
-                  onChange={(event) =>
-                    updateItem(item.id, { description: event.target.value })
-                  }
-                  placeholder="Optional description"
-                  maxLength={TEXT_LIMITS.evidenceDescription}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {!readOnly && (
-        <div className="flex flex-wrap items-center gap-2">
-        <input
-          ref={addFilesRef}
-          type="file"
-          multiple
-          className="sr-only"
-          accept={ACCEPTED_EVIDENCE_TYPES.join(",")}
-          onChange={handleAddFiles}
-        />
-        {allowedType !== "link" && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => addFilesRef.current?.click()}
-            disabled={remainingSlots <= 0}
-          >
-            <FilePlus2 className="h-4 w-4" />
-            {items.length === 0 ? "Choose files" : "Add file"}
-          </Button>
-        )}
-        {allowedType !== "file" && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={addLink}
-            disabled={remainingSlots <= 0}
-          >
-            <Link2 className="h-4 w-4" />
-            Add secure link
-          </Button>
-        )}
-        {allowedType === "both" && (
-          <Button type="button" variant="outline" size="sm" onClick={addNote} disabled={remainingSlots <= 0}>
-            <StickyNote className="h-4 w-4" />
-            Add note
-          </Button>
-        )}
-        <span className="text-xs text-gray-500">
-          {items.length}/{MAX_EVIDENCE_ITEMS_PER_PRACTICE} items
-        </span>
-        </div>
-      )}
-
-      {error && (
-        <div className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
-      {!readOnly && required && !hasRequiredEvidence && (
-        <div className="flex items-center gap-1.5 text-sm font-medium text-amber-700">
-          <ShieldCheck className="h-4 w-4" />
-          {allowedType === "file"
-            ? "At least one file is required."
-            : allowedType === "link"
-              ? "At least one secure link is required."
-              : "Add at least one file, secure link, or note."}
-        </div>
-      )}
-
-      {!readOnly && (
-        <p className="text-xs text-gray-500">
-          Up to five items.
-          {allowedType !== "link" && " Files may be at most 50MB each."}
-          {allowedType !== "file" && " Links must use HTTPS."}
-          {allowedType === "both" && " Notes may contain up to 10,000 characters."}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return <div className="space-y-3">
+    {!items.length && <div className="rounded-xl border border-dashed border-slate-300 bg-white/80 px-5 py-6 text-center text-sm text-slate-500">
+      {readOnly ? "No evidence attached." : "Upload a file, add a secure HTTPS link, or write a note."}
+    </div>}
+    {items.map(item => <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
+      <EvidenceItemDetails item={item} questions={questions} inactiveQuestionIds={inactiveQuestionIds} />
+      {!readOnly && <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+        <Button type="button" variant="outline" size="sm" onClick={() => setEditor({ item, referencesOnly: true, isNew: false })}>Reference questions</Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setEditor({ item, referencesOnly: false, isNew: false })}>
+          <Pencil className="h-3.5 w-3.5" aria-hidden="true" /> Edit evidence
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => onItemsChange(items.filter(candidate => candidate.id !== item.id))}
+          aria-label="Remove evidence item"><Trash2 className="h-4 w-4 text-red-600" aria-hidden="true" /></Button>
+      </div>}
+    </div>)}
+    {!readOnly && <>
+      <div className="flex flex-wrap items-center gap-2">
+        {allowedType !== "link" && <Button type="button" variant="outline" size="sm" onClick={() => add("file")} disabled={remainingSlots <= 0}>
+          <FilePlus2 className="h-4 w-4" aria-hidden="true" /> Add file
+        </Button>}
+        {allowedType !== "file" && <Button type="button" variant="outline" size="sm" onClick={() => add("link")} disabled={remainingSlots <= 0}>
+          <Link2 className="h-4 w-4" aria-hidden="true" /> Add secure link
+        </Button>}
+        {allowedType === "both" && <Button type="button" variant="outline" size="sm" onClick={() => add("text")} disabled={remainingSlots <= 0}>
+          <StickyNote className="h-4 w-4" aria-hidden="true" /> Add note
+        </Button>}
+        <span className="text-xs text-slate-500">{items.length}/{MAX_EVIDENCE_ITEMS_PER_PRACTICE} items</span>
+      </div>
+      {required && !hasValidEvidenceItems(items) && <p className="text-sm font-medium text-amber-700">Add at least one file, secure link, or note.</p>}
+      <p className="text-xs text-slate-500">Up to five items. Files may be at most 50MB each. Links must use HTTPS. Notes may contain up to 10,000 characters.</p>
+    </>}
+    {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+    {editor && !readOnly && <EvidenceDialog title={editor.referencesOnly ? "Reference questions" : editor.isNew ? "Add practice evidence" : "Edit practice evidence"}
+      onClose={() => { setEditor(null); setError(null); }}>
+      <EvidenceItemEditor key={editor.item.id} initialItem={editor.item} referencesOnly={editor.referencesOnly} isNew={editor.isNew}
+        questions={questions} inactiveQuestionIds={inactiveQuestionIds} allowedType={allowedType}
+        onSave={save} onCancel={() => setEditor(null)} />
+    </EvidenceDialog>}
+  </div>;
 }

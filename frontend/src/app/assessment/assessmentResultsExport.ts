@@ -90,7 +90,7 @@ export function buildAssessmentResultsExportData(
         answer: formatQuestionAnswer(question, evaluation, evidence),
         respondentJustification:
           evaluation?.respondentJustification?.trim() || "",
-        evidence: formatEvidence(evidence),
+        evidence: formatEvidenceContext(evidence, question.id),
         initialScore: finiteNumber(evaluation?.initialScore),
         finalScore: evaluation
           ? finiteNumber(getEffectiveQuestionScore(evaluation))
@@ -201,6 +201,13 @@ function formatEvidence(evidenceItems: Evidence[]) {
       return description ? `${source} — ${description}` : source;
     })
     .join("\n");
+}
+
+function formatEvidenceContext(evidenceItems: Evidence[], questionId?: number) {
+  const linked = evidenceItems.filter(item => questionId != null && item.referencedQuestionIds?.includes(questionId));
+  const general = evidenceItems.filter(item => !item.referencedQuestionIds?.length);
+  return [linked.length ? `Linked to this question: ${formatEvidence(linked)}` : "",
+    general.length ? `General practice evidence: ${formatEvidence(general)}` : ""].filter(Boolean).join("\n");
 }
 
 function formatReviewStatus(evaluation?: QuestionEvaluationResponse) {

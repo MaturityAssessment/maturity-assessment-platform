@@ -119,6 +119,8 @@ public class EvidenceTextExtractionService {
         AgentDocumentSummary summary = new AgentDocumentSummary();
         if (evidence != null) {
             summary.setEvidenceId(evidence.getId());
+            summary.setReferencedQuestionIds(evidence.getReferencedQuestions().stream()
+                    .map(question -> question.getId()).sorted().toList());
             summary.setPracticeId(
                     evidence.getPractice() != null ? evidence.getPractice().getId() : null
             );

@@ -100,6 +100,7 @@ export interface Evidence {
   id: number;
   assessmentId: number;
   practiceId: number;
+  referencedQuestionIds?: number[];
   /** Ephemeral client identity echoed by draft saves for safe reconciliation. */
   clientKey?: string | null;
   description: string;
@@ -116,6 +117,7 @@ export interface AssessmentEvidenceInputItem {
   id: string;
   evidenceId?: number;
   practiceId: number;
+  referencedQuestionIds?: number[];
   type: "file" | "link" | "text";
   description: string;
   file: File | null;
@@ -131,6 +133,7 @@ export interface AssessmentEvidenceMetadataItem {
   itemKey?: string;
   clientKey?: string;
   practiceId: number;
+  referencedQuestionIds?: number[];
   type: "FILE" | "URL" | "TEXT";
   description: string;
   url?: string;
@@ -259,6 +262,7 @@ export interface ManualEvaluationRequest {
 export interface AgentDocumentSummary {
   evidenceId?: number | null;
   practiceId?: number | null;
+  referencedQuestionIds?: number[];
   evidenceType?: string | null;
   fileName?: string | null;
   urlHost?: string | null;

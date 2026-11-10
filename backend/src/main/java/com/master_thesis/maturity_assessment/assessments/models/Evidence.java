@@ -9,17 +9,20 @@ import lombok.EqualsAndHashCode;
 import com.master_thesis.maturity_assessment.auth.models.User;
 import com.master_thesis.maturity_assessment.campaigns.models.CampaignParticipant;
 import com.master_thesis.maturity_assessment.maturity_models.models.Practice;
+import com.master_thesis.maturity_assessment.maturity_models.models.Question;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "evidence")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString(exclude = { "assessment", "practice", "uploadedBy" })
-@EqualsAndHashCode(exclude = { "assessment", "practice", "uploadedBy" })
+@ToString(exclude = { "assessment", "practice", "uploadedBy", "referencedQuestions" })
+@EqualsAndHashCode(exclude = { "assessment", "practice", "uploadedBy", "referencedQuestions" })
 public class Evidence {
 
     @Id
@@ -33,6 +36,12 @@ public class Evidence {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "practice_id", nullable = false)
     private Practice practice;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "evidence_question_references",
+            joinColumns = @JoinColumn(name = "evidence_id"),
+            inverseJoinColumns = @JoinColumn(name = "question_id"))
+    private Set<Question> referencedQuestions = new LinkedHashSet<>();
 
     @Enumerated(EnumType.STRING)
     @Column(name = "evidence_type", length = 20)

@@ -44,6 +44,10 @@ import {
   type AssessmentAdjustmentMetric,
 } from "./assessmentResults";
 import { buildAssessmentResultsExportData } from "./assessmentResultsExport";
+import EvidenceUpload from "@/components/assessment/EvidenceUpload";
+import { hydrateEvidenceByField, getPracticeEvidenceField } from "./assessmentEvidence";
+import { hydrateQuestionResponses } from "./assessmentQuestionResponses";
+import { isDependentQuestionDisabled } from "./assessmentFlowUtils";
 
 type AssessmentResultsTabProps = {
   assessment: AssessmentResponse;
@@ -94,6 +98,8 @@ export default function AssessmentResultsTab({
     null
   );
   const createdAt = assessment.updatedAt || assessment.createdAt;
+  const evidenceByPractice = hydrateEvidenceByField(assessment.evidence, practiceSteps);
+  const submittedResponses = hydrateQuestionResponses(assessment.questionEvaluations);
 
   const handleExport = async (format: "pdf" | "xlsx") => {
     setExportError(null);
@@ -435,6 +441,16 @@ export default function AssessmentResultsTab({
           )}
         </div>
       </section>
+      {evidenceByPractice.size > 0 && <details className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+        <summary className="cursor-pointer text-lg font-semibold text-slate-900">Submitted evidence</summary>
+        <p className="mt-2 text-sm text-slate-500">Practice evidence and its optional question references.</p>
+        <div className="mt-5 space-y-5">{practiceSteps.filter(step => evidenceByPractice.has(getPracticeEvidenceField(step.practice.id))).map(step => <section key={step.key}>
+          <h3 className="mb-2 text-sm font-semibold text-slate-800">{step.dimension.name} / {step.module.name} / {step.practice.name}</h3>
+          <EvidenceUpload readOnly practiceId={step.practice.id!} questions={step.practice.questions}
+            inactiveQuestionIds={new Set(step.practice.questions.filter(question => isDependentQuestionDisabled(step, question, submittedResponses)).map(question => question.id!))}
+            items={evidenceByPractice.get(getPracticeEvidenceField(step.practice.id)) || []} onItemsChange={() => undefined} />
+        </section>)}</div>
+      </details>}
     </main>
   );
 }

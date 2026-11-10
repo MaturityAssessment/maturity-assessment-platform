@@ -148,6 +148,7 @@ export default function AssessmentDashboard({
   onRetrySave,
   onInputChange,
   onClearAnswer,
+  onEvidenceItemsChange,
 }: AssessmentDashboardProps) {
   const summary = useMemo(
     () =>
@@ -309,6 +310,8 @@ export default function AssessmentDashboard({
       ) : activeTab === "review" ? (
         feedbackItemCount > 0 ? (
           <AssessmentFeedbackReviewTab
+            evidenceFiles={evidenceFiles}
+            onEvidenceItemsChange={onEvidenceItemsChange}
             readOnly={readOnly}
             practiceSteps={practiceSteps}
             formData={formData}

@@ -15,7 +15,9 @@ import com.master_thesis.maturity_assessment.campaigns.models.CampaignParticipan
 import com.master_thesis.maturity_assessment.config.ResourceNotFoundException;
 import com.master_thesis.maturity_assessment.config.TextLimits;
 import com.master_thesis.maturity_assessment.maturity_models.models.Practice;
+import com.master_thesis.maturity_assessment.maturity_models.models.Question;
 import com.master_thesis.maturity_assessment.maturity_models.repository.PracticeRepository;
+import com.master_thesis.maturity_assessment.maturity_models.repository.QuestionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,6 +38,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,6 +55,7 @@ public class EvidenceService {
     private final FileStorageService fileStorageService;
     private final AssessmentRepository assessmentRepository;
     private final PracticeRepository practiceRepository;
+    private final QuestionRepository questionRepository;
 
     @Value("${app.evidence.max-request-file-size:262144000}")
     private long maxRequestFileSize;
@@ -166,6 +170,13 @@ public class EvidenceService {
         Map<Long, Evidence> existingById = existing.stream()
                 .collect(Collectors.toMap(Evidence::getId, evidence -> evidence));
 
+        // Validate the entire snapshot's references before any file is stored.
+        Map<EvidenceSubmissionItemRequest, Set<Question>> references = validateQuestionReferences(items);
+        Map<Long, Practice> practices = new HashMap<>();
+        for (EvidenceSubmissionItemRequest item : items) {
+            practices.computeIfAbsent(item.getPracticeId(), id -> requirePracticeForModel(id, maturityModelId));
+        }
+
         List<Evidence> desired = authoritative ? new ArrayList<>() : new ArrayList<>(existing);
         Set<Long> retainedIds = new HashSet<>();
         Set<String> referencedFileKeys = new HashSet<>();
@@ -176,7 +187,7 @@ public class EvidenceService {
                 throw badRequest("practiceId and type are required for each evidence item.");
             }
 
-            Practice practice = requirePracticeForModel(item.getPracticeId(), maturityModelId);
+            Practice practice = practices.get(item.getPracticeId());
             Evidence persisted = null;
             if (item.getEvidenceId() != null) {
                 persisted = existingById.get(item.getEvidenceId());
@@ -262,6 +273,10 @@ public class EvidenceService {
                 throw badRequest("Unsupported evidence type.");
             }
 
+            if (item.getReferencedQuestionIds() != null) {
+                synchronizedItem.getReferencedQuestions().clear();
+                synchronizedItem.getReferencedQuestions().addAll(references.get(item));
+            }
             Evidence saved = evidenceRepository.save(synchronizedItem);
             clientKeysByEvidence.put(saved, item.getClientKey());
             desired.add(saved);
@@ -291,6 +306,42 @@ public class EvidenceService {
                 .sorted(Comparator.comparing(Evidence::getId))
                 .map(evidence -> toDTO(evidence, clientKeysByEvidence.get(evidence)))
                 .toList();
+    }
+
+    private Map<EvidenceSubmissionItemRequest, Set<Question>> validateQuestionReferences(
+            List<EvidenceSubmissionItemRequest> items
+    ) {
+        Set<Long> allIds = new LinkedHashSet<>();
+        for (EvidenceSubmissionItemRequest item : items) {
+            if (item == null || item.getPracticeId() == null || item.getType() == null) {
+                throw badRequest("practiceId and type are required for each evidence item.");
+            }
+            List<Long> ids = item.getReferencedQuestionIds();
+            if (ids == null) continue;
+            Set<Long> unique = new HashSet<>();
+            for (Long id : ids) {
+                if (id == null || id <= 0 || !unique.add(id)) {
+                    throw badRequest("Question references must contain unique positive integer IDs.");
+                }
+            }
+            allIds.addAll(ids);
+        }
+        Map<Long, Question> questions = allIds.isEmpty() ? Map.of() : questionRepository.findAllById(allIds)
+                .stream().collect(Collectors.toMap(Question::getId, question -> question));
+        Map<EvidenceSubmissionItemRequest, Set<Question>> result = new IdentityHashMap<>();
+        for (EvidenceSubmissionItemRequest item : items) {
+            Set<Question> selected = new LinkedHashSet<>();
+            for (Long id : item.getReferencedQuestionIds() == null ? List.<Long>of() : item.getReferencedQuestionIds()) {
+                Question question = questions.get(id);
+                if (question == null || question.getPractice() == null
+                        || !item.getPracticeId().equals(question.getPractice().getId())) {
+                    throw badRequest("Referenced question must belong to the evidence practice: " + id);
+                }
+                selected.add(question);
+            }
+            result.put(item, selected);
+        }
+        return result;
     }
 
     @Transactional(readOnly = true)
@@ -614,6 +665,8 @@ public class EvidenceService {
                 .clientKey(clientKey)
                 .assessmentId(evidence.getAssessment().getId())
                 .practiceId(evidence.getPractice().getId())
+                .referencedQuestionIds(evidence.getReferencedQuestions().stream()
+                        .map(Question::getId).sorted().toList())
                 .description(evidence.getDescription() == null ? "" : evidence.getDescription())
                 .evidenceType(evidenceType)
                 .fileName(evidence.getFileName())

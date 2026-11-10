@@ -404,6 +404,11 @@ Top-level fields: `assessmentId`, `generatedAt`, `model`, `confidence`, `summary
 `finalRemarks`, `questionEvaluations`, `warnings`, `nextSteps`, `documentSummaries`,
 and `processingNotes`.
 
+Document summaries include `referencedQuestionIds`, the optional explicit question
+references on each practice-owned evidence item. Agent prompts distinguish those
+links from the full practice context; references do not change which answers
+require review or count as evidence requirements.
+
 Suggested review entries have `questionId`, `validationStatus`, `manualScore`,
 `reviewerNote`, `confidence`, and `rationale`. Warnings contain `severity`,
 `questionId`, `responseKey`, `message`, and `recommendation`. Document summaries

@@ -12,7 +12,10 @@ import {
 import type {
   AssessmentData,
   AssessmentResponse,
+  AssessmentEvidenceInputItem,
 } from "@/api/types";
+import QuestionEvidence from "@/components/assessment/QuestionEvidence";
+import { getPracticeEvidenceField, type AssessmentEvidenceByField } from "./assessmentEvidence";
 import { cn } from "@/lib/utils";
 import type { AssessmentPracticeStep } from "./AssessmentStep";
 import AssessmentQuestionCard from "./AssessmentQuestionCard";
@@ -33,7 +36,8 @@ type AssessmentFeedbackReviewTabProps = {
   respondentUpdatedResponseKeys: ReadonlySet<string>;
   onInputChange: (field: string, value: string | number | number[] | undefined) => void;
   onClearAnswer: (field: string) => void;
-
+  evidenceFiles?: AssessmentEvidenceByField;
+  onEvidenceItemsChange?: (field: string, items: AssessmentEvidenceInputItem[]) => void;
 };
 
 export default function AssessmentFeedbackReviewTab({
@@ -45,6 +49,8 @@ export default function AssessmentFeedbackReviewTab({
   respondentUpdatedResponseKeys,
   onInputChange,
   onClearAnswer,
+  evidenceFiles = new Map(),
+  onEvidenceItemsChange,
 }: AssessmentFeedbackReviewTabProps) {
   const items = useMemo(
     () =>
@@ -204,6 +210,13 @@ export default function AssessmentFeedbackReviewTab({
               </div>
 
               <AssessmentQuestionCard readOnly={readOnly}
+                responseDetails={item.step.practice.id != null && item.question.id != null ? <QuestionEvidence
+                  questionId={item.question.id} practiceId={item.step.practice.id}
+                  items={evidenceFiles.get(getPracticeEvidenceField(item.step.practice.id)) || []}
+                  questions={item.step.practice.questions}
+                  inactiveQuestionIds={new Set(item.step.practice.questions.filter(question => isDependentQuestionDisabled(item.step, question, formData)).map(question => question.id!))}
+                  inactive={isDependentQuestionDisabled(item.step, item.question, formData)} readOnly={readOnly}
+                  onItemsChange={onEvidenceItemsChange ? items => onEvidenceItemsChange(getPracticeEvidenceField(item.step.practice.id), items) : undefined} /> : undefined}
                 question={item.question}
                 practiceQuestions={item.step.practice.questions}
                 fieldName={item.fieldName}

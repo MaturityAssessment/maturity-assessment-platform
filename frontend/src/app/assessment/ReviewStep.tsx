@@ -5,11 +5,7 @@ import { getSingleChoiceIndex } from "./singleChoiceResponse";
 import {
   ArrowLeft,
   CheckCircle2,
-  ExternalLink,
-  FileText,
   Flag,
-  Link2,
-  StickyNote,
   LockKeyhole,
   PencilLine,
   Send,
@@ -29,6 +25,7 @@ import {
   isDependentQuestionDisabled,
 } from "./assessmentFlowUtils";
 import EvidenceUpload from "@/components/assessment/EvidenceUpload";
+import QuestionEvidence from "@/components/assessment/QuestionEvidence";
 import { getPracticeEvidenceField } from "./assessmentEvidence";
 import type { AssessmentEvidenceByField } from "./assessmentEvidence";
 
@@ -134,6 +131,8 @@ export default function ReviewStep({
                             <div className="p-4">
                               <p className="mb-2 text-sm font-semibold">Practice evidence</p>
                               <EvidenceUpload practiceId={step.practice.id} readOnly
+                                questions={step.practice.questions}
+                                inactiveQuestionIds={new Set(step.practice.questions.filter(question => isDependentQuestionDisabled(step, question, formData)).map(question => question.id!))}
                                 items={evidenceFiles.get(getPracticeEvidenceField(step.practice.id)) || []}
                                 onItemsChange={() => undefined} />
                             </div>
@@ -218,7 +217,6 @@ function QuestionReviewRow({
 
   const fieldName = getFieldName(step, question);
   const disabled = isDependentQuestionDisabled(step, question, formData);
-  const evidenceItems = evidenceFiles.get(fieldName) || [];
   const respondentUpdated = Boolean(
     evaluation?.respondentUpdated ||
       respondentUpdatedResponseKeys.has(fieldName)
@@ -253,41 +251,10 @@ function QuestionReviewRow({
         <p className={cn("text-gray-700", disabled && "text-gray-500")}>
           {answer}
         </p>
-        {!disabled &&
-          evidenceItems.map((item) => (
-            <div
-              key={item.id}
-              className="flex max-w-full items-start gap-2 rounded-md border border-blue-100 bg-blue-50 px-2 py-1.5 text-xs text-blue-900"
-            >
-              {item.type === "file" ? (
-                <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              ) : item.type === "text" ? (
-                <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              ) : (
-                <Link2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              )}
-              <div className="min-w-0">
-                {item.type === "file" ? (
-                  <p className="truncate font-medium">
-                    {item.fileName || item.file?.name || "Evidence file"}
-                  </p>
-                ) : item.type === "text" ? <p className="font-medium">Respondent note</p> : (
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex max-w-full items-center gap-1 font-medium underline"
-                  >
-                    <span className="truncate">{item.url}</span>
-                    <ExternalLink className="h-3 w-3 shrink-0" />
-                  </a>
-                )}
-                {item.description && (
-                  <p className="mt-0.5 whitespace-pre-wrap break-words text-blue-700">{item.description}</p>
-                )}
-              </div>
-            </div>
-          ))}
+        {step.practice.id != null && <QuestionEvidence readOnly questionId={question.id} practiceId={step.practice.id}
+          items={evidenceFiles.get(getPracticeEvidenceField(step.practice.id)) || []}
+          questions={step.practice.questions} inactive={disabled}
+          inactiveQuestionIds={new Set(step.practice.questions.filter(candidate => isDependentQuestionDisabled(step, candidate, formData)).map(candidate => candidate.id!))} />}
       </div>
     </div>
   );

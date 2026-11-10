@@ -232,7 +232,7 @@ test("builds a results export with readable answers and review context", () => {
     {
     answer: "Point 1 of 5",
       justification: "The control is in place.",
-      evidence: "policy.pdf — Control policy",
+      evidence: "General practice evidence: policy.pdf — Control policy",
       finalScore: 2,
       status: "accepted",
     }

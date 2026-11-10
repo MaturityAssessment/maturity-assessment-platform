@@ -253,6 +253,7 @@ function sanitizeEvidenceForExport(items: Evidence[]) {
   return items.map((item) => ({
     id: item.id,
     practiceId: item.practiceId,
+    referencedQuestionIds: [...(item.referencedQuestionIds || [])],
     evidenceType: item.evidenceType,
     description: item.description || "",
     fileName: item.fileName || null,
@@ -320,6 +321,7 @@ function buildAgentAssessmentExport(
       instructions: [
         "Identify contradictions between answers, evidence metadata, and maturity claims.",
         "Flag missing or weak evidence for high maturity claims.",
+        "Evidence belongs to practices. referencedQuestionIds are optional explicit links, not per-question evidence requirements.",
         "Do not change scores directly and do not submit the evaluation.",
         "Produce concise curator-facing notes.",
         "Return valid JSON only using expectedImportSchema.",

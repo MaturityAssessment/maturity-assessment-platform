@@ -63,6 +63,7 @@ import {
   getPracticeEvidenceField,
   validateEvidenceForSave,
 } from "./assessmentEvidence";
+import { hasEvidenceContentChanges } from "./evidenceReferences";
 import {
   AssessmentRouteContext,
   buildAssessmentModuleHref,
@@ -634,9 +635,11 @@ export default function AssessmentFlow() {
     if (!capabilities.canEditResponses) return;
     setReviewError(null);
     const practiceStep = practiceSteps.find((step) => getPracticeEvidenceField(step.practice.id) === field);
-    markReviewedFieldsUpdated(new Set(practiceStep
-      ? practiceStep.practice.questions.map((question) => getFieldName(practiceStep, question))
-      : [field]));
+    if (hasEvidenceContentChanges(evidenceFiles.get(field) || [], items)) {
+      markReviewedFieldsUpdated(new Set(practiceStep
+        ? practiceStep.practice.questions.map((question) => getFieldName(practiceStep, question))
+        : [field]));
+    }
     setChangeRevision((current) => current + 1);
     setEvidenceRevision((current) => current + 1);
     setEvidenceFiles((prev) => {

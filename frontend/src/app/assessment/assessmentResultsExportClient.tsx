@@ -92,7 +92,7 @@ function exportWorkbook(data: AssessmentResultsExportData) {
       Type: answer.questionType,
       Answer: answer.answer,
       "Respondent justification": answer.respondentJustification,
-      Evidence: answer.evidence,
+      "Evidence context": answer.evidence,
       "Initial score": answer.initialScore ?? "",
       "Final score": answer.finalScore ?? "",
       "Review status": answer.reviewStatus,
@@ -320,7 +320,7 @@ function AnswerBlock({
           value={answer.respondentJustification}
         />
       )}
-      {answer.evidence && <LabeledText label="EVIDENCE" value={answer.evidence} />}
+      {answer.evidence && <LabeledText label="EVIDENCE CONTEXT" value={answer.evidence} />}
       {answer.evaluatorNote && (
         <View style={styles.evaluatorNote}>
           <Text style={styles.fieldLabel}>EVALUATOR NOTE</Text>

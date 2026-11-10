@@ -51,12 +51,16 @@ class EvidenceTextExtractionServiceTest {
         Practice practice = new Practice();
         practice.setId(1001L);
         evidence.setPractice(practice);
+        var question = new com.master_thesis.maturity_assessment.maturity_models.models.Question();
+        question.setId(1002L);
+        evidence.getReferencedQuestions().add(question);
 
         EvidenceTextExtractionService.ExtractedEvidence extracted = service.extract(evidence);
 
         assertEquals("", extracted.extractedText());
         assertEquals("example.com", extracted.summary().getUrlHost());
         assertEquals("/path/to/evidence", extracted.summary().getUrlPath());
+        assertEquals(java.util.List.of(1002L), extracted.summary().getReferencedQuestionIds());
     }
 
     @Test

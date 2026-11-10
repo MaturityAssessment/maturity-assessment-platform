@@ -4,6 +4,7 @@ import com.master_thesis.maturity_assessment.assessments.models.EvidenceType;
 import lombok.Data;
 import lombok.Builder;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -12,6 +13,8 @@ public class EvidenceDTO {
     private String clientKey;
     private Long assessmentId;
     private Long practiceId;
+    @Builder.Default
+    private List<Long> referencedQuestionIds = List.of();
     private String description;
     private EvidenceType evidenceType;
     private String fileName;

@@ -488,6 +488,7 @@ public class LocalAgentEvaluationService {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("evidenceId", summary.getEvidenceId());
         payload.put("practiceId", summary.getPracticeId());
+        payload.put("referencedQuestionIds", summary.getReferencedQuestionIds());
         payload.put("fileName", summary.getFileName());
         payload.put("extractedText", extractedText);
         return payload;
@@ -552,6 +553,11 @@ public class LocalAgentEvaluationService {
         payload.put("scaleMinLabel", nullToEmpty(question.scaleMinLabel()));
         payload.put("scaleMaxLabel", nullToEmpty(question.scaleMaxLabel()));
         payload.put("evidence", summaries);
+        payload.put("explicitlyLinkedEvidenceIds", summaries.stream()
+                .filter(summary -> summary.getReferencedQuestionIds().contains(question.questionId()))
+                .map(AgentDocumentSummary::getEvidenceId).toList());
+        payload.put("evidenceReferenceGuidance", "Evidence is owned by the practice. Question references are optional. "
+                + "Distinguish explicitly linked evidence from general practice context; do not infer a link to every question.");
         return payload;
     }
 

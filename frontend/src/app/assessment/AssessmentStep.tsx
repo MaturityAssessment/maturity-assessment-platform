@@ -27,7 +27,9 @@ import AssessmentNavigationMenu, {
   type AssessmentNavigationModule,
 } from "./AssessmentNavigationMenu";
 import EvidenceUpload from "@/components/assessment/EvidenceUpload";
+import QuestionEvidence from "@/components/assessment/QuestionEvidence";
 import { getPracticeEvidenceField } from "./assessmentEvidence";
+import { hydrateEvidenceByField } from "./assessmentEvidence";
 import AssessmentQuestionCard from "./AssessmentQuestionCard";
 import {
   getAssessmentPracticeRouteChangeAction,
@@ -177,6 +179,8 @@ export default function AssessmentStep({
   }, []);
 
   const moduleName = practiceSteps[0]?.module.name ?? "Module";
+  const displayedEvidence = evaluationController
+    ? hydrateEvidenceByField(evaluationController.evidence, practiceSteps) : evidenceFiles;
   const visiblePracticeIndex = Math.max(
     0,
     practiceSteps.findIndex((step) => step.key === visiblePracticeKey)
@@ -226,6 +230,9 @@ export default function AssessmentStep({
           const isVisible = step.key === visiblePracticeKey;
           const evidenceRequired = Boolean(step.practice.requiresEvidence) &&
             step.practice.questions.some((question) => !isDependentQuestionDisabled(step, question, formData));
+          const inactiveQuestionIds = new Set(step.practice.questions
+            .filter(question => isDependentQuestionDisabled(step, question, formData)).map(question => question.id!));
+          const practiceEvidence = displayedEvidence.get(getPracticeEvidenceField(step.practice.id)) || [];
 
           return (
             <section
@@ -378,7 +385,15 @@ export default function AssessmentStep({
                         <AssessmentQuestionCard
                           readOnly={readOnly}
                           headerActions={reviewControls("actions")}
-                          responseDetails={reviewControls("score")}
+                          responseDetails={<>
+                            {reviewControls("score")}
+                            {step.practice.id != null && question.id != null && <QuestionEvidence
+                              questionId={question.id} practiceId={step.practice.id} items={practiceEvidence}
+                              questions={step.practice.questions} inactiveQuestionIds={inactiveQuestionIds}
+                              inactive={disabled} readOnly={readOnly || Boolean(evaluationController)}
+                              onDownload={evaluationController?.download}
+                              onItemsChange={items => onEvidenceItemsChange(getPracticeEvidenceField(step.practice.id), items)} />}
+                          </>}
                           footer={reviewControls("note")}
                           question={question}
                           practiceQuestions={step.practice.questions}
@@ -408,8 +423,11 @@ export default function AssessmentStep({
 
                 {step.practice.id != null && (
                   <div className="mt-4 rounded-xl border bg-white p-5">
-                    <h3 className="mb-3 font-semibold">Practice evidence {evidenceRequired ? "(required)" : "(optional)"}</h3>
-                    {evaluationController ? <EvidenceReviewList evidence={evaluationController.evidence.filter(item => item.practiceId === step.practice.id)} onDownload={evaluationController.download} /> : <EvidenceUpload readOnly={readOnly} practiceId={step.practice.id}
+                    <h3 className="font-semibold">Practice evidence {evidenceRequired ? "(required)" : "(optional)"}</h3>
+                    <p className="mb-3 mt-1 text-xs leading-5 text-slate-500">Evidence belongs to this practice. Optionally link it to the questions it supports.</p>
+                    {evaluationController ? <EvidenceReviewList questions={step.practice.questions} inactiveQuestionIds={inactiveQuestionIds}
+                      evidence={evaluationController.evidence.filter(item => item.practiceId === step.practice.id)} onDownload={evaluationController.download} /> : <EvidenceUpload readOnly={readOnly} practiceId={step.practice.id}
+                      questions={step.practice.questions} inactiveQuestionIds={inactiveQuestionIds}
                       items={evidenceFiles.get(getPracticeEvidenceField(step.practice.id)) || []}
                       required={evidenceRequired}
                       onItemsChange={(items) => onEvidenceItemsChange(getPracticeEvidenceField(step.practice.id), items)} />}

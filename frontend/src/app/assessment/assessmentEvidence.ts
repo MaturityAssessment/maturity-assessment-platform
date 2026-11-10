@@ -104,6 +104,7 @@ export function buildEvidencePayload(evidence: AssessmentEvidenceByField) {
         itemKey,
         clientKey: item.id,
         practiceId: item.practiceId,
+        referencedQuestionIds: [...(item.referencedQuestionIds || [])],
         type: item.type === "file" ? "FILE" : item.type === "text" ? "TEXT" : "URL",
         description: item.description.trim(),
         ...(item.type === "link" ? { url: item.url.trim() } : {}),
@@ -141,22 +142,27 @@ export function hydrateEvidenceByField(
     if (!target) return;
 
     const items = result.get(target.fieldName) || [];
-    items.push({
-      id: evidence.clientKey || `persisted-evidence-${evidence.id}`,
-      evidenceId: evidence.id,
-      practiceId: evidence.practiceId,
-      type: evidence.evidenceType === "FILE" ? "file" : evidence.evidenceType === "TEXT" ? "text" : "link",
-      description: evidence.description || "",
-      file: null,
-      fileName: evidence.fileName,
-      fileSize: evidence.fileSize,
-      fileType: evidence.fileType,
-      url: evidence.url || "",
-      downloadUrl: evidence.downloadUrl,
-    });
+    items.push(evidenceToInputItem(evidence));
     result.set(target.fieldName, items);
   });
   return result;
+}
+
+export function evidenceToInputItem(evidence: Evidence): AssessmentEvidenceInputItem {
+  return {
+    id: evidence.clientKey || `persisted-evidence-${evidence.id}`,
+    evidenceId: evidence.id,
+    practiceId: evidence.practiceId,
+    referencedQuestionIds: [...(evidence.referencedQuestionIds || [])],
+    type: evidence.evidenceType === "FILE" ? "file" : evidence.evidenceType === "TEXT" ? "text" : "link",
+    description: evidence.description || "",
+    file: null,
+    fileName: evidence.fileName,
+    fileSize: evidence.fileSize,
+    fileType: evidence.fileType,
+    url: evidence.url || "",
+    downloadUrl: evidence.downloadUrl,
+  };
 }
 
 export function removeEvidenceFields(

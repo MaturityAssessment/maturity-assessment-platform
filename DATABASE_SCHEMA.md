@@ -521,7 +521,7 @@ Stores per-dimension results for each assessment.
 
 ### 15. evidence
 
-Stores file and HTTPS-link evidence linked to assessments and practices.
+Stores file, HTTPS-link, and text evidence linked to assessments and practices.
 
 **Table Name:** `evidence`
 
@@ -530,15 +530,14 @@ Stores file and HTTPS-link evidence linked to assessments and practices.
 | id                  | BIGSERIAL    | PRIMARY KEY           | Auto-incrementing evidence ID   |
 | assessment_id       | BIGINT       | FOREIGN KEY, NOT NULL | Reference to assessments        |
 | practice_id         | BIGINT       | FOREIGN KEY, NOT NULL | Reference to practices          |
-| evidence_type       | VARCHAR(20)  |                       | `FILE` or `URL`                 |
-| description         | TEXT         |                       | Optional evidence description   |
+| evidence_type       | VARCHAR(20)  |                       | `FILE`, `URL`, or `TEXT`         |
+| description         | TEXT         |                       | Optional file/link description; required text for notes |
 | external_url        | VARCHAR(1000)|                       | URL evidence target             |
 | file_name           | VARCHAR(255) |                       | Original file name              |
 | file_path           | VARCHAR(500) |                       | Storage path on server          |
 | file_size           | BIGINT       |                       | File size in bytes              |
 | file_type           | VARCHAR(100) |                       | MIME type of file               |
-| uploaded_by_user_id | BIGINT       | FOREIGN KEY           | Authenticated uploader          |
-| uploaded_by_campaign_participant_id | BIGINT | FOREIGN KEY | Invited campaign uploader |
+| uploaded_by_user_id | BIGINT       | FOREIGN KEY, NOT NULL | Authenticated uploader, including campaign respondents |
 | uploaded_at         | TIMESTAMP    | NOT NULL              | Upload timestamp                |
 
 **Foreign Keys:**
@@ -546,8 +545,6 @@ Stores file and HTTPS-link evidence linked to assessments and practices.
 - `assessment_id` → `assessments(id)`
 - `practice_id` → `practices(id)` ON DELETE RESTRICT
 - `uploaded_by_user_id` → `users(id)`
-- `(assessment_id, uploaded_by_campaign_participant_id)` →
-  `assessments(id, campaign_participant_id)`
 
 Indexed by `(assessment_id, practice_id)`. V38 moves every evidence row to its
 question’s parent practice and ORs child requirements into `practices.requires_evidence`.
@@ -555,8 +552,26 @@ IDs, metadata, upload ownership, timestamps and file paths are preserved.
 Evidence-only questions without assessment references are removed; referenced
 ones abort the migration. See [V38 deployment notes](backend/docs/migrations/practice-evidence.md).
 
-Exactly one uploader source is required. A campaign-participant uploader must
-be the participant who owns the referenced assessment.
+V43 associates campaign memberships with authenticated user accounts. The
+uploader is the user who owns the assessment or campaign membership.
+
+#### evidence_question_references
+
+Optional question references for practice-owned evidence (Flyway V44).
+
+| Column | Type | Constraints | Description |
+| --- | --- | --- | --- |
+| evidence_id | BIGINT | Composite primary key, foreign key | Evidence item |
+| question_id | BIGINT | Composite primary key, foreign key | Referenced question |
+
+- Primary key: `(evidence_id, question_id)`; additional index on `question_id`.
+- `evidence_id` → `evidence(id)` ON DELETE CASCADE.
+- `question_id` → `questions(id)` ON DELETE RESTRICT.
+- The service enforces that references belong to the evidence practice in the
+  assessment's exact model version. References may target unanswered or inactive
+  questions and have no effect on scoring or practice evidence requirements.
+- Historical evidence has no inferred links. Files and evidence metadata remain
+  unchanged. There is no cascade from this relation into questions.
 
 ---
 
