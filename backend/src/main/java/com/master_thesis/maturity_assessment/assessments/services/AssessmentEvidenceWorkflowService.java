@@ -233,6 +233,7 @@ public class AssessmentEvidenceWorkflowService {
                 .collect(java.util.stream.Collectors.toSet());
         for (var dimension : Optional.ofNullable(model.getDimensions()).orElse(List.of())) {
             for (var module : Optional.ofNullable(dimension.getModules()).orElse(List.of())) {
+                if (Boolean.FALSE.equals(module.getVisible())) continue;
                 for (Practice practice : Optional.ofNullable(module.getPractices()).orElse(List.of())) {
                     boolean active = practice.getQuestions() != null && practice.getQuestions().stream()
                             .anyMatch(question -> assessmentService.isQuestionVisible(question, responses));

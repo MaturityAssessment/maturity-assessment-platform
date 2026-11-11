@@ -172,6 +172,9 @@ export default function ModelOutline({ document, selection, issues, onSelect, co
                 if (next.has(node.id)) next.delete(node.id); else next.add(node.id);
                 return next;
               })}
+              onToggleVisibility={node.selection.type === "module" && node.parentKey
+                ? () => commands.toggleModuleVisibility(node.parentKey!, node.selection.key)
+                : undefined}
               onSelect={() => onSelect(node.selection)}
               onAdd={() => addChild(node)} onDelete={() => deleteNode(node)} onMove={(direction) => move(node, direction)}
             />

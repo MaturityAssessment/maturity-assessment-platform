@@ -39,6 +39,7 @@ See the [domain reference](./backend/docs/api/reference/domains.md).
 - Preserve unfinished editor work in a browser-local draft and receive unsaved-change prompts.
 - Define between 2 and 12 named maturity levels and configure automatic or manual evaluation.
 - Edit a model by creating a new inactive version, with a changelog and stable public codes for model items.
+- Toggle module visibility from its editor or outline actions. Hidden modules remain editable and are excluded from assessments and evaluation for that version. Explicit gating references to hidden modules block saving until repaired.
 - Activate or deactivate versions. Activation replaces the active version within the same lineage; other model lineages in the domain remain available.
 - Keep existing assessments and campaigns tied to their original version. Deletion is rejected when assessments use that version.
 

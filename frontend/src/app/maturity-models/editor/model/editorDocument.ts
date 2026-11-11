@@ -118,6 +118,7 @@ export function emptyModule(
     weight: 1,
     aggregationRule: DEFAULT_AGGREGATION_RULE,
     gatingRules: [],
+    visible: true,
     practices: [emptyPractice(practiceOrdinal, questionOrdinal)],
   };
 }
@@ -190,6 +191,7 @@ export function hydrateDocument(
       modules: (dimension.modules ?? []).map((module) => ({
         ...module,
         description: module.description ?? "",
+        visible: module.visible !== false,
         clientKey: module.clientKey || key(),
         codeLocked: false,
         weight: module.weight ?? 1,
@@ -276,6 +278,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
         modules: dimension.modules.map(
           ({ clientKey: _moduleKey, codeLocked: _moduleLocked, ...module }) => ({
             ...module,
+            visible: module.visible !== false,
             code: module.code.trim(),
             name: module.name.trim(),
             description: module.description.trim(),

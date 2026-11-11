@@ -2,7 +2,7 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import {
   ArrowDown, ArrowUp, Box, ChevronRight, ClipboardList, Layers,
-  MoreHorizontal, Plus, Trash2, TriangleAlert,
+  MoreHorizontal, Plus, Trash2, TriangleAlert, Eye, EyeOff,
 } from "lucide-react";
 import type { OutlineNode } from "../../model/outlineTree";
 
@@ -17,7 +17,7 @@ export function Highlight({ text, query }: { text: string; query: string }) {
 
 export default function OutlineRow({
   node, selected, expanded, query, issues, dragging, reorderDisabled,
-  canMoveUp, canMoveDown, canDelete, onToggle, onSelect, onAdd, onDelete, onMove,
+  canMoveUp, canMoveDown, canDelete, onToggle, onSelect, onAdd, onDelete, onMove, onToggleVisibility,
 }: {
   node: OutlineNode;
   selected: boolean;
@@ -34,6 +34,7 @@ export default function OutlineRow({
   onAdd: () => void;
   onDelete: () => void;
   onMove: (direction: -1 | 1) => void;
+  onToggleVisibility?: () => void;
 }) {
   const { attributes, listeners, setNodeRef: setDraggableRef, setActivatorNodeRef } = useDraggable({
     id: node.id, disabled: reorderDisabled,
@@ -83,6 +84,7 @@ export default function OutlineRow({
           {query.trim() && <span className="block truncate text-[11px] text-gray-400"><Highlight text={node.code} query={query} /></span>}
         </span>
       </button>
+      {node.visible === false && <span title="Hidden from assessments" aria-label="Hidden from assessments" className="ml-1 text-gray-400"><EyeOff className="h-3.5 w-3.5" aria-hidden="true" /></span>}
       {(empty || issues.length > 0) && (
         <span tabIndex={0} title={warning} aria-label={warning} className="ml-1 shrink-0 rounded p-0.5 focus-visible:outline-blue-500">
           <TriangleAlert className={`h-3.5 w-3.5 ${empty ? "text-amber-600" : "text-red-500"}`} aria-hidden="true" />
@@ -99,6 +101,7 @@ export default function OutlineRow({
           <MenuItem><button type="button" onClick={onAdd} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-gray-700 data-[focus]:bg-blue-50"><Plus className="h-4 w-4" aria-hidden="true" /> Add {node.childLabel}</button></MenuItem>
           <MenuItem disabled={!canMoveUp || reorderDisabled}><button type="button" disabled={!canMoveUp || reorderDisabled} onClick={() => onMove(-1)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-gray-700 data-[focus]:bg-blue-50 disabled:opacity-40"><ArrowUp className="h-4 w-4" aria-hidden="true" /> Move up</button></MenuItem>
           <MenuItem disabled={!canMoveDown || reorderDisabled}><button type="button" disabled={!canMoveDown || reorderDisabled} onClick={() => onMove(1)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-gray-700 data-[focus]:bg-blue-50 disabled:opacity-40"><ArrowDown className="h-4 w-4" aria-hidden="true" /> Move down</button></MenuItem>
+          {onToggleVisibility && <MenuItem><button type="button" onClick={onToggleVisibility} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-gray-700 data-[focus]:bg-blue-50">{node.visible === false ? <Eye className="h-4 w-4" aria-hidden="true" /> : <EyeOff className="h-4 w-4" aria-hidden="true" />}{node.visible === false ? "Show in assessments" : "Hide from assessments"}</button></MenuItem>}
           <div className="my-1 border-t border-gray-100" />
           <MenuItem disabled={!canDelete}><button type="button" disabled={!canDelete} onClick={onDelete} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 data-[focus]:bg-red-50 disabled:opacity-40"><Trash2 className="h-4 w-4" aria-hidden="true" /> Delete</button></MenuItem>
         </MenuItems>

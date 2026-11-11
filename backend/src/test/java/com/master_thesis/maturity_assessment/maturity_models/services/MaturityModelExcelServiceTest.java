@@ -65,6 +65,39 @@ class MaturityModelExcelServiceTest {
     }
 
     @Test
+    void moduleVisibilityRoundTripsAndLegacyWorkbooksDefaultToVisible() throws Exception {
+        MaturityModelDTO model = buildSampleModel();
+        model.getDimensions().getFirst().getModules().getFirst().setVisible(false);
+        byte[] xlsx = excelService.exportMaturityModelToXlsx(model);
+        var parsed = excelService.parseExcelWorkbook(new ByteArrayInputStream(xlsx));
+        assertTrue(parsed.isSuccess(), parsed.getErrorDetails());
+        assertFalse(parsed.getMaturityModel().getDimensions().getFirst().getModules().getFirst().getVisible());
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(xlsx))) {
+            Sheet modules = workbook.getSheet(MaturityModelExcelService.SHEET_MODULES);
+            modules.getRow(0).removeCell(modules.getRow(0).getCell(7));
+            modules.getRow(1).removeCell(modules.getRow(1).getCell(7));
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            workbook.write(output);
+            var legacy = excelService.parseExcelWorkbook(new ByteArrayInputStream(output.toByteArray()));
+            assertTrue(legacy.isSuccess(), legacy.getErrorDetails());
+            assertTrue(legacy.getMaturityModel().getDimensions().getFirst().getModules().getFirst().getVisible());
+        }
+    }
+
+    @Test
+    void invalidVisibilityInWorkbookIsRejected() throws Exception {
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(
+                excelService.exportMaturityModelToXlsx(buildSampleModel())))) {
+            workbook.getSheet(MaturityModelExcelService.SHEET_MODULES).getRow(1).getCell(7).setCellValue("sometimes");
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            workbook.write(output);
+            var parsed = excelService.parseExcelWorkbook(new ByteArrayInputStream(output.toByteArray()));
+            assertFalse(parsed.isSuccess());
+            assertTrue(parsed.getErrorDetails().contains("moduleVisible must be true or false"));
+        }
+    }
+
+    @Test
     void exportSheets_includeScoringConfigurationHeaders() throws Exception {
         byte[] xlsx = excelService.exportMaturityModelToXlsx(buildOfficialTemplateModel());
         DataFormatter fmt = new DataFormatter();
@@ -73,7 +106,7 @@ class MaturityModelExcelServiceTest {
                     List.of("modelName", "modelDescription", "modelAutoEvaluated", "modelAggregationRule", "modelChangelogMarkdown"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_MODEL), fmt));
             assertEquals(
-                    List.of("dimensionId", "moduleCode", "moduleName", "moduleDescription", "moduleWeight", "moduleAggregationRule", "moduleGatingRules"),
+                    List.of("dimensionId", "moduleCode", "moduleName", "moduleDescription", "moduleWeight", "moduleAggregationRule", "moduleGatingRules", "moduleVisible"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_MODULES), fmt));
             assertEquals(
                     List.of("dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceGatingRules"),

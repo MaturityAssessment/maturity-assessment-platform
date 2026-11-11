@@ -647,6 +647,9 @@ public class EvidenceService {
         if (maturityModelId == null || !maturityModelId.equals(practiceModelId)) {
             throw badRequest("Evidence practice does not belong to the assessment maturity model.");
         }
+        if (practice.getModule() != null && Boolean.FALSE.equals(practice.getModule().getVisible())) {
+            throw badRequest("Evidence cannot be attached to a hidden module.");
+        }
         return practice;
     }
 

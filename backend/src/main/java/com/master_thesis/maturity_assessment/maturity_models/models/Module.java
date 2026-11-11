@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.ToString;
 import lombok.EqualsAndHashCode;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -33,6 +34,11 @@ public class Module {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    // Version-scoped inclusion in questionnaires and all evaluation stages.
+    @Column(nullable = false)
+    @ColumnDefault("true")
+    private Boolean visible = true;
 
     // Weighting factor for aggregation (optional, defaults to 1.0)
     @Column(nullable = false)

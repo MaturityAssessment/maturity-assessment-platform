@@ -173,7 +173,7 @@ export default function DimensionEditor({
                 childLabel="Modules"
                 childOptions={dimension.modules.map((module) => ({
                   code: module.code,
-                  name: module.name,
+                  name: module.visible === false ? `${module.name || module.code} (hidden)` : module.name,
                 }))}
                 value={dimension.gatingRules}
                 onChange={(gatingRules) => update({ ...dimension, gatingRules })}

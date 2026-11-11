@@ -57,6 +57,7 @@ export type StructureEditorCommands = {
   reorderDimension: (activeKey: string, overKey: string) => void;
   deleteDimension: (dimensionKey: string) => void;
   addModule: (dimensionKey: string) => void;
+  toggleModuleVisibility: (dimensionKey: string, moduleKey: string) => void;
   updateModule: (
     dimensionKey: string,
     moduleKey: string,

@@ -8,6 +8,7 @@ import {
   Loader2,
   RotateCcw,
 } from "lucide-react";
+import { visibleAssessmentModel } from "@/lib/moduleVisibility";
 import apiClient from "@/api/axios";
 import type { MaturityModel, MaturityModelSummary } from "@/api/types";
 import { Button, Modal } from "@/components";
@@ -46,7 +47,7 @@ export default function ModelOverviewModal({
         `/api/v1/maturity-model/${modelSummary.id}`
       );
       if (requestId !== requestIdRef.current) return;
-      setModel(response.data);
+      setModel(visibleAssessmentModel(response.data));
     } catch (loadError) {
       if (requestId !== requestIdRef.current) return;
       console.error("Error loading maturity model overview:", loadError);

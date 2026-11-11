@@ -71,9 +71,9 @@ public class MaturityModelExcelService {
             "dimensionId", "moduleCode", "moduleName", "moduleDescription"
     );
     private static final List<String> MODULE_OPTIONAL_HEADERS = List.of(
-            "dimensionName", "moduleWeight", "moduleAggregationRule", "moduleGatingRules"
+            "dimensionName", "moduleWeight", "moduleAggregationRule", "moduleGatingRules", "moduleVisible"
     );
-    private static final List<String> MODULE_EXPORT_HEADERS = Stream.concat(MODULE_HEADERS.stream(), Stream.of("moduleWeight", "moduleAggregationRule", "moduleGatingRules")).toList();
+    private static final List<String> MODULE_EXPORT_HEADERS = Stream.concat(MODULE_HEADERS.stream(), Stream.of("moduleWeight", "moduleAggregationRule", "moduleGatingRules", "moduleVisible")).toList();
 
     private static final List<String> PRACTICE_HEADERS = List.of(
             "dimensionId", "moduleCode", "practiceName", "practiceDescription"
@@ -252,6 +252,7 @@ public class MaturityModelExcelService {
                 m.setModuleName(mod.get("moduleName"));
                 m.setModuleDescription(mod.get("moduleDescription"));
                 m.setModuleWeight(mod.get("moduleWeight"));
+                m.setModuleVisible(mod.get("moduleVisible"));
                 m.setModuleAggregationRule(mod.get("moduleAggregationRule"));
                 m.setModuleGatingRules(mod.get("moduleGatingRules"));
 
@@ -717,6 +718,7 @@ public class MaturityModelExcelService {
                 row.createCell(4).setCellValue(mod.getWeight() == null ? 1.0 : mod.getWeight());
                 row.createCell(5).setCellValue(mod.getAggregationRule() == null ? "" : mod.getAggregationRule().name());
                 row.createCell(6).setCellValue(writeJson(mod.getGatingRules()));
+                row.createCell(7).setCellValue(!Boolean.FALSE.equals(mod.getVisible()));
             }
         }
     }

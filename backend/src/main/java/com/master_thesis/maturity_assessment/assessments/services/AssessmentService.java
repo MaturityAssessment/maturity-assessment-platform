@@ -299,6 +299,7 @@ public class AssessmentService {
 
                 if (dimension.getModules() != null) {
                     for (Module module : dimension.getModules()) {
+                        if (Boolean.FALSE.equals(module.getVisible())) continue;
                         String moduleCode = module.getCode();
 
                         if (module.getPractices() != null) {
@@ -948,7 +949,7 @@ public class AssessmentService {
                 for (Practice practice : module.getPractices()) {
                     if (practice.getQuestions() == null) continue;
                     for (Question question : practice.getQuestions()) {
-                        if (!isQuestionVisible(question, responses)) {
+                        if (Boolean.FALSE.equals(module.getVisible()) || !isQuestionVisible(question, responses)) {
                             String key = findQuestionKey(question.getId(), responses);
                             if (key != null) responses.remove(key);
                         }
@@ -2599,6 +2600,7 @@ public class AssessmentService {
 
         for (Dimension dimension : Optional.ofNullable(model.getDimensions()).orElse(List.of())) {
             for (Module module : Optional.ofNullable(dimension.getModules()).orElse(List.of())) {
+                if (Boolean.FALSE.equals(module.getVisible())) continue;
                 for (Practice practice : Optional.ofNullable(module.getPractices()).orElse(List.of())) {
                     for (Question question : Optional.ofNullable(practice.getQuestions()).orElse(List.of())) {
                         if (question.getId() == null
@@ -2623,6 +2625,8 @@ public class AssessmentService {
     }
 
     boolean isQuestionVisible(Question question, Map<String, Object> responses) {
+        if (question.getPractice() != null && question.getPractice().getModule() != null
+                && Boolean.FALSE.equals(question.getPractice().getModule().getVisible())) return false;
         return QuestionDependencies.active(question, id -> {
             if (responses instanceof ResponseValues values) return values.answers.get(id);
             String key = findQuestionKey(id, responses);

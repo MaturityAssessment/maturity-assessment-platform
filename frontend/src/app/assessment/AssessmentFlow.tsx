@@ -12,6 +12,7 @@ import {
   MaturityModel,
   Module,
 } from "@/api/types";
+import { visibleAssessmentModel } from "@/lib/moduleVisibility";
 import apiClient from "@/api/axios";
 import { ACCESS_TOKEN_STORAGE_KEY } from "@/config/authStorage";
 import { TopNavbar } from "@/components";
@@ -794,6 +795,7 @@ export default function AssessmentFlow() {
   ) => {
     if (!model) return;
 
+    model = visibleAssessmentModel(model);
     setMaturityModel(model);
     setLoadedAssessment(draft);
     setRespondentUpdatedResponseKeys(

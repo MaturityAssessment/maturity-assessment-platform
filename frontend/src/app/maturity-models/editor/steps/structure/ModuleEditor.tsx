@@ -1,3 +1,4 @@
+import { moduleVisibilityDependencies } from "../../model/moduleVisibility";
 import WeightInput from "../../components/WeightInput";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import type {
@@ -36,6 +37,9 @@ export default function ModuleEditor({
   const moduleIndex = dimension.modules.findIndex(
     (candidate) => candidate.clientKey === module.clientKey
   );
+  const visibilityDependencies = module.visible === false
+    ? moduleVisibilityDependencies(dimension, module)
+    : [];
   const update = (next: ModelEditorModule) =>
     commands.updateModule(dimension.clientKey, module.clientKey, next);
 
@@ -77,6 +81,26 @@ export default function ModuleEditor({
           commands.deleteModule(dimension.clientKey, module.clientKey);
         }}
       />
+      <label className="mb-5 flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+        <input
+          type="checkbox"
+          role="switch"
+          checked={module.visible !== false}
+          onChange={() => commands.toggleModuleVisibility(dimension.clientKey, module.clientKey)}
+          className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+        <span>
+          <span className="block text-sm font-semibold text-gray-900">Visible in assessments</span>
+          <span className="block text-sm leading-6 text-gray-500">
+            Hidden modules remain editable here. They and their practices and questions are excluded from assessments and evaluation.
+          </span>
+        </span>
+      </label>
+      {visibilityDependencies.length > 0 && (
+        <div role="alert" className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          {visibilityDependencies.map((message) => <p key={message}>{message}</p>)}
+        </div>
+      )}
       <ElementEditorTabs
         kind="Module"
         tabs={[

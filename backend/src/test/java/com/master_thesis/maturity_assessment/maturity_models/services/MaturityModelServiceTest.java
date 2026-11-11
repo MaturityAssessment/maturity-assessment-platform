@@ -479,6 +479,67 @@ class MaturityModelServiceTest {
     }
 
     @Test
+    void changingVisibilityCreatesANewVersionAndPreservesTheOriginal() {
+        Domain domain = domain();
+        MaturityModel original = existingModel(10L, 10L, 1, domain);
+        Module originalModule = new Module();
+        originalModule.setVisible(true);
+        Dimension originalDimension = new Dimension();
+        originalDimension.setModules(List.of(originalModule));
+        original.setDimensions(List.of(originalDimension));
+        when(maturityModelRepository.findById(10L)).thenReturn(Optional.of(original));
+        when(maturityModelRepository.findByBaseModelIdOrderByVersionAsc(10L)).thenReturn(List.of(original));
+        when(domainRepository.findById(domain.getId())).thenReturn(Optional.of(domain));
+        when(maturityModelRepository.saveAndFlush(any(MaturityModel.class))).thenAnswer(invocation -> {
+            MaturityModel model = invocation.getArgument(0);
+            assignGeneratedIds(model);
+            return model;
+        });
+        when(maturityModelRepository.save(any(MaturityModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        var update = updateDto(domain.getId(), null);
+        update.getDimensions().getFirst().getModules().getFirst().setVisible(false);
+        var response = service.updateMaturityModel(10L, update);
+        assertEquals(2, response.getVersion());
+        assertFalse(response.getDimensions().getFirst().getModules().getFirst().getVisible());
+        assertTrue(originalModule.getVisible());
+        assertEquals(1, original.getVersion());
+    }
+
+    @Test
+    void hiddenModuleReferencesAreRejectedBeforeSaving() {
+        MaturityModelDTO dto = updateDto(domain().getId(), null);
+        var dimension = dto.getDimensions().getFirst();
+        var module = dimension.getModules().getFirst();
+        module.setVisible(false);
+        dimension.setGatingRules(List.of(gatingRule(module.getCode())));
+        IllegalOperationException error = assertThrows(IllegalOperationException.class,
+                () -> service.createMaturityModel(dto));
+        assertEquals("INVALID_GATING_RULES", error.getErrorCode());
+        assertTrue(error.getMessage().contains("visible immediate child"));
+        verify(maturityModelRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void hiddenModuleVisibilitySurvivesPersistenceAndEditorConversion() {
+        Domain domain = domain();
+        MaturityModelDTO dto = updateDto(domain.getId(), null);
+        dto.getDimensions().getFirst().getModules().getFirst().setVisible(false);
+        when(domainRepository.findById(domain.getId())).thenReturn(Optional.of(domain));
+        when(maturityModelRepository.saveAndFlush(any(MaturityModel.class))).thenAnswer(invocation -> {
+            MaturityModel model = invocation.getArgument(0);
+            assertFalse(model.getDimensions().getFirst().getModules().getFirst().getVisible());
+            assignGeneratedIds(model);
+            return model;
+        });
+        when(maturityModelRepository.save(any(MaturityModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        MaturityModelDTO response = service.createMaturityModel(dto);
+        assertFalse(response.getDimensions().getFirst().getModules().getFirst().getVisible());
+        var editor = service.prepareEditorDocument(response);
+        assertFalse(editor.getDimensions().getFirst().getModules().getFirst().getVisible());
+        assertFalse(service.createFromEditor(editor, null).getDimensions().getFirst().getModules().getFirst().getVisible());
+    }
+
+    @Test
     void createMaturityModel_rejectsOutOfScopeAndOverPrecisionGatingRules() {
         MaturityModelDTO outsideScope = updateDto(domain().getId(), null);
         PracticeDTO practice = outsideScope.getDimensions().getFirst().getModules().getFirst()

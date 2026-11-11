@@ -223,6 +223,14 @@ export function validateDocument(
         selection: dimensionSelection,
       });
     }
+    for (const rule of dimension.gatingRules) {
+      const hidden = rule.selection === "specificChild"
+        ? dimension.modules.find((module) => module.visible === false && module.code.toLowerCase() === rule.childCode?.toLowerCase())
+        : undefined;
+      if (hidden) add({ step: "structure", severity: "error",
+        message: `Gating rule in ${dimension.name || dimension.code} references hidden module ${hidden.code}. Change the rule or restore module visibility.`,
+        selection: dimensionSelection });
+    }
     const moduleCodes = new Map<string, string>();
     dimension.modules.forEach((module, moduleIndex) => {
       const moduleSelection: Selection = {
@@ -435,9 +443,13 @@ export function validateDocument(
     });
   });
 
+  if (!document.dimensions.some((dimension) => dimension.modules.some((module) => module.visible !== false))) {
+    add({ step: "structure", severity: "warning", message: "All modules are hidden. Assessments will have no questions or evaluation results." });
+  }
+
   const hasOpenAnswers = document.dimensions.some((dimension) =>
     dimension.modules.some((module) =>
-      module.practices.some((practice) =>
+      module.visible !== false && module.practices.some((practice) =>
         practice.questions.some(
           (question) => question.type === "open_answer"
         )

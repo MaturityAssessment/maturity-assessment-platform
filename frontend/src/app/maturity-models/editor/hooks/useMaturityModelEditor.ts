@@ -1,5 +1,7 @@
 "use client";
 
+import { moduleVisibilityDependencies } from "../model/moduleVisibility";
+
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
 import apiClient from "@/api/axios";
@@ -296,6 +298,18 @@ export function useMaturityModelEditor(
         const modules = findDimension(next, dimensionKey)?.modules;
         const added = modules?.[modules.length - 1];
         replaceDocument(next, added ? { type: "module", key: added.clientKey } : undefined);
+      },
+      toggleModuleVisibility: (dimensionKey: string, moduleKey: string) => {
+        if (!state.document) return;
+        const dimension = findDimension(state.document, dimensionKey);
+        const module = dimension?.modules.find((item) => item.clientKey === moduleKey);
+        if (!dimension || !module) return;
+        const hiding = module.visible !== false;
+        const dependencies = hiding ? moduleVisibilityDependencies(dimension, module) : [];
+        replaceDocument(updateModule(state.document, dimensionKey, moduleKey, { ...module, visible: !hiding }));
+        dispatch({ type: "notice", notice: dependencies.length
+          ? { type: "warning", message: dependencies.join(" ") }
+          : null });
       },
       updateModule: (
         dimensionKey: string,

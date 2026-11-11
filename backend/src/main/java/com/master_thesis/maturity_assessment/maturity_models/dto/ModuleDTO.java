@@ -12,6 +12,7 @@ public class ModuleDTO {
     private String description;
 
     // Weighting factor for aggregation (optional, defaults to 1.0)
+    private Boolean visible = true;
     private Double weight;
     private AggregationRule aggregationRule;
     private List<GatingRuleDTO> gatingRules;

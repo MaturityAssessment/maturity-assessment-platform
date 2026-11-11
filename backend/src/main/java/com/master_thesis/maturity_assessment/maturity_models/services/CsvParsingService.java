@@ -172,6 +172,7 @@ public class CsvParsingService {
 
     private void validateRow(CsvMaturityModelRow row, int lineNumber, List<String> errors, int maxMaturityLevel) {
         validateBoolean(row.getModelAutoEvaluated(), "modelAutoEvaluated", lineNumber, errors);
+        validateBoolean(row.getModuleVisible(), "moduleVisible", lineNumber, errors);
         validateBoolean(row.getPracticeRequiresEvidence(), "practiceRequiresEvidence", lineNumber, errors);
         validateBoolean(row.getQuestionRequired(), "questionRequired", lineNumber, errors);
         validateBoolean(row.getQuestionBooleanCorrectAnswer(), "questionBooleanCorrectAnswer", lineNumber, errors);
@@ -451,6 +452,7 @@ public class CsvParsingService {
                 moduleDTO.setName(row.getModuleName());
                 moduleDTO.setDescription(blankToNull(row.getModuleDescription()));
                 moduleDTO.setWeight(moduleWeight);
+                moduleDTO.setVisible(parseBoolean(row.getModuleVisible(), true));
                 moduleDTO.setAggregationRule(parseAggregationRule(row.getModuleAggregationRule(), "moduleAggregationRule", rowNumber, errors));
                 moduleDTO.setGatingRules(parseRules(row.getModuleGatingRules(), GatingRuleDTO.class, "moduleGatingRules", rowNumber, errors));
                 module = new ModuleAccumulator(moduleDTO);

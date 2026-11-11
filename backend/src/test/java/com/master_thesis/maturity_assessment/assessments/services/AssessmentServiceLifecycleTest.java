@@ -184,6 +184,61 @@ class AssessmentServiceLifecycleTest {
         assertTrue(draft.getIsCompleted());
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(AggregationRule.class)
+    void hiddenModulesDoNotAffectAggregationGatingMappingOrRequiredAnswers(AggregationRule aggregation) {
+        MaturityModel model = hierarchicalAggregationModel();
+        Dimension dimension = model.getDimensions().getFirst();
+        dimension.setAggregationRule(aggregation);
+        dimension.getModules().get(1).setVisible(false);
+        model.getDimensions().get(1).getModules().getFirst().setVisible(false);
+        dimension.getModules().get(1).getPractices().getFirst().getQuestions().getFirst().setRequired(true);
+        dimension.setGatingRules(List.of(
+                gatingRule(GatingSelection.ANY_CHILD, null, GatingComparisonOperator.BELOW,
+                        0.5, GatingScoreOperation.SET, 0.0),
+                gatingRule(GatingSelection.SPECIFIC_CHILD, "M2", GatingComparisonOperator.ABOVE_OR_EQUAL,
+                        0.0, GatingScoreOperation.SET, 0.0),
+                gatingRule(GatingSelection.ALL_CHILDREN, null, GatingComparisonOperator.ABOVE,
+                        0.7, GatingScoreOperation.ADD, 0.1)));
+        for (int i = 0; i < dimension.getGatingRules().size(); i++) dimension.getGatingRules().get(i).setOrder(i);
+        Assessment draft = draftAssessment();
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
+                USER_ID, MODEL_ID, AssessmentStatus.DRAFT)).thenReturn(Optional.of(draft));
+        when(dimensionResultRepository.findByAssessmentId(ASSESSMENT_ID)).thenReturn(List.of());
+
+        AssessmentResponse response = assessmentService.createAssessment(request(Map.of(
+                "D1_M1_101_1001", 5, "D1_M1_101_1002", 2, "D1_M1_102_1003", 4)), user);
+
+        assertEquals(1, response.getDimensionResults().size());
+        assertEquals("D1", response.getDimensionResults().getFirst().getDimensionId());
+        assertEquals(85.0, response.getDimensionResults().getFirst().getPercentageScore());
+        assertEquals(5, response.getDimensionResults().getFirst().getMaturityLevelNumber());
+        assertEquals(3, response.getDimensionResults().getFirst().getTotalQuestions());
+        assertEquals(5.0, response.getOverallAverage());
+        assertEquals("COMPLETED", response.getStatus());
+        // Stored/manual evaluation scores must also ignore hidden modules even if present.
+        List<com.master_thesis.maturity_assessment.assessments.models.DimensionResult> reevaluated =
+                org.springframework.test.util.ReflectionTestUtils.invokeMethod(assessmentService,
+                        "calculateDimensionResultsFromScores", Map.of(
+                                "D1_M1_101_1001", 1.0, "D1_M1_101_1002", 0.25, "D1_M1_102_1003", 0.75,
+                                "D1_M2_103_1004", 0.0, "D2_M3_104_1005", 1.0), MODEL_ID);
+        assertEquals(1, reevaluated.size());
+        assertEquals(85.0, reevaluated.getFirst().getPercentageScore());
+        assertEquals(3, reevaluated.getFirst().getTotalQuestions());
+    }
+
+    @Test
+    void hiddenModuleAnswersCannotBeSubmittedDirectly() {
+        MaturityModel model = booleanScoringModel();
+        model.getDimensions().getFirst().getModules().getFirst().setVisible(false);
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        ResponseStatusException error = assertThrows(ResponseStatusException.class,
+                () -> assessmentService.createAssessment(request(Map.of("D1_M1_101_1001", true)), user));
+        assertEquals(HttpStatus.BAD_REQUEST, error.getStatusCode());
+        verify(assessmentRepository, never()).save(any(Assessment.class));
+    }
+
     @Test
     void configuredRulesAggregateScoresThroughEveryHierarchyLevel() {
         MaturityModel model = hierarchicalAggregationModel();

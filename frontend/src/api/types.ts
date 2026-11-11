@@ -153,6 +153,8 @@ export interface Practice {
 }
 
 export interface Module {
+  /** Omitted on older models means visible. Stored per model version. */
+  visible?: boolean;
   dimensionId?: number; // FK to parent Dimension
   code?: string;
   name: string;
@@ -468,6 +470,8 @@ export interface PracticeForm {
 }
 
 export interface ModuleForm {
+  /** Omitted on older models means visible. Stored per model version. */
+  visible?: boolean;
   code?: string;
   name: string;
   description?: string;
@@ -540,6 +544,8 @@ export interface ModelEditorPractice {
 }
 
 export interface ModelEditorModule {
+  /** Omitted on older models means visible. Stored per model version. */
+  visible?: boolean;
   clientKey: string;
   code: string;
   codeLocked?: boolean;

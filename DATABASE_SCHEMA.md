@@ -296,6 +296,7 @@ Represents modules within dimensions. Modules group related practices.
 | id                | BIGSERIAL    | PRIMARY KEY           | Auto-incrementing module ID      |
 | code              | VARCHAR(255) | NOT NULL              | Module code (e.g., "PM1")        |
 | name              | VARCHAR(255) | NOT NULL              | Module name                      |
+| visible           | BOOLEAN      | NOT NULL, DEFAULT TRUE | Include module in assessments and evaluation for this version |
 | description       | TEXT         |                       | Module description               |
 | label_type        | VARCHAR(255) |                       | Evaluative label type            |
 | weight            | DOUBLE       | NOT NULL, DEFAULT 1.0 | Weight factor for aggregation    |

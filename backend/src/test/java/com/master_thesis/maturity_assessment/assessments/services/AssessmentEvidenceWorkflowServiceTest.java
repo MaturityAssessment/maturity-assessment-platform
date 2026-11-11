@@ -396,6 +396,13 @@ class AssessmentEvidenceWorkflowServiceTest {
     }
 
     @Test
+    void hiddenModuleDoesNotRequireEvidence() throws Exception {
+        MaturityModel model = requiredEvidenceModel();
+        model.getDimensions().getFirst().getModules().getFirst().setVisible(false);
+        assertEquals(List.of(), submitModel(model, List.of()).getEvidence());
+    }
+
+    @Test
     void emptyPracticeDoesNotRequireEvidence() throws Exception {
         MaturityModel model = requiredEvidenceModel();
         model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst()

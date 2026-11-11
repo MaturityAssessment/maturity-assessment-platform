@@ -19,6 +19,16 @@ or question configuration.
 - Edit overview fields, automatic evaluation, and two to twelve scale levels.
 - Add, edit, move, drag, reorder, and delete dimensions, modules, practices,
   and questions.
+- Toggle module visibility using both its switch and the outline actions menu;
+  verify the hidden indicator and restore visibility through either control.
+- Hide a module referenced by a dimension gate: show the dependency alert and
+  block save until the rule is fixed or visibility restored. Any/all-child gates
+  use visible modules and alert that their scope changes.
+- Preserve visibility through browser drafts, version review/revert, save/reload,
+  and Excel export/import. Workbooks without moduleVisible default to visible.
+- Exclude hidden modules from assessment overviews, navigation, deep links,
+  progress, required answers/evidence, manual/automatic evaluation, and results.
+  A dimension with only hidden modules contributes no result or overall weight.
 - Preserve the current selection behavior after additions and deletions.
 - Generate editable codes for new items and preserve manually changed codes.
 - Update dependency references when a question code changes.

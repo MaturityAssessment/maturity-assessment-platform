@@ -162,6 +162,25 @@ class LocalAgentEvaluationServiceTest {
     }
 
     @Test
+    void hiddenModuleAnswersAndEvidenceAreExcludedFromAgentEvaluation() {
+        Assessment assessment = pendingAssessment();
+        MaturityModel model = model(false);
+        var module = model.getDimensions().getFirst().getModules().getFirst();
+        module.setVisible(false);
+        var evidence = new com.master_thesis.maturity_assessment.assessments.models.Evidence();
+        evidence.setId(90L);
+        evidence.setPractice(module.getPractices().getFirst());
+        when(assessmentRepository.findById(ASSESSMENT_ID)).thenReturn(Optional.of(assessment));
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of(evidence));
+        var response = service.generateDraft(ASSESSMENT_ID);
+        assertTrue(response.getQuestionEvaluations().isEmpty());
+        assertTrue(response.getDocumentSummaries().isEmpty());
+        verifyNoInteractions(evidenceTextExtractionService);
+        verify(localAgentClient, org.mockito.Mockito.never()).chatJson(anyString(), anyString(), anyString(), anyMap());
+    }
+
+    @Test
     void validAgentOutputReturnsDraftWithoutCompletingAssessment() throws Exception {
         Assessment assessment = pendingAssessment();
         MaturityModel model = model(false);

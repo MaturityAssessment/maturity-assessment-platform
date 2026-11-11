@@ -199,6 +199,7 @@ This example creates a small model. Replace `domainId` with an existing domain.
     "modules": [{
       "code": "delivery",
       "name": "Delivery",
+      "visible": true,
       "weight": 1,
       "aggregationRule": "AVERAGE",
       "gatingRules": [],
@@ -229,6 +230,25 @@ dimension, module, and practice can also have `description`. Questions can have
 determines display order. Dimensions require modules, modules require practices,
 and practices require questions; each collection must contain at least one item.
 Dependencies must resolve inside the same practice and must not form cycles.
+
+Modules accept `visible` in both editor and public model contracts. It defaults
+to `true` when omitted or null. Setting it to `false` preserves the authored
+module and descendants, while excluding them from assessment navigation,
+required answers/evidence, scoring, aggregation, gating, and maturity mapping.
+Dimensions without visible modules are omitted from assessment results. Visibility
+belongs to the exact model version; changing it through version editing leaves
+existing assessments on their original version.
+
+A dimension's `specificChild` gating rule must reference a visible module.
+Saving an explicit reference to a hidden module returns `400 INVALID_GATING_RULES`.
+The editor alerts on affected rules and blocks saving until they are repaired.
+`anyChild` and `allChildren` evaluate only visible, scored modules. Rules inside a
+hidden module are retained for editing and do not run during assessment.
+Assessment submissions referencing hidden-module questions are rejected with `400`.
+Public model reads and editor reads retain the full authored hierarchy, including
+hidden modules; assessment clients filter `visible: false` before presentation.
+Workbook exports include optional `moduleVisible` in the Modules sheet. Imports
+without that column default all modules to visible.
 
 ## Model contracts
 

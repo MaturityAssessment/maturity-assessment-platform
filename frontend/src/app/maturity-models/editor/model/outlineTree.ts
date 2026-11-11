@@ -10,6 +10,7 @@ export type OutlineNode = {
   code: string;
   childLabel: "module" | "practice" | "question";
   childCount: number;
+  visible?: boolean;
   children: OutlineNode[];
 };
 
@@ -31,6 +32,7 @@ export function buildOutlineTree(document: MaturityModelEditorDocument): Outline
         return {
           id: moduleId, selection: moduleSelection, parentId: id, parentKey: dimension.clientKey,
           label: module.name || "Untitled module",
+          visible: module.visible !== false,
           code: module.code, childLabel: "practice", childCount: module.practices.length,
           children: module.practices.map((practice) => {
             const practiceSelection: Selection = { type: "practice", key: practice.clientKey };

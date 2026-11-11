@@ -33,7 +33,7 @@ export function buildPracticeSteps(
 
   return maturityModel.dimensions.flatMap((dimension, dimensionIndex) =>
     dimension.modules.flatMap((module, moduleIndex) =>
-      module.practices.map((practice, practiceIndex) => ({
+      module.visible === false ? [] : module.practices.map((practice, practiceIndex) => ({
         key: getPracticeKey(
           dimensionIndex,
           moduleIndex,
@@ -215,7 +215,7 @@ export function resolveAssessmentModuleLocation(
     (module) => normalizedCode(module.code) === normalizedCode(segments[1])
   );
   const maturityModule = dimension.modules[moduleIndex];
-  if (!maturityModule) return null;
+  if (!maturityModule || maturityModule.visible === false) return null;
 
   return {
     key: getModuleKey(dimensionIndex, moduleIndex, maturityModule.code),
@@ -248,7 +248,7 @@ export function resolveAssessmentPracticeLocation(
     (module) => normalizedCode(module.code) === normalizedCode(segments[1])
   );
   const maturityModule = dimension.modules[moduleIndex];
-  if (!maturityModule) return null;
+  if (!maturityModule || maturityModule.visible === false) return null;
 
   const practiceIndex = maturityModule.practices.findIndex(
     (practice) => normalizedCode(practice.code) === normalizedCode(segments[2])

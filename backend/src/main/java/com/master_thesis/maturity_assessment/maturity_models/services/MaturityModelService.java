@@ -471,6 +471,7 @@ public class MaturityModelService {
                         dto.setDimensionId(module.getDimension().getId());
                 }
                 dto.setCode(module.getCode());
+                dto.setVisible(!Boolean.FALSE.equals(module.getVisible()));
                 dto.setName(module.getName());
                 dto.setDescription(module.getDescription());
                 dto.setWeight(module.getWeight());
@@ -497,6 +498,7 @@ public class MaturityModelService {
                                 : generateModuleCode(dto.getName());
                 module.setCode(code);
                 module.setName(dto.getName());
+                module.setVisible(!Boolean.FALSE.equals(dto.getVisible()));
                 module.setDescription(dto.getDescription());
                 module.setWeight(dto.getWeight() != null ? dto.getWeight() : 1.0);
                 module.setAggregationRule(resolveAggregationRule(dto.getAggregationRule()));
@@ -746,6 +748,7 @@ public class MaturityModelService {
                         for (ModuleDTO module : dimension.getModules() == null ? List.<ModuleDTO>of() : dimension.getModules()) {
                                 var editorModule = new MaturityModelEditorDTO.EditorModuleDTO();
                                 editorModule.setCode(module.getCode());
+                                editorModule.setVisible(!Boolean.FALSE.equals(module.getVisible()));
                                 editorModule.setName(module.getName());
                                 editorModule.setDescription(module.getDescription());
                                 editorModule.setWeight(module.getWeight());
@@ -827,6 +830,7 @@ public class MaturityModelService {
                                         ? List.<MaturityModelEditorDTO.EditorModuleDTO>of() : editorDimension.getModules()) {
                                 ModuleDTO module = new ModuleDTO();
                                 module.setCode(editorModule.getCode());
+                                module.setVisible(!Boolean.FALSE.equals(editorModule.getVisible()));
                                 module.setName(editorModule.getName());
                                 module.setDescription(editorModule.getDescription());
                                 module.setWeight(editorModule.getWeight());
@@ -1306,7 +1310,9 @@ public class MaturityModelService {
                 for (DimensionDTO dimension : dto.getDimensions()) {
                         validateGatingRuleList(
                                         dimension.getGatingRules(),
-                                        codes(dimension.getModules(), ModuleDTO::getCode),
+                                        codes(dimension.getModules() == null ? null : dimension.getModules().stream()
+                                                        .filter(module -> !Boolean.FALSE.equals(module.getVisible())).toList(),
+                                                        ModuleDTO::getCode),
                                         "dimension '" + dimension.getId() + "'");
                         if (dimension.getModules() == null) {
                                 continue;
@@ -1370,7 +1376,7 @@ public class MaturityModelService {
                                 if (childCode == null || childCode.isBlank()
                                                 || !immediateChildCodes.contains(childCode.toLowerCase(Locale.ROOT))) {
                                         throw invalidGatingRules(owner,
-                                                        "reference an immediate child for every specificChild rule");
+                                                        "reference a visible immediate child for every specificChild rule");
                                 }
                         } else if (childCode != null && !childCode.isBlank()) {
                                 throw invalidGatingRules(owner,

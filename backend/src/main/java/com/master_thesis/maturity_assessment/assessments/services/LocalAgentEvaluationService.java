@@ -92,7 +92,10 @@ public class LocalAgentEvaluationService {
         }
 
         Map<String, Object> responses = readQuestionResponses(assessment.getId());
-        List<Evidence> evidenceItems = evidenceRepository.findByAssessmentIdOrderByIdAsc(assessment.getId());
+        List<Evidence> evidenceItems = evidenceRepository.findByAssessmentIdOrderByIdAsc(assessment.getId()).stream()
+                .filter(item -> item.getPractice() == null || item.getPractice().getModule() == null
+                        || !Boolean.FALSE.equals(item.getPractice().getModule().getVisible()))
+                .toList();
         int maxLevel = Math.max(2, maturityScoringService.resolveMaxLevelNumber(model.getLevels()));
 
         List<ReviewQuestion> reviewQuestions = buildReviewQuestions(
@@ -376,6 +379,7 @@ public class LocalAgentEvaluationService {
 
         for (Dimension dimension : safeList(model.getDimensions())) {
             for (Module module : safeList(dimension.getModules())) {
+                if (Boolean.FALSE.equals(module.getVisible())) continue;
                 for (Practice practice : safeList(module.getPractices())) {
                     String practiceId = practice.getId() != null
                             ? String.valueOf(practice.getId())
