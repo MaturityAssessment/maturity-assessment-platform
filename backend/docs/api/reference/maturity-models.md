@@ -433,8 +433,11 @@ Practices define `evidenceRequirements`, an ordered array of up to 50 entries:
 ```
 
 Codes are unique (case-insensitive) within a practice, start with a letter and contain
-up to 64 letters, digits, underscores or hyphens. Names are required; instructions
-are optional (up to 500 characters). `format` is `FILE`, `URL`, `FILE_OR_URL`, or `ANY`
+up to 64 letters, digits, underscores or hyphens. Names are required. `instructions` stores the optional acceptance criteria (up to
+500 characters), labelled **Acceptance criteria** in the editor and assessment UI.
+These criteria are entirely informational guidance for respondents and evaluators;
+the platform does not evaluate them, use them to block submission, or change scores
+based on their content. `format` is `FILE`, `URL`, `FILE_OR_URL`, or `ANY`
 (the latter also permits notes). Requirements are copied into new model versions.
 `required` blocks submission when that specific requirement has no evidence, provided
 the practice has an active question. Evidence question references remain optional.

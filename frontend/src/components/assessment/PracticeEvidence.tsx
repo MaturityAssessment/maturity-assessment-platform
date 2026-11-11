@@ -60,7 +60,10 @@ export default function PracticeEvidence({ practice, items, onItemsChange, readO
           <span className="hidden text-xs font-medium text-indigo-700 group-open:inline">Close ▴</span>
         </summary>
         <div className="space-y-3 border-t border-slate-100 p-4">
-          {requirement.instructions && <p className="whitespace-pre-wrap text-sm leading-6 text-slate-600">{requirement.instructions}</p>}
+          {requirement.instructions && <div className="space-y-1">
+            <p className="text-xs font-medium text-slate-700">Acceptance criteria · Informational</p>
+            <p className="whitespace-pre-wrap text-sm leading-6 text-slate-600">{requirement.instructions}</p>
+          </div>}
           {matches && <p className="text-xs text-slate-500">Current freshness checked {currentEvidenceFreshness?.evaluatedOn}.{freshness.validThrough ? ` Latest validity date: ${freshness.validThrough}.` : ""} Outdated evidence remains provided.</p>}
           {upload(group, requirement.code)}
         </div>

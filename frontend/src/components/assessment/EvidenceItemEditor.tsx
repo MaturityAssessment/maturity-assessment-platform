@@ -41,7 +41,10 @@ export default function EvidenceItemEditor({ initialItem, questions, inactiveQue
           {evidenceRequirements.map(item => <option key={item.code} value={item.code}>{item.name}{item.required ? " (required)" : ""}</option>)}
         </select>
       </label>}
-      {requirement?.instructions && <p className="whitespace-pre-wrap text-sm leading-6 text-slate-600">{requirement.instructions}</p>}
+      {requirement?.instructions && <div className="space-y-1">
+        <p className="text-xs font-medium text-slate-700">Acceptance criteria · Informational</p>
+        <p className="whitespace-pre-wrap text-sm leading-6 text-slate-600">{requirement.instructions}</p>
+      </div>}
       {isNew && <label className="block text-sm font-medium text-slate-800">Evidence type
         <select value={draft.type} className="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-2 text-sm"
           onChange={event => update({ type: event.target.value as AssessmentEvidenceInputItem["type"], description: "", url: "", file: null,
