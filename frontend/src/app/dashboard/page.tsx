@@ -51,6 +51,7 @@ export default function Dashboard() {
     error,
     retry,
     removeAssessment,
+    refreshError,
   } = useDashboardAssessments();
   const draftActions = useDashboardDraftActions({
     drafts: draftAssessments,
@@ -178,6 +179,7 @@ export default function Dashboard() {
             />
           )}
 
+          {refreshError && <p role="status" className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{refreshError}</p>}
           {loading ? (
             <DashboardLoading />
           ) : error ? (

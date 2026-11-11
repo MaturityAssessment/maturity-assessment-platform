@@ -23,6 +23,29 @@ public class EvidenceRequirement {
     @Column(name = "format", nullable = false, length = 20)
     private Format format = Format.FILE_OR_URL;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "frequency", nullable = false, length = 20)
+    private Frequency frequency = Frequency.adhoc;
+
+    @Column(name = "max_age_days")
+    private Integer maxAgeDays;
+
+    public enum Frequency { adhoc, monthly, quarterly, yearly }
+
+    public EvidenceRequirement(String code, String name, String instructions, Boolean required, Format format) {
+        this(code, name, instructions, required, format, Frequency.adhoc, null);
+    }
+
+    public Integer effectiveMaxAgeDays() {
+        if (maxAgeDays != null) return maxAgeDays;
+        return switch (frequency == null ? Frequency.adhoc : frequency) {
+            case monthly -> 31;
+            case quarterly -> 92;
+            case yearly -> 366;
+            case adhoc -> null;
+        };
+    }
+
     public enum Format { FILE, URL, FILE_OR_URL, ANY }
 
     public boolean accepts(String type) {
@@ -31,6 +54,6 @@ public class EvidenceRequirement {
     }
 
     public EvidenceRequirement copy() {
-        return new EvidenceRequirement(code, name, instructions, required, format);
+        return new EvidenceRequirement(code, name, instructions, required, format, frequency, maxAgeDays);
     }
 }

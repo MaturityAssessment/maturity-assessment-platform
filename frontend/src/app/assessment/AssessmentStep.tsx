@@ -47,6 +47,8 @@ export interface AssessmentPracticeStep {
 }
 
 interface AssessmentStepProps {
+  currentEvidenceFreshness?: import("@/api/types").EvidenceFreshnessSummary;
+  historicalEvidenceValidity?: import("@/api/types").EvidenceFreshnessSummary;
   readOnly?: boolean;
   evaluationController?: EvaluationController;
   maturityLevels?: MaturityLevel[];
@@ -80,6 +82,8 @@ interface AssessmentStepProps {
 
 export default function AssessmentStep({
   readOnly = false,
+  currentEvidenceFreshness,
+  historicalEvidenceValidity,
   evaluationController,
   maturityLevels = [],
   modelName,
@@ -424,7 +428,7 @@ export default function AssessmentStep({
                   <div className="mt-4 rounded-xl border bg-white p-5">
                     <h3 className="font-semibold">Practice evidence {evidenceRequired ? "(required)" : "(optional)"}</h3>
                     <p className="mb-3 mt-1 text-xs leading-5 text-slate-500">Evidence belongs to this practice. Optionally link it to the questions it supports.</p>
-                    <PracticeEvidence practice={step.practice} readOnly={readOnly || Boolean(evaluationController)}
+                    <PracticeEvidence currentEvidenceFreshness={currentEvidenceFreshness} historicalEvidenceValidity={historicalEvidenceValidity} practice={step.practice} readOnly={readOnly || Boolean(evaluationController)}
                       questions={step.practice.questions} inactiveQuestionIds={inactiveQuestionIds}
                       items={practiceEvidence} required={evidenceRequired} onDownload={evaluationController?.download}
                       onItemsChange={items => onEvidenceItemsChange(getPracticeEvidenceField(step.practice.id), items)} />

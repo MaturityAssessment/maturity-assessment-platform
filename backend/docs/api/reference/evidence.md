@@ -88,7 +88,7 @@ snapshot saves to coordinate answer/evidence edits in the respondent workflow.
 |---|---|
 | `practiceId` | Required; practice must belong to the assessment's exact model |
 | `requirementCode` | Optional code of a named evidence requirement in this practice; null/omitted means additional supporting evidence |
-| `evidenceDate` | Optional ISO date (`YYYY-MM-DD`), on or before today (UTC); required for new/replaced/reclassified evidence in a named requirement |
+| `collectedAt` | ISO date (`YYYY-MM-DD`), on or before today (UTC); required for every new/replaced/reclassified record, including additional supporting evidence |
 | `referencedQuestionIds` | Optional array of unique positive integer question IDs in this practice; omitted/null preserves existing references, `[]` clears them, and new items default to `[]` |
 | `type` | Required: `FILE`, `URL`, or `TEXT` |
 | `evidenceId` | Include to retain/update an existing item in this assessment |
@@ -164,7 +164,7 @@ Content-Type header.
   "practiceId": 42,
   "referencedQuestionIds": [100, 101],
   "requirementCode": "policy",
-  "evidenceDate": "2026-08-15",
+  "collectedAt": "2026-08-15",
   "description": "Code review policy",
   "evidenceType": "FILE",
   "fileName": "policy.pdf",
@@ -190,13 +190,29 @@ Evidence remains owned by its practice and can still reference multiple question
 have several attachments. Requirements are owned by the exact model version.
 Unknown or cross-practice codes and disallowed formats return `400`, before file storage.
 
-`evidenceDate` is the document issue/approval date or reporting-period end, according
+`collectedAt` is the document issue/approval date or reporting-period end, according
 to the model author's instructions. `createdAt` remains the upload timestamp. Neither
 is inferred from the other. Legacy attachments with unknown dates may be retained;
-replacing their content or assigning them to a different named requirement needs a
-source date. A known date on classified evidence cannot be cleared. Additional
-supporting evidence can remain undated. Authoritative metadata includes these fields
-for retained items as well as new ones; null clears optional classification/date values.
+replacing their content or reclassifying them needs a source date. A known date cannot
+be cleared. Only unchanged legacy records may retain an unknown date. Authoritative
+metadata includes these fields for retained items as well as new ones; null clears
+optional classification, while dates remain required once known.
 
-There is no age calculation, expiry warning, verification status, or scoring change
-in this phase. See [V49 deployment notes](../../migrations/named-evidence-requirements.md).
+The canonical date attribute is `collectedAt`; `evidenceDate` remains accepted as a
+legacy write alias. It is never inferred from the upload timestamp.
+
+Freshness follows Scoring Profile v1.1 clause 10: a record is outdated only when its
+age in days is strictly greater than the indicator's effective `maxAgeDays`. An
+indicator remains satisfied when outdated. It is outdated only when every present
+record is outdated; one current record prevents that status. A legacy unknown date
+cannot establish that all records are outdated.
+
+Assessment responses expose separate `historicalEvidenceValidity` (evaluated at
+`referenceDate`) and `currentEvidenceFreshness` (evaluated today, UTC). These are
+derived on every read, with batch evidence metadata queries and no file parsing.
+New/revised evidence and reference dates refresh validity within the save transaction.
+Evidence age never changes numeric scores, completion or reviewer decisions. Missing
+mandatory indicators still block submission. Submitted evidence cannot be deleted
+through the standalone delete route; use the returned-assessment revision workflow.
+
+See [V50 deployment notes](../../migrations/evidence-lifecycle.md).

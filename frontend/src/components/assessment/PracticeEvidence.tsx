@@ -2,12 +2,13 @@
 
 import type { AssessmentEvidenceInputItem, Practice } from "@/api/types";
 import { hasValidEvidenceItems, missingEvidenceRequirements, validateEvidenceForSave, MAX_EVIDENCE_ITEMS_PER_FIELD } from "@/app/assessment/assessmentEvidence";
+import { freshnessLabel } from "@/app/assessment/evidenceLifecycle";
 import { useState } from "react";
 import EvidenceUpload from "./EvidenceUpload";
 import type { EvidenceReferenceProps } from "./EvidenceQuestionReferences";
 
 export default function PracticeEvidence({ practice, items, onItemsChange, readOnly = false, required = false,
-  onDownload, ...references }: EvidenceReferenceProps & {
+  onDownload, currentEvidenceFreshness, historicalEvidenceValidity, ...references }: EvidenceReferenceProps & {
   practice: Practice; items: AssessmentEvidenceInputItem[];
   onItemsChange: (items: AssessmentEvidenceInputItem[]) => void;
   readOnly?: boolean; required?: boolean;
@@ -33,7 +34,7 @@ export default function PracticeEvidence({ practice, items, onItemsChange, readO
     return true;
   };
   const upload = (group: AssessmentEvidenceInputItem[], code?: string) => <EvidenceUpload
-    {...references} evidenceRequirements={requirements} practiceId={practice.id!} items={group} readOnly={readOnly}
+    {...references} evidenceRequirements={requirements} currentEvidenceFreshness={currentEvidenceFreshness} historicalEvidenceValidity={historicalEvidenceValidity} practiceId={practice.id!} items={group} readOnly={readOnly}
     onDownload={onDownload} requirement={requirements.find(item => item.code === code)}
     required={!requirements.length && required} onItemsChange={next => replaceGroup(group, next)} />;
 
@@ -45,18 +46,22 @@ export default function PracticeEvidence({ practice, items, onItemsChange, readO
     {requirements.map(requirement => {
       const group = items.filter(item => item.requirementCode === requirement.code);
       const provided = hasValidEvidenceItems(group);
+      const freshness = currentEvidenceFreshness?.indicators.find(item => item.practiceId === practice.id && item.requirementCode === requirement.code);
+      const matches = freshness && group.length === freshness.records.length && group.every(item => !item.file && freshness.records.some(record => record.evidenceId === item.evidenceId && record.collectedAt === (item.collectedAt || null)));
+      const outdated = matches && freshness.status === "OUTDATED";
       return <details key={requirement.code} className="group rounded-xl border border-slate-200 bg-white">
         <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 rounded-xl p-4 focus-visible:outline-indigo-600">
           <span className="min-w-0 flex-1 text-sm font-medium text-slate-900">{requirement.name}</span>
           <span className="text-xs text-slate-500">{requirement.required ? "Required" : "Optional"}</span>
-          <span className={`rounded-full px-2 py-1 text-xs font-medium ${provided ? "bg-emerald-50 text-emerald-800" : requirement.required ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-600"}`}>
-            {provided ? `Provided · ${group.length}` : requirement.required ? "Missing" : "Not provided"}
+          <span className={`rounded-full px-2 py-1 text-xs font-medium ${outdated ? "bg-amber-50 text-amber-800" : provided ? "bg-emerald-50 text-emerald-800" : requirement.required ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-600"}`}>
+            {provided ? `${matches ? freshnessLabel[freshness.status] : "Provided"} · ${group.length}` : requirement.required ? "Missing" : "Not provided"}
           </span>
           <span className="text-xs font-medium text-indigo-700 group-open:hidden">{provided ? readOnly ? "View" : "View / replace" : readOnly ? "Details" : "Add evidence"} ▾</span>
           <span className="hidden text-xs font-medium text-indigo-700 group-open:inline">Close ▴</span>
         </summary>
         <div className="space-y-3 border-t border-slate-100 p-4">
           {requirement.instructions && <p className="whitespace-pre-wrap text-sm leading-6 text-slate-600">{requirement.instructions}</p>}
+          {matches && <p className="text-xs text-slate-500">Current freshness checked {currentEvidenceFreshness?.evaluatedOn}.{freshness.validThrough ? ` Latest validity date: ${freshness.validThrough}.` : ""} Outdated evidence remains provided.</p>}
           {upload(group, requirement.code)}
         </div>
       </details>;

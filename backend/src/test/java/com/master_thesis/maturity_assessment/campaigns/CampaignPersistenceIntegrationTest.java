@@ -527,9 +527,10 @@ class CampaignPersistenceIntegrationTest {
                     user_id,
                     campaign_id,
                     campaign_participant_id,
+                    reference_date,
                     created_at,
                     updated_at
-                ) VALUES (0, 'Draft', 0, FALSE, 'DRAFT', ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES (0, 'Draft', 0, FALSE, 'DRAFT', ?, ?, ?, ?, CURRENT_DATE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """,
                 maturityModelId,
                 userId,

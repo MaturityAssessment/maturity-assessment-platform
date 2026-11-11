@@ -62,8 +62,8 @@ public class EvidenceService {
     private long maxRequestFileSize;
 
     @Transactional
-    public EvidenceDTO uploadEvidence(MultipartFile file, Long assessmentId, Long practiceId, User user) throws IOException {
-        return createFileEvidence(file, assessmentId, practiceId, user, null);
+    public EvidenceDTO uploadEvidence(MultipartFile file, Long assessmentId, Long practiceId, User user, java.time.LocalDate collectedAt) throws IOException {
+        return createFileEvidence(file, assessmentId, practiceId, user, null, collectedAt);
     }
 
     @Transactional
@@ -72,13 +72,18 @@ public class EvidenceService {
             Long assessmentId,
             Long practiceId,
             User user,
-            String description
+            String description,
+            java.time.LocalDate collectedAt
     ) throws IOException {
         Assessment assessment = requireOwnedAssessment(assessmentId, user);
         Practice practice = requirePracticeForModel(practiceId, assessment.getMaturityModelId());
         assessmentService.requireModuleUnlockedForEvidence(assessment, practice);
+        if (collectedAt == null || collectedAt.isAfter(java.time.LocalDate.now(java.time.ZoneOffset.UTC))) {
+            throw badRequest("A valid collectedAt date is required for new evidence.");
+        }
         requireRoomForEvidence(assessmentId, practiceId);
         Evidence evidence = createFileEntity(file, assessment, practice, user, description);
+        evidence.setCollectedAt(collectedAt);
         return toDTO(evidenceRepository.saveAndFlush(evidence));
     }
 
@@ -88,13 +93,18 @@ public class EvidenceService {
             Long practiceId,
             User user,
             String description,
-            String url
+            String url,
+            java.time.LocalDate collectedAt
     ) {
         Assessment assessment = requireOwnedAssessment(assessmentId, user);
         Practice practice = requirePracticeForModel(practiceId, assessment.getMaturityModelId());
         assessmentService.requireModuleUnlockedForEvidence(assessment, practice);
+        if (collectedAt == null || collectedAt.isAfter(java.time.LocalDate.now(java.time.ZoneOffset.UTC))) {
+            throw badRequest("A valid collectedAt date is required for new evidence.");
+        }
         requireRoomForEvidence(assessmentId, practiceId);
         Evidence evidence = createUrlEntity(assessment, practice, user, description, url);
+        evidence.setCollectedAt(collectedAt);
         return toDTO(evidenceRepository.saveAndFlush(evidence));
     }
 
@@ -290,7 +300,7 @@ public class EvidenceService {
                 synchronizedItem.getReferencedQuestions().addAll(references.get(item));
             }
             synchronizedItem.setRequirementCode(item.getRequirementCode());
-            synchronizedItem.setEvidenceDate(item.getEvidenceDate());
+            synchronizedItem.setCollectedAt(item.getCollectedAt());
             Evidence saved = evidenceRepository.save(synchronizedItem);
             clientKeysByEvidence.put(saved, item.getClientKey());
             desired.add(saved);
@@ -335,11 +345,11 @@ public class EvidenceService {
                 || !java.util.Objects.equals(previous.getRequirementCode(), code)
                 || (item.getType() == EvidenceType.URL && !java.util.Objects.equals(previous.getExternalUrl(), item.getUrl()))
                 || (item.getType() == EvidenceType.TEXT && !java.util.Objects.equals(previous.getDescription(), item.getDescription()));
-        if (requirement != null && item.getEvidenceDate() == null
-                && (changedContent || (previous != null && previous.getEvidenceDate() != null))) {
-            throw badRequest("Enter the document date or reporting-period end for: " + requirement.getName());
+        if (item.getCollectedAt() == null
+                && (changedContent || (previous != null && previous.getCollectedAt() != null))) {
+            throw badRequest("collectedAt is required for every new, replaced or reclassified evidence record.");
         }
-        if (item.getEvidenceDate() != null && item.getEvidenceDate().isAfter(java.time.LocalDate.now(java.time.ZoneOffset.UTC))) {
+        if (item.getCollectedAt() != null && item.getCollectedAt().isAfter(java.time.LocalDate.now(java.time.ZoneOffset.UTC))) {
             throw badRequest("Evidence date cannot be in the future.");
         }
     }
@@ -442,6 +452,10 @@ public class EvidenceService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized to delete this evidence.");
         }
 
+        if (evidence.getAssessment().getStatus() == AssessmentStatus.COMPLETED
+                || evidence.getAssessment().getStatus() == AssessmentStatus.PENDING_REVIEW) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Submitted evidence is immutable. Use the assessment revision workflow.");
+        }
         assessmentService.requireModuleUnlockedForEvidence(evidence.getAssessment(), evidence.getPractice());
         if (effectiveType(evidence) == EvidenceType.FILE) {
             scheduleDeleteAfterCommit(evidence.getFilePath());
@@ -705,7 +719,7 @@ public class EvidenceService {
                 .assessmentId(evidence.getAssessment().getId())
                 .practiceId(evidence.getPractice().getId())
                 .requirementCode(evidence.getRequirementCode())
-                .evidenceDate(evidence.getEvidenceDate())
+                .collectedAt(evidence.getCollectedAt())
                 .referencedQuestionIds(evidence.getReferencedQuestions().stream()
                         .map(Question::getId).sorted().toList())
                 .description(evidence.getDescription() == null ? "" : evidence.getDescription())

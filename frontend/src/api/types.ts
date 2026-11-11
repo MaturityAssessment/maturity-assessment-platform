@@ -102,6 +102,8 @@ export interface EvidenceRequirement {
   instructions: string;
   required: boolean;
   format: "FILE" | "URL" | "FILE_OR_URL" | "ANY";
+  frequency?: "adhoc" | "monthly" | "quarterly" | "yearly";
+  maxAgeDays?: number | null;
 }
 
 export interface Evidence {
@@ -110,7 +112,7 @@ export interface Evidence {
   practiceId: number;
   referencedQuestionIds?: number[];
   requirementCode?: string | null;
-  evidenceDate?: string | null;
+  collectedAt?: string | null;
   /** Ephemeral client identity echoed by draft saves for safe reconciliation. */
   clientKey?: string | null;
   description: string;
@@ -129,7 +131,7 @@ export interface AssessmentEvidenceInputItem {
   practiceId: number;
   referencedQuestionIds?: number[];
   requirementCode?: string | null;
-  evidenceDate?: string | null;
+  collectedAt?: string | null;
   type: "file" | "link" | "text";
   description: string;
   file: File | null;
@@ -147,7 +149,7 @@ export interface AssessmentEvidenceMetadataItem {
   practiceId: number;
   referencedQuestionIds?: number[];
   requirementCode?: string | null;
-  evidenceDate?: string | null;
+  collectedAt?: string | null;
   type: "FILE" | "URL" | "TEXT";
   description: string;
   url?: string;
@@ -210,8 +212,31 @@ export interface AssessmentData {
   [key: string]: any;
 }
 
+export type EvidenceFreshnessStatus = "MISSING" | "CURRENT" | "OUTDATED" | "UNKNOWN_DATE" | "NO_EXPIRY";
+export interface EvidenceFreshnessSummary {
+  evaluatedOn: string;
+  calculatedAt: string;
+  nextRefreshAt: string | null;
+  requiredIndicatorCount: number;
+  outdatedIndicatorCount: number;
+  unknownDateIndicatorCount: number;
+  missingIndicatorCount: number;
+  indicators: Array<{
+    practiceId: number; practiceName: string;
+    requirementCode: string; requirementName: string;
+    required: boolean; satisfied: boolean;
+    status: EvidenceFreshnessStatus; maxAgeDays: number | null;
+    validThrough: string | null;
+    records: Array<{ evidenceId: number; collectedAt: string | null; status: EvidenceFreshnessStatus; ageDays: number | null; validThrough: string | null }>;
+  }>;
+}
+
 export interface AssessmentResponse {
   id: number;
+  referenceDate?: string;
+  referenceDateInferred?: boolean;
+  historicalEvidenceValidity?: EvidenceFreshnessSummary;
+  currentEvidenceFreshness?: EvidenceFreshnessSummary;
   overallAverage: number;
   overallPercentageScore?: number;
   overallMaturityLevel: string;

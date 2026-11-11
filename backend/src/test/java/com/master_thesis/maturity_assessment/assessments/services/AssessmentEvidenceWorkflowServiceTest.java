@@ -457,7 +457,7 @@ class AssessmentEvidenceWorkflowServiceTest {
         var policy = evidence(); policy.setId(6L); policy.setRequirementCode("policy");
         assertThrows(ResponseStatusException.class, () -> submitModel(model, List.of(report)));
         // Old evidence remains acceptable regardless of age; expiry is deferred.
-        report.setEvidenceDate(java.time.LocalDate.of(2000, 1, 1));
+        report.setCollectedAt(java.time.LocalDate.of(2000, 1, 1));
         assertEquals(2, submitModel(model, List.of(report, policy)).getEvidence().size());
     }
 

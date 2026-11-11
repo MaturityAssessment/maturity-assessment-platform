@@ -155,10 +155,50 @@ class EvidenceQuestionReferencesIntegrationTest {
         assertEquals(completed.getOverallAverage(), campaignCompleted.getOverallAverage());
     }
 
+    @Test
+    void historicalAndCurrentFreshnessAreSeparateAndNeverChangeScores() throws Exception {
+        Fixture fixture = fixture(true);
+        fixture.practice.getEvidenceRequirements().getFirst().setFrequency(EvidenceRequirement.Frequency.monthly);
+        entityManager.flush();
+        var today = java.time.LocalDate.now(java.time.ZoneOffset.UTC);
+        var request = answers(fixture);
+        request.setReferenceDate(today.minusDays(20));
+        var item = note(fixture);
+        item.setCollectedAt(today.minusDays(32));
+        var submitted = workflow.submitAssessment(request, fixture.user, List.of(item), List.of(), List.of(), true);
+        assertEquals("COMPLETED", submitted.getStatus());
+        assertEquals(0, submitted.getHistoricalEvidenceValidity().outdatedIndicatorCount());
+        assertEquals(1, submitted.getCurrentEvidenceFreshness().outdatedIndicatorCount());
+        assertTrue(submitted.getCurrentEvidenceFreshness().indicators().getFirst().satisfied());
+        double score = submitted.getOverallAverage();
+        entityManager.flush(); entityManager.clear();
+        var saved = entityManager.find(com.master_thesis.maturity_assessment.assessments.models.Assessment.class, submitted.getId());
+        var updatedAt = saved.getUpdatedAt();
+        var read = assessments.getAssessmentById(submitted.getId(), fixture.user);
+        assertEquals(score, read.getOverallAverage());
+        assertEquals("COMPLETED", read.getStatus());
+        assertEquals(updatedAt, saved.getUpdatedAt());
+        // A deliberate input correction reevaluates validity against the corrected date.
+        saved.setReferenceDate(today);
+        entityManager.flush(); entityManager.clear();
+        var corrected = assessments.getAssessmentById(submitted.getId(), fixture.user);
+        assertEquals(1, corrected.getHistoricalEvidenceValidity().outdatedIndicatorCount());
+        assertEquals(score, corrected.getOverallAverage());
+        assertEquals("COMPLETED", corrected.getStatus());
+    }
+
+    @Test
+    void newAdditionalEvidenceRequiresCollectedAtToo() {
+        Fixture fixture = fixture(true);
+        var item = note(fixture); item.setRequirementCode(null); item.setCollectedAt(null);
+        assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
+                () -> workflow.saveMultipartDraft(answers(fixture), fixture.user, List.of(item), List.of(), List.of(), true)).getStatusCode());
+    }
+
     private void assertReferences(AssessmentResponse response, Long questionId) {
         assertEquals(List.of(questionId), response.getEvidence().getFirst().getReferencedQuestionIds());
         assertEquals("report", response.getEvidence().getFirst().getRequirementCode());
-        assertEquals(java.time.LocalDate.of(2020, 10, 31), response.getEvidence().getFirst().getEvidenceDate());
+        assertEquals(java.time.LocalDate.of(2020, 10, 31), response.getEvidence().getFirst().getCollectedAt());
     }
 
     private ManualEvaluationRequest review(Fixture fixture, String status, String note) {
@@ -187,7 +227,7 @@ class EvidenceQuestionReferencesIntegrationTest {
         item.setType(EvidenceType.TEXT);
         item.setDescription("Evidence content");
         item.setRequirementCode("report");
-        item.setEvidenceDate(java.time.LocalDate.of(2020, 10, 31));
+        item.setCollectedAt(java.time.LocalDate.of(2020, 10, 31));
         item.setReferencedQuestionIds(List.of(fixture.question.getId()));
         return item;
     }

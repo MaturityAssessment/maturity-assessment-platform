@@ -40,8 +40,8 @@ public class Evidence {
     @Column(name = "requirement_code", length = 64)
     private String requirementCode;
 
-    @Column(name = "evidence_date")
-    private java.time.LocalDate evidenceDate;
+    @Column(name = "collected_at")
+    private java.time.LocalDate collectedAt;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "evidence_question_references",

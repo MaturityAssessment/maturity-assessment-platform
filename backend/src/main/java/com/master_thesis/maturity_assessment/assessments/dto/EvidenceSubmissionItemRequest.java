@@ -12,7 +12,8 @@ public class EvidenceSubmissionItemRequest {
     private String clientKey;
     private Long practiceId;
     private String requirementCode;
-    private java.time.LocalDate evidenceDate;
+    @com.fasterxml.jackson.annotation.JsonAlias("evidenceDate")
+    private java.time.LocalDate collectedAt;
     @JsonDeserialize(contentUsing = QuestionReferenceIdDeserializer.class)
     private List<Long> referencedQuestionIds;
     private EvidenceType type;

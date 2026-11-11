@@ -40,6 +40,8 @@ import {
 } from "./assessmentDashboard";
 import AssessmentSaveIndicator from "./AssessmentSaveIndicator";
 import useAssessmentAutosave from "./useAssessmentAutosave";
+import useFreshnessRefresh from "@/hooks/useFreshnessRefresh";
+import { evidenceToday } from "./assessmentEvidence";
 import {
   collectQuestionResponses,
   hydrateQuestionResponses,
@@ -125,6 +127,8 @@ export default function AssessmentFlow() {
   ] = useState<Set<string>>(new Set());
   const [routeContext, setRouteContext] =
     useState<AssessmentRouteContext | null>(null);
+  const [referenceDate, setReferenceDate] = useState(evidenceToday);
+  const [freshnessError, setFreshnessError] = useState<string | null>(null);
   const [formData, setFormData] = useState<AssessmentData>({});
   const [evidenceFiles, setEvidenceFiles] = useState<AssessmentEvidenceByField>(
     new Map()
@@ -426,6 +430,11 @@ export default function AssessmentFlow() {
       Boolean(maturityModel && routeContext?.draftId),
     draftId: routeContext?.draftId ?? null,
     maturityModelId: maturityModel?.id ?? null,
+    referenceDate,
+    onSaved: saved => setLoadedAssessment(current => current?.id === saved.id ? {
+      ...current, referenceDate: saved.referenceDate, referenceDateInferred: saved.referenceDateInferred,
+      historicalEvidenceValidity: saved.historicalEvidenceValidity, currentEvidenceFreshness: saved.currentEvidenceFreshness,
+    } : current),
     revision: changeRevision,
     evidenceRevision,
     formData,
@@ -438,6 +447,23 @@ export default function AssessmentFlow() {
       collectQuestionResponses(practiceSteps, currentFormData),
     setEvidenceFiles,
   });
+
+  const freshnessSnapshot = useRef({ id: loadedAssessment?.id, revision: changeRevision });
+  freshnessSnapshot.current = { id: loadedAssessment?.id, revision: changeRevision };
+  useFreshnessRefresh(async () => {
+    const snapshot = freshnessSnapshot.current;
+    if (!snapshot.id) return;
+    try {
+      const response = campaignId
+        ? (await apiClient.get<CampaignAssessmentSession>(`/api/v1/campaign-response/${campaignId}`)).data.assessment
+        : (await apiClient.get<AssessmentResponse>(`/api/v1/assessments/${snapshot.id}`)).data;
+      if (freshnessSnapshot.current.id !== snapshot.id || freshnessSnapshot.current.revision !== snapshot.revision) return;
+      setLoadedAssessment(current => current?.id === response.id ? { ...current,
+        historicalEvidenceValidity: response.historicalEvidenceValidity, currentEvidenceFreshness: response.currentEvidenceFreshness,
+      } : current);
+      setFreshnessError(null);
+    } catch { setFreshnessError("Could not refresh evidence freshness."); }
+  }, loadedAssessment?.currentEvidenceFreshness?.nextRefreshAt, Boolean(loadedAssessment) && !autosave.isDirty && !isSubmitting);
 
   useEffect(() => {
     const initialContext = readAssessmentRouteContext(
@@ -821,6 +847,7 @@ export default function AssessmentFlow() {
     model = visibleAssessmentModel(model);
     setMaturityModel(model);
     setLoadedAssessment(draft);
+    setReferenceDate(draft.referenceDate || evidenceToday());
     setRespondentUpdatedResponseKeys(
       new Set(
         Object.values(draft.questionEvaluations || {})
@@ -969,6 +996,7 @@ export default function AssessmentFlow() {
     try {
       const requestData = {
         maturityModelId: maturityModel.id,
+        referenceDate,
         questionResponses: collectQuestionResponses(practiceSteps, formData),
         respondentUpdatedResponseKeys: Array.from(
           respondentUpdatedResponseKeys
@@ -1233,6 +1261,9 @@ export default function AssessmentFlow() {
           }
           completed={completedAssessment}
           assessment={loadedAssessment}
+          referenceDate={referenceDate}
+          onReferenceDateChange={date => { setReferenceDate(date); setChangeRevision(current => current + 1); }}
+          freshnessError={freshnessError}
           evaluatorInsight={loadedAssessment?.evaluatorInsight}
           questionEvaluations={loadedAssessment?.questionEvaluations}
           respondentUpdatedResponseKeys={respondentUpdatedResponseKeys}
@@ -1450,6 +1481,8 @@ export default function AssessmentFlow() {
         activePracticeStep && (
           <div className="min-h-0 w-full flex-1 overflow-hidden px-4 pb-4 pt-4 sm:px-6 lg:px-6 lg:pb-5 lg:pt-5 xl:px-8">
             <AssessmentStep
+              currentEvidenceFreshness={loadedAssessment?.currentEvidenceFreshness}
+              historicalEvidenceValidity={loadedAssessment?.historicalEvidenceValidity}
               readOnly={!capabilities.canEditResponses}
               evaluationController={capabilities.canEvaluate ? evaluation : undefined}
               maturityLevels={maturityModel?.levels}

@@ -14,7 +14,7 @@ public class EvidenceDTO {
     private Long assessmentId;
     private Long practiceId;
     private String requirementCode;
-    private java.time.LocalDate evidenceDate;
+    private java.time.LocalDate collectedAt;
     @Builder.Default
     private List<Long> referencedQuestionIds = List.of();
     private String description;

@@ -72,6 +72,7 @@ DB_URL=jdbc:postgresql://localhost:5432/maturity-db
 DB_USERNAME=maturity_app
 DB_PASSWORD=choose-a-local-password
 SPRING_FLYWAY_ENABLED=false
+HIBERNATE_DDL_AUTO=validate
 JWT_SECRET=replace-with-a-long-random-secret
 CORS_ALLOWED_ORIGINS=http://localhost:3000
 ```
@@ -87,12 +88,25 @@ local; the repository ignores it and tracks only `.env.template`.
 
 ### Fresh database and Flyway
 
-Keep `SPRING_FLYWAY_ENABLED=false` for a newly created local database. Hibernate
-creates the current schema through `spring.jpa.hibernate.ddl-auto=update`.
+Normal startup validates the schema and never attempts automatic upgrades.
+For a newly created **empty** local database, keep `SPRING_FLYWAY_ENABLED=false`
+and bootstrap the schema with this explicit, one-time command:
+
+```bash
+HIBERNATE_DDL_AUTO=update ./mvnw spring-boot:run
+```
+
+Stop that first run after startup completes, then use the normal startup command
+below without the override. Do not persist `HIBERNATE_DDL_AUTO=update` in `.env`
+or use it to upgrade a populated database.
 The repository currently starts its Flyway history at `V2`; those migrations
 upgrade an existing legacy schema and are not a reproducible baseline for an
-empty database. Do not enable Flyway on a fresh local database unless a proper
-baseline migration is added or you are deliberately migrating a legacy copy.
+empty database. Do not enable Flyway on a freshly bootstrapped, untracked schema
+until a verified baseline is established. For an existing Flyway-managed database,
+set `SPRING_FLYWAY_ENABLED=true` so migrations run before Hibernate validation.
+If automatic Hibernate updates have already created pending migration objects,
+reconcile that drift before enabling migrations; do not skip migrations or reset
+their checksums to hide it.
 
 Start the backend:
 
@@ -270,6 +284,9 @@ yarn typecheck
 - **Flyway fails on a fresh database:** restore
   `SPRING_FLYWAY_ENABLED=false`. The current migrations are upgrades, not a fresh
   schema baseline.
+- **Schema validation fails after a code update:** apply the pending migrations
+  for the database's verified baseline. Keep Hibernate validation enabled; switching
+  to `update` can create only part of a migration and lose column-rename semantics.
 - **Mail is not sent:** confirm `APP_MAIL_ENABLED=true`, use an app password,
   restart the backend, and inspect its log. Some networks block SMTP ports.
 
@@ -341,6 +358,12 @@ Compose overrides the backend database connection and CORS values with the root
 so the local `DB_*` entries in `backend/.env` are not used for this deployment.
 PostgreSQL creates the database and user on its first start with an empty data
 volume; changing the root credentials later does not update an existing database.
+
+Compose also defaults Hibernate to schema validation. Only for a brand-new empty
+database, the initial bootstrap can use
+`HIBERNATE_DDL_AUTO=update docker compose up -d --build`. After that first startup,
+run `docker compose up -d backend` without the override to return to validation.
+Populated databases require their migration/recovery procedure before upgrading.
 
 The Docker frontend receives its `NEXT_PUBLIC_*` settings from build arguments
 in `docker-compose.yml`; `frontend/.env.local` is not required for this workflow.

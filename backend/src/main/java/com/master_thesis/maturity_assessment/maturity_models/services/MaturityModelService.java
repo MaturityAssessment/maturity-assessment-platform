@@ -1134,7 +1134,8 @@ public class MaturityModelService {
                                 || !requirement.getCode().matches("[A-Za-z][A-Za-z0-9_-]{0,63}")
                                 || !codes.add(requirement.getCode().toLowerCase(Locale.ROOT))
                                 || requirement.getName() == null || requirement.getName().isBlank()
-                                || requirement.getRequired() == null || requirement.getFormat() == null) {
+                                || requirement.getRequired() == null || requirement.getFormat() == null || requirement.getFrequency() == null
+                                || (requirement.getMaxAgeDays() != null && requirement.getMaxAgeDays() < 0)) {
                                 throw new IllegalOperationException("INVALID_EVIDENCE_REQUIREMENT",
                                         "Evidence requirements need unique codes, a name, a required flag and an accepted format.");
                         }

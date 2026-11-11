@@ -71,7 +71,7 @@ class MaturityModelExcelPersistenceIntegrationTest {
         var practice = module.getPractices().getFirst();
         practice.setRequiresEvidence(true);
         practice.setEvidenceRequirements(List.of(new EvidenceRequirement("report", "Monthly incident report",
-                "Use reporting-period end", true, EvidenceRequirement.Format.FILE_OR_URL)));
+                "Use reporting-period end", true, EvidenceRequirement.Format.FILE_OR_URL, EvidenceRequirement.Frequency.monthly, 45)));
         practice.setWeight(4.5);
         practice.setGatingRules(List.of(gate(practice.getQuestions().getFirst().getCode())));
         practice.getQuestions().getFirst().setType("likert");

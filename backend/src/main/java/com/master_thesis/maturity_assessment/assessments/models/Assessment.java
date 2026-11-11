@@ -16,6 +16,13 @@ public class Assessment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "reference_date", nullable = false)
+    private java.time.LocalDate referenceDate;
+
+    @Column(name = "reference_date_inferred", nullable = false)
+    private boolean referenceDateInferred;
+
+
     @Column(nullable = false)
     private Double overallAverage;
 
@@ -65,6 +72,7 @@ public class Assessment {
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
+        if (referenceDate == null) referenceDate = java.time.LocalDate.now(java.time.ZoneOffset.UTC);
         createdAt = now;
         updatedAt = now;
         syncCompletionFlag();

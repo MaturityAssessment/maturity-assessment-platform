@@ -162,8 +162,11 @@ bootstrap instructions.
 Copy `.env.template` to the ignored `.env` and configure the database connection
 and `JWT_SECRET`. `application.properties` maps those environment variables to
 Spring properties and contains only non-secret application defaults. Keep
-`SPRING_FLYWAY_ENABLED=false` for a brand-new local database; see the root setup
-guide for why the current migrations are legacy upgrades rather than a baseline.
+`SPRING_FLYWAY_ENABLED=false` only for a brand-new local database. Normal startup
+uses `HIBERNATE_DDL_AUTO=validate`; existing Flyway-managed databases should set
+`SPRING_FLYWAY_ENABLED=true` so pending migrations run before validation. See the
+root setup guide for the explicit empty-database bootstrap and the legacy baseline
+limitation. Do not use Hibernate `update` to upgrade a populated database.
 
 ### Gmail campaign invitations and password resets
 

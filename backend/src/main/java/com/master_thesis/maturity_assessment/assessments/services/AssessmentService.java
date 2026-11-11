@@ -83,6 +83,7 @@ public class AssessmentService {
     private final UserRepository userRepository;
     private final MaturityScoringService maturityScoringService;
     private final ObjectMapper objectMapper;
+    private final EvidenceLifecycleService evidenceLifecycleService;
 
     // Inner class to store question metadata
     private static class QuestionInfo {
@@ -1298,6 +1299,16 @@ public class AssessmentService {
     ) {
         assessment.setUser(campaignParticipant == null ? user : campaignParticipant.getUser());
         assessment.setMaturityModelId(request.getMaturityModelId());
+        if (request.getReferenceDate() != null) {
+            if (request.getReferenceDate().isAfter(java.time.LocalDate.now(java.time.ZoneOffset.UTC))) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Assessment reference date cannot be in the future.");
+            }
+            boolean changed = !Objects.equals(assessment.getReferenceDate(), request.getReferenceDate());
+            assessment.setReferenceDate(request.getReferenceDate());
+            if (changed) assessment.setReferenceDateInferred(false);
+        } else if (assessment.getReferenceDate() == null) {
+            assessment.setReferenceDate(java.time.LocalDate.now(java.time.ZoneOffset.UTC));
+        }
         if (campaignParticipant != null) {
             assessment.setCampaign(campaignParticipant.getCampaign());
             assessment.setCampaignParticipant(campaignParticipant);
@@ -2457,6 +2468,8 @@ public class AssessmentService {
             return;
         }
 
+        refreshEvidenceLifecycle(responses);
+
         Map<Long, Object[]> metadataByModelId = maturityModelRepository
                 .findAssessmentMetadataByIdIn(ids)
                 .stream()
@@ -2469,6 +2482,25 @@ public class AssessmentService {
                 r.setMaturityModelVersion(metadata.length > 2 ? (Integer) metadata[2] : null);
             }
         }
+    }
+
+    private void refreshEvidenceLifecycle(List<AssessmentResponse> responses) {
+        Map<AssessmentResponse, Map<String, Object>> values = new IdentityHashMap<>();
+        for (var response : responses) {
+            ResponseValues answers = new ResponseValues();
+            if (response.getQuestionEvaluations() != null) response.getQuestionEvaluations().forEach((key, item) -> {
+                answers.put(key, item.getResponse());
+                answers.answers.put(item.getQuestionId(), new QuestionDependencies.Answer(item.getResponse(), item.getChoiceIndex()));
+            });
+            values.put(response, answers);
+        }
+        evidenceLifecycleService.enrich(responses, (question, response) -> isQuestionVisible(question, values.get(response)));
+    }
+
+    /** Reevaluate historical validity after an evidence/reference-date edit. Numeric
+     * scores are controlled by answer scoring and the evaluator, never evidence age. */
+    public void refreshEvidenceValidity(AssessmentResponse response) {
+        refreshEvidenceLifecycle(List.of(response));
     }
 
     private void enrichModelMetadata(AssessmentResponse response) {
@@ -2493,6 +2525,8 @@ public class AssessmentService {
         response.setStatus(status.name());
         response.setIsCompleted(status == AssessmentStatus.COMPLETED);
         response.setMaturityModelId(assessment.getMaturityModelId());
+        response.setReferenceDate(assessment.getReferenceDate());
+        response.setReferenceDateInferred(assessment.isReferenceDateInferred());
         response.setEvaluatorInsight(assessment.getEvaluatorInsight());
 
         response.setQuestionEvaluations(readQuestionEvaluations(assessment.getId()));
@@ -2601,7 +2635,7 @@ public class AssessmentService {
     record PrerequisiteResponse(Long questionId, JsonNode response,
                                 Integer choiceIndex, String justification) {}
     record PrerequisiteEvidence(Long practiceId, EvidenceType type, String description, String url,
-                                String filePath, Set<Long> questionIds, String requirementCode, java.time.LocalDate evidenceDate) {}
+                                String filePath, Set<Long> questionIds, String requirementCode, java.time.LocalDate collectedAt) {}
     record PrerequisiteSnapshot(Map<String, PrerequisiteResponse> responses,
                                 Map<Long, PrerequisiteEvidence> evidence) {}
 
@@ -2672,7 +2706,7 @@ public class AssessmentService {
         return new PrerequisiteEvidence(item.getPractice() == null ? null : item.getPractice().getId(),
                 item.getEvidenceType(), item.getDescription(), item.getExternalUrl(), item.getFilePath(),
                 Optional.ofNullable(item.getReferencedQuestions()).orElse(Set.of()).stream()
-                        .map(Question::getId).collect(Collectors.toSet()), item.getRequirementCode(), item.getEvidenceDate());
+                        .map(Question::getId).collect(Collectors.toSet()), item.getRequirementCode(), item.getCollectedAt());
     }
 
     private boolean samePrerequisiteResponse(PrerequisiteResponse previous, PrerequisiteResponse next, Question question) {

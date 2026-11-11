@@ -423,3 +423,32 @@ Suggested review entries have `questionId`, `validationStatus`, `manualScore`,
 contain `evidenceId`, `practiceId`, `evidenceType`, `fileName`, `urlHost`, `urlPath`,
 `summary`, `extractedCharacters`, `truncated`, and `warning`. Inspect suggestions
 and submit selected decisions through `/evaluation/reviews` before finishing.
+
+## Evidence lifecycle and reference date
+
+Assessment requests accept `referenceDate` as an ISO date on or before today (UTC).
+It defaults to the creation date for new assessments and stays fixed when omitted
+on later saves. Respondents can edit it while the assessment permits response edits.
+Responses include `referenceDate` and `referenceDateInferred`; the latter identifies
+legacy dates inferred from creation rather than explicitly recorded. Echoing an
+unchanged inferred date does not silently confirm that migration assumption.
+
+Responses also contain two derived summaries:
+
+- `historicalEvidenceValidity`: evaluated against the assessment's `referenceDate`.
+- `currentEvidenceFreshness`: evaluated against today's UTC date.
+
+Each summary contains `evaluatedOn`, `calculatedAt`, `nextRefreshAt` (nullable), counts
+of required, outdated, unknown-date and missing indicators, and `indicators` with
+practice/requirement names, satisfaction, effective maximum age, validity date and
+individual record statuses. `OUTDATED` never means unsatisfied. Optional indicators
+are included in details but do not contribute to required-indicator warning counts.
+Hidden modules and practices without active questions are excluded.
+
+Current freshness is recalculated on reads without persisting flags or writing to
+assessments. List/detail responses use `Cache-Control: no-store`. The dashboard
+refreshes silently on focus/visibility and at the next transition or UTC midnight;
+it stops timers while hidden and displays refresh errors without discarding results.
+Historical scores and completion stay unchanged as time passes. Editing evidence
+or the reference date reevaluates validity, without automatically changing scores;
+the evaluator remains responsible for evidence-based manual score adjustments.

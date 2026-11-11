@@ -37,6 +37,7 @@ public class AssessmentEvidenceWorkflowService {
         AssessmentResponse response = assessmentService.saveDraft(request, user);
         response.setEvidence(evidenceService.getEvidenceByAssessment(response.getId(), user));
         assessmentService.validateModulePrerequisiteAccess(request, response, prerequisiteSnapshot, false);
+        assessmentService.refreshEvidenceValidity(response);
         return response;
     }
 
@@ -62,6 +63,7 @@ public class AssessmentEvidenceWorkflowService {
         );
         response.setEvidence(synchronizedEvidence);
         assessmentService.validateModulePrerequisiteAccess(request, response, prerequisiteSnapshot, false);
+        assessmentService.refreshEvidenceValidity(response);
         return response;
     }
 
@@ -87,6 +89,7 @@ public class AssessmentEvidenceWorkflowService {
         );
         response.setEvidence(synchronizedEvidence);
         assessmentService.validateModulePrerequisiteAccess(request, response, prerequisiteSnapshot, false);
+        assessmentService.refreshEvidenceValidity(response);
         return response;
     }
 
@@ -95,6 +98,7 @@ public class AssessmentEvidenceWorkflowService {
         AssessmentResponse response = assessmentService.resetDraft(draftId, user);
         evidenceService.clearEvidenceForDraft(draftId, user);
         response.setEvidence(List.of());
+        assessmentService.refreshEvidenceValidity(response);
         return response;
     }
 
@@ -121,6 +125,7 @@ public class AssessmentEvidenceWorkflowService {
         validateRequiredEvidence(request, synchronizedEvidence);
         response.setEvidence(synchronizedEvidence);
         assessmentService.validateModulePrerequisiteAccess(request, response, prerequisiteSnapshot, true);
+        assessmentService.refreshEvidenceValidity(response);
         return response;
     }
 
@@ -147,6 +152,7 @@ public class AssessmentEvidenceWorkflowService {
         validateRequiredEvidence(request, synchronizedEvidence);
         response.setEvidence(synchronizedEvidence);
         assessmentService.validateModulePrerequisiteAccess(request, response, prerequisiteSnapshot, true);
+        assessmentService.refreshEvidenceValidity(response);
         return response;
     }
 
@@ -171,6 +177,7 @@ public class AssessmentEvidenceWorkflowService {
         );
         response.setEvidence(synchronizedEvidence);
         assessmentService.validateModulePrerequisiteAccess(request, response, prerequisiteSnapshot, false);
+        assessmentService.refreshEvidenceValidity(response);
         return response;
     }
 
@@ -199,6 +206,7 @@ public class AssessmentEvidenceWorkflowService {
         validateRequiredEvidence(request, synchronizedEvidence);
         response.setEvidence(synchronizedEvidence);
         assessmentService.validateModulePrerequisiteAccess(request, response, prerequisiteSnapshot, true);
+        assessmentService.refreshEvidenceValidity(response);
         return response;
     }
 

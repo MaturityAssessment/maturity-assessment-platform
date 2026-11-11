@@ -2,12 +2,13 @@
 
 ## Overview
 
-The Maturity Assessment Platform uses **PostgreSQL** as its database management system. Versioned changes are managed by **Flyway**; Hibernate schema updates remain enabled for development compatibility.
+The Maturity Assessment Platform uses **PostgreSQL** as its database management system. Versioned changes and data backfills are managed by **Flyway**. Hibernate validates the schema at normal startup.
 
 **Schema Management Strategy:**
 
 - Versioned migrations: `backend/src/main/resources/db/migration`
-- Development compatibility: `spring.jpa.hibernate.ddl-auto=update`
+- Normal startup: `spring.jpa.hibernate.ddl-auto=validate`
+- Empty local database bootstrap only: explicitly set `HIBERNATE_DDL_AUTO=update` for the first run, then remove that override (see `GETTING_STARTED.md`).
 
 ## Database Information
 

@@ -80,6 +80,8 @@ class MaturityModelServiceTest {
         var dto = updateDto(domain.getId(), null);
         var practice = dto.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
         var report = new EvidenceRequirement("report", " Monthly incident report ", " Use period end ", true, EvidenceRequirement.Format.FILE_OR_URL);
+        report.setFrequency(EvidenceRequirement.Frequency.monthly);
+        report.setMaxAgeDays(45);
         practice.setEvidenceRequirements(new ArrayList<>(List.of(report)));
         when(domainRepository.findById(domain.getId())).thenReturn(Optional.of(domain));
         List<MaturityModel> saved = new ArrayList<>();
@@ -94,6 +96,8 @@ class MaturityModelServiceTest {
         var editor = service.prepareEditorDocument(original);
         var requirement = editor.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getEvidenceRequirements().getFirst();
         assertEquals("Monthly incident report", requirement.getName());
+        assertEquals(EvidenceRequirement.Frequency.monthly, requirement.getFrequency());
+        assertEquals(45, requirement.effectiveMaxAgeDays());
         requirement.setName("Revised report");
         var version = service.createVersionFromEditor(source.getId(), editor);
         assertEquals("Revised report", version.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getEvidenceRequirements().getFirst().getName());

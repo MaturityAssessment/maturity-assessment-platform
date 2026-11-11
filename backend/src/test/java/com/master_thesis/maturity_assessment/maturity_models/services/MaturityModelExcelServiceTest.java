@@ -37,7 +37,8 @@ class MaturityModelExcelServiceTest {
         var model = buildSampleModel();
         var requirements = List.of(new com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement(
                 "incident-report", "Monthly incident report", "Use the reporting-period end", true,
-                com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement.Format.FILE_OR_URL));
+                com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement.Format.FILE_OR_URL,
+                com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement.Frequency.monthly, 45));
         model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().setEvidenceRequirements(requirements);
         var parsed = excelService.parseExcelWorkbook(new ByteArrayInputStream(excelService.exportMaturityModelToXlsx(model)));
         assertTrue(parsed.isSuccess(), parsed.getErrorDetails());

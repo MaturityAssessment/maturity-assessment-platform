@@ -11,7 +11,7 @@ const practice: Practice = { id: 42, name: "Incident management", questions: [
   { code: "exercise", name: "Exercise report", instructions: "A recent incident response exercise.", required: false, format: "FILE" },
 ] };
 const sample: AssessmentEvidenceInputItem[] = [{ id: "policy", evidenceId: 1, practiceId: 42,
-  requirementCode: "policy", evidenceDate: "2020-08-15", type: "link", description: "Approved incident response policy",
+  requirementCode: "policy", collectedAt: "2020-08-15", type: "link", description: "Approved incident response policy",
   file: null, url: "https://example.com/policy", referencedQuestionIds: [100] }];
 
 function Interactive(args: React.ComponentProps<typeof PracticeEvidence>) {
@@ -25,4 +25,4 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 export const NamedRequirements: Story = {};
 export const ReadOnly: Story = { args: { readOnly: true } };
-export const UnknownDate: Story = { args: { items: [{ ...sample[0], evidenceDate: null }] } };
+export const UnknownDate: Story = { args: { items: [{ ...sample[0], collectedAt: null }] } };

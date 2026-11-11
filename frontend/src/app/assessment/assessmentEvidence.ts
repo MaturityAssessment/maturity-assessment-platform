@@ -81,11 +81,11 @@ export function validateEvidenceForSave(evidence: AssessmentEvidenceByField) {
           ? "Evidence links must use a complete https:// URL."
           : "Select a file for every file evidence item.";
       }
-      if (item.evidenceDate && !isValidEvidenceDate(item.evidenceDate)) {
+      if (item.collectedAt && !isValidCollectedAt(item.collectedAt)) {
         return "Evidence dates must be valid dates on or before today.";
       }
-      if (item.requirementCode && !item.evidenceDate && (!item.evidenceId || item.file)) {
-        return "Enter the document date or reporting-period end for required evidence fields.";
+      if (!item.collectedAt && (!item.evidenceId || item.file)) {
+        return "Enter the document date or reporting-period end for every new evidence record.";
       }
       if (item.file) {
         if (!ACCEPTED_EVIDENCE_TYPES.includes(item.file.type)) {
@@ -119,7 +119,7 @@ export function buildEvidencePayload(evidence: AssessmentEvidenceByField) {
         practiceId: item.practiceId,
         referencedQuestionIds: [...(item.referencedQuestionIds || [])],
         requirementCode: item.requirementCode || null,
-        evidenceDate: item.evidenceDate || null,
+        collectedAt: item.collectedAt || null,
         type: item.type === "file" ? "FILE" : item.type === "text" ? "TEXT" : "URL",
         description: item.description.trim(),
         ...(item.type === "link" ? { url: item.url.trim() } : {}),
@@ -170,7 +170,7 @@ export function evidenceToInputItem(evidence: Evidence): AssessmentEvidenceInput
     practiceId: evidence.practiceId,
     referencedQuestionIds: [...(evidence.referencedQuestionIds || [])],
     requirementCode: evidence.requirementCode,
-    evidenceDate: evidence.evidenceDate,
+    collectedAt: evidence.collectedAt,
     type: evidence.evidenceType === "FILE" ? "file" : evidence.evidenceType === "TEXT" ? "text" : "link",
     description: evidence.description || "",
     file: null,
@@ -199,7 +199,7 @@ export function evidenceToday() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function isValidEvidenceDate(value: string) {
+export function isValidCollectedAt(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value > evidenceToday()) return false;
   const parsed = new Date(`${value}T00:00:00Z`);
   return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
@@ -214,7 +214,7 @@ export function missingEvidenceRequirements(practice: Practice, items: Assessmen
   if (practice.evidenceRequirements?.length) {
     return practice.evidenceRequirements.filter(requirement => requirement.required && !items.some(item =>
       item.requirementCode === requirement.code && isValidEvidenceItem(item) && acceptsEvidenceType(requirement, item.type)
-      && (item.evidenceDate ? isValidEvidenceDate(item.evidenceDate) : Boolean(item.evidenceId && !item.file)))).length;
+      && (item.collectedAt ? isValidCollectedAt(item.collectedAt) : Boolean(item.evidenceId && !item.file)))).length;
   }
   return practice.requiresEvidence && !hasValidEvidenceItems(items) ? 1 : 0;
 }

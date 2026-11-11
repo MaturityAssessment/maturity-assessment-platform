@@ -9,6 +9,7 @@
 # Local application data
 uploads/
 backend/uploads/
+/backend/backups/
 
 # OS and editor files
 .DS_Store

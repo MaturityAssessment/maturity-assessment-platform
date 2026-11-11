@@ -1,5 +1,6 @@
 "use client";
 
+import { freshnessLabel } from "@/app/assessment/evidenceLifecycle";
 import { useState } from "react";
 import { Download, ExternalLink } from "lucide-react";
 import type { AssessmentEvidenceInputItem } from "@/api/types";
@@ -29,14 +30,18 @@ export async function downloadEvidenceItem(item: AssessmentEvidenceInputItem) {
   URL.revokeObjectURL(url);
 }
 
-export default function EvidenceItemDetails({ item, questions, inactiveQuestionIds, onDownload, evidenceRequirements = [] }: EvidenceReferenceProps & {
+export default function EvidenceItemDetails({ item, questions, inactiveQuestionIds, onDownload, evidenceRequirements = [], currentEvidenceFreshness, historicalEvidenceValidity }: EvidenceReferenceProps & {
   item: AssessmentEvidenceInputItem; onDownload?: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const current = currentEvidenceFreshness?.indicators.flatMap(item => item.records).find(record => record.evidenceId === item.evidenceId && record.collectedAt === (item.collectedAt || null));
+  const historical = historicalEvidenceValidity?.indicators.flatMap(item => item.records).find(record => record.evidenceId === item.evidenceId && record.collectedAt === (item.collectedAt || null));
   return <div className="space-y-3">
     <p className="break-words text-sm font-medium text-slate-900">{evidenceItemLabel(item)}</p>
     {item.description && <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">{item.description}</p>}
-    <p className="text-xs text-slate-500">Evidence date: {item.evidenceDate || "Unknown"}</p>
+    <p className="text-xs text-slate-500">Evidence date: {item.collectedAt || "Unknown"}</p>
+    {current && <p className={`text-xs ${current.status === "OUTDATED" ? "text-amber-800" : "text-slate-500"}`}>Today: {freshnessLabel[current.status]}{current.validThrough ? ` · Valid through ${current.validThrough}` : ""}</p>}
+    {historical && <p className="text-xs text-slate-500">At reference date ({historicalEvidenceValidity?.evaluatedOn}): {freshnessLabel[historical.status]}</p>}
     {item.requirementCode && <p className="text-xs text-indigo-700">Requirement: {evidenceRequirements.find(requirement => requirement.code === item.requirementCode)?.name || item.requirementCode}</p>}
     <EvidenceQuestionReferenceChips questions={questions} inactiveQuestionIds={inactiveQuestionIds} referencedQuestionIds={item.referencedQuestionIds} />
     {item.type === "file" && <Button type="button" variant="outline" size="sm" onClick={async () => {

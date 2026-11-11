@@ -99,7 +99,8 @@ class AssessmentServiceLifecycleTest {
                 questionEvaluationRepository,
                 userRepository,
                 new MaturityScoringService(),
-                new ObjectMapper()
+                new ObjectMapper(),
+                org.mockito.Mockito.mock(EvidenceLifecycleService.class)
         );
 
         user = new User();
@@ -121,6 +122,26 @@ class AssessmentServiceLifecycleTest {
                 .thenReturn(List.of());
         lenient().when(questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(any()))
                 .thenReturn(List.of());
+    }
+
+    @Test
+    void evidenceValidityRetainsOptionIdentityWhenTestingQuestionActivation() {
+        var parent = new Question(); parent.setId(1L); parent.setType("multiple_choice");
+        parent.setChoiceOptions("[{\"id\":\"A\",\"label\":\"First\",\"score\":1},{\"id\":\"B\",\"label\":\"Second\",\"score\":1}]");
+        var child = new Question(); child.setId(2L); child.setDependsOnQuestion(parent);
+        var condition = new com.master_thesis.maturity_assessment.maturity_models.dto.DependencyCondition();
+        condition.setType("multiple_choice"); condition.setOptionIds(List.of("B")); child.setDependencyCondition(condition);
+        var answer = new com.master_thesis.maturity_assessment.assessments.dto.QuestionEvaluationResponse();
+        answer.setQuestionId(1L); answer.setResponse(1); answer.setChoiceIndex(1);
+        var response = new AssessmentResponse(); response.setQuestionEvaluations(Map.of("D_M_1_1", answer));
+        var lifecycle = (EvidenceLifecycleService) org.springframework.test.util.ReflectionTestUtils.getField(assessmentService, "evidenceLifecycleService");
+        org.mockito.Mockito.doAnswer(invocation -> {
+            java.util.function.BiPredicate<Question, AssessmentResponse> active = invocation.getArgument(1);
+            assertTrue(active.test(child, response));
+            return null;
+        }).when(lifecycle).enrich(any(), any());
+        assessmentService.refreshEvidenceValidity(response);
+        verify(assessmentRepository, org.mockito.Mockito.never()).save(any());
     }
 
     @Test

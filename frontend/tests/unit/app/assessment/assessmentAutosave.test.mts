@@ -234,11 +234,11 @@ test("autosave preserves respondent note edits made while saving", () => {
 });
 
 test("autosave preserves evidence date and requirement changes made during a save", () => {
-  const original = fileItem({ requirementCode: "report", evidenceDate: "2020-10-31" });
+  const original = fileItem({ requirementCode: "report", collectedAt: "2020-10-31" });
   const sent = new Map([["field", [original]]]);
-  const current = new Map([["field", [{ ...original, requirementCode: "policy", evidenceDate: "2020-08-15" }]]]);
-  const reconciled = reconcileSavedEvidence(sent, current, [persisted({ requirementCode: "report", evidenceDate: "2020-10-31" })]);
+  const current = new Map([["field", [{ ...original, requirementCode: "policy", collectedAt: "2020-08-15" }]]]);
+  const reconciled = reconcileSavedEvidence(sent, current, [persisted({ requirementCode: "report", collectedAt: "2020-10-31" })]);
   assert.equal(reconciled.get("field")![0].requirementCode, "policy");
-  assert.equal(reconciled.get("field")![0].evidenceDate, "2020-08-15");
+  assert.equal(reconciled.get("field")![0].collectedAt, "2020-08-15");
   assert.equal(reconciled.get("field")![0].file, null);
 });

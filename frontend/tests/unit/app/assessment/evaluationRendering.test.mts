@@ -317,7 +317,7 @@ test("named evidence requirements remain compact and visible in read-only review
     { code: "report", name: "Monthly incident report", instructions: "Use reporting-period end", required: true, format: "FILE_OR_URL" },
     { code: "policy", name: "Policy", instructions: "Use approval date", required: true, format: "FILE_OR_URL" },
   ] };
-  const items = [{ id: "policy", evidenceId: 1, practiceId: 10, requirementCode: "policy", evidenceDate: "2020-08-15",
+  const items = [{ id: "policy", evidenceId: 1, practiceId: 10, requirementCode: "policy", collectedAt: "2020-08-15",
     type: "link", description: "Approved policy", file: null, url: "https://example.com/policy" }];
   const html = renderToStaticMarkup(createElement(Evidence, { practice, items, readOnly: true, onItemsChange: noOp }));
   assert.match(html, /1 of 2 required provided/);

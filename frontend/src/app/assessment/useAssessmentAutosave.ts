@@ -30,6 +30,7 @@ type LatestAssessmentState = {
   enabled: boolean;
   draftId: number | null;
   maturityModelId: number | null;
+  referenceDate?: string;
   revision: number;
   evidenceRevision: number;
   formData: AssessmentData;
@@ -46,6 +47,7 @@ type AssessmentAutosaveOptions = LatestAssessmentState & {
     SetStateAction<AssessmentEvidenceByField>
   >;
   debounceMs?: number;
+  onSaved?: (assessment: AssessmentResponse) => void;
 };
 
 export type AssessmentAutosaveController = {
@@ -61,6 +63,7 @@ export default function useAssessmentAutosave({
   enabled,
   draftId,
   maturityModelId,
+  referenceDate,
   revision,
   evidenceRevision,
   formData,
@@ -70,6 +73,7 @@ export default function useAssessmentAutosave({
   buildResponses,
   setEvidenceFiles,
   debounceMs = 1_000,
+  onSaved,
 }: AssessmentAutosaveOptions): AssessmentAutosaveController {
   const [status, setStatusState] =
     useState<AssessmentSaveStatus>("saved");
@@ -79,6 +83,7 @@ export default function useAssessmentAutosave({
     enabled,
     draftId,
     maturityModelId,
+    referenceDate,
     revision,
     evidenceRevision,
     formData,
@@ -88,6 +93,8 @@ export default function useAssessmentAutosave({
     buildResponses,
   });
   const setEvidenceFilesRef = useRef(setEvidenceFiles);
+  const onSavedRef = useRef(onSaved);
+  onSavedRef.current = onSaved;
   const savedRevisionRef = useRef(0);
   const statusRef = useRef<AssessmentSaveStatus>("saved");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -98,6 +105,7 @@ export default function useAssessmentAutosave({
     enabled,
     draftId,
     maturityModelId,
+    referenceDate,
     revision,
     evidenceRevision,
     formData,
@@ -140,6 +148,7 @@ export default function useAssessmentAutosave({
       evidenceRevision: latest.evidenceRevision,
       draftId: latest.draftId,
       maturityModelId: latest.maturityModelId,
+      referenceDate: latest.referenceDate,
       questionResponses: latest.buildResponses({ ...latest.formData }),
       evidenceFiles: cloneEvidenceSnapshot(latest.evidenceFiles),
       campaignId: latest.campaignId,
@@ -158,6 +167,7 @@ export default function useAssessmentAutosave({
       "assessment",
       JSON.stringify({
         maturityModelId: snapshot.maturityModelId,
+        referenceDate: snapshot.referenceDate,
         questionResponses: snapshot.questionResponses,
         respondentUpdatedResponseKeys:
           snapshot.respondentUpdatedResponseKeys,
@@ -191,6 +201,7 @@ export default function useAssessmentAutosave({
     };
     if (mountedRef.current) {
       setEvidenceFilesRef.current(reconciledEvidence);
+      onSavedRef.current?.(response.data);
     }
 
     return snapshot.revision;

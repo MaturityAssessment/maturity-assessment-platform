@@ -124,7 +124,7 @@ class EvidenceServiceTest {
                 .when(assessmentService).requireModuleUnlockedForEvidence(assessment, practice);
         assertThrows(com.master_thesis.maturity_assessment.config.IllegalOperationException.class,
                 () -> evidenceService.createUrlEvidence(ASSESSMENT_ID, PRACTICE_ID, owner,
-                        "Evidence", "https://example.com/evidence"));
+                        "Evidence", "https://example.com/evidence", java.time.LocalDate.of(2020, 1, 1)));
         org.mockito.Mockito.verify(evidenceRepository, org.mockito.Mockito.never()).saveAndFlush(any());
     }
 
@@ -302,6 +302,7 @@ class EvidenceServiceTest {
         EvidenceSubmissionItemRequest item = new EvidenceSubmissionItemRequest();
         item.setPracticeId(PRACTICE_ID);
         item.setType(EvidenceType.FILE);
+        item.setCollectedAt(java.time.LocalDate.of(2020, 10, 31));
         item.setItemKey("new-file");
 
         evidenceService.synchronizeEvidence(
@@ -468,6 +469,7 @@ class EvidenceServiceTest {
         EvidenceSubmissionItemRequest upload = new EvidenceSubmissionItemRequest();
         upload.setPracticeId(PRACTICE_ID);
         upload.setType(EvidenceType.FILE);
+        upload.setCollectedAt(java.time.LocalDate.of(2020, 10, 31));
         upload.setItemKey("upload");
         EvidenceSubmissionItemRequest bad = urlItem(null, "", "https://example.com");
         bad.setReferencedQuestionIds(List.of(999L));
@@ -527,10 +529,10 @@ class EvidenceServiceTest {
         when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of());
         var item = urlItem(null, "Monthly report", "https://example.com/report");
         item.setRequirementCode("report");
-        item.setEvidenceDate(java.time.LocalDate.of(2020, 10, 31));
+        item.setCollectedAt(java.time.LocalDate.of(2020, 10, 31));
         var result = synchronize(item).getFirst();
         assertEquals("report", result.getRequirementCode());
-        assertEquals(java.time.LocalDate.of(2020, 10, 31), result.getEvidenceDate());
+        assertEquals(java.time.LocalDate.of(2020, 10, 31), result.getCollectedAt());
     }
 
     @Test
@@ -539,10 +541,11 @@ class EvidenceServiceTest {
         when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of());
         var item = urlItem(null, "Report", "https://example.com/report");
         item.setRequirementCode("report");
+        item.setCollectedAt(null);
         assertThrows(ResponseStatusException.class, () -> synchronize(item));
-        item.setEvidenceDate(java.time.LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1));
+        item.setCollectedAt(java.time.LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1));
         assertThrows(ResponseStatusException.class, () -> synchronize(item));
-        item.setEvidenceDate(java.time.LocalDate.of(2020, 10, 31));
+        item.setCollectedAt(java.time.LocalDate.of(2020, 10, 31));
         item.setRequirementCode("other-practice-report");
         assertThrows(ResponseStatusException.class, () -> synchronize(item));
         item.setRequirementCode("report"); item.setType(EvidenceType.TEXT);
@@ -556,13 +559,13 @@ class EvidenceServiceTest {
         var existing = urlEvidence(1L, "https://example.com/old");
         existing.setRequirementCode("report");
         when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of(existing));
-        var item = urlItem(1L, "", "https://example.com/old"); item.setRequirementCode("report");
-        assertEquals(null, synchronize(item).getFirst().getEvidenceDate());
+        var item = urlItem(1L, "", "https://example.com/old"); item.setRequirementCode("report"); item.setCollectedAt(null);
+        assertEquals(null, synchronize(item).getFirst().getCollectedAt());
         item.setUrl("https://example.com/new");
         assertThrows(ResponseStatusException.class, () -> synchronize(item));
-        item.setEvidenceDate(java.time.LocalDate.of(2020, 11, 30));
-        assertEquals(item.getEvidenceDate(), synchronize(item).getFirst().getEvidenceDate());
-        item.setEvidenceDate(null);
+        item.setCollectedAt(java.time.LocalDate.of(2020, 11, 30));
+        assertEquals(item.getCollectedAt(), synchronize(item).getFirst().getCollectedAt());
+        item.setCollectedAt(null);
         assertThrows(ResponseStatusException.class, () -> synchronize(item));
     }
 
@@ -573,7 +576,7 @@ class EvidenceServiceTest {
         var items = new java.util.ArrayList<EvidenceSubmissionItemRequest>();
         for (int i = 0; i < 10; i++) {
             var item = urlItem(null, "", "https://example.com/" + i);
-            if (i < 5) { item.setRequirementCode("report"); item.setEvidenceDate(java.time.LocalDate.of(2020, 10, 31)); }
+            if (i < 5) { item.setRequirementCode("report"); item.setCollectedAt(java.time.LocalDate.of(2020, 10, 31)); }
             items.add(item);
         }
         assertEquals(10, evidenceService.synchronizeEvidence(ASSESSMENT_ID, MODEL_ID, owner, items, List.of(), List.of(), true).size());
@@ -585,12 +588,12 @@ class EvidenceServiceTest {
         var participant = new CampaignParticipant(); participant.setId(77L); participant.setUser(owner);
         assessment.setCampaignParticipant(participant);
         when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of());
-        var item = urlItem(null, "", "https://example.com/report"); item.setRequirementCode("report");
+        var item = urlItem(null, "", "https://example.com/report"); item.setRequirementCode("report"); item.setCollectedAt(null);
         assertThrows(ResponseStatusException.class, () -> evidenceService.synchronizeCampaignEvidence(
                 ASSESSMENT_ID, MODEL_ID, participant, List.of(item), List.of(), List.of(), true));
-        item.setEvidenceDate(java.time.LocalDate.of(2020, 10, 31));
-        assertEquals(item.getEvidenceDate(), evidenceService.synchronizeCampaignEvidence(
-                ASSESSMENT_ID, MODEL_ID, participant, List.of(item), List.of(), List.of(), true).getFirst().getEvidenceDate());
+        item.setCollectedAt(java.time.LocalDate.of(2020, 10, 31));
+        assertEquals(item.getCollectedAt(), evidenceService.synchronizeCampaignEvidence(
+                ASSESSMENT_ID, MODEL_ID, participant, List.of(item), List.of(), List.of(), true).getFirst().getCollectedAt());
     }
 
     private void addRequirement() {
@@ -615,6 +618,7 @@ class EvidenceServiceTest {
         EvidenceSubmissionItemRequest item = new EvidenceSubmissionItemRequest();
         item.setPracticeId(PRACTICE_ID);
         item.setType(EvidenceType.TEXT);
+        item.setCollectedAt(java.time.LocalDate.of(2020, 10, 31));
         item.setDescription(text);
         return item;
     }
@@ -626,6 +630,7 @@ class EvidenceServiceTest {
         item.setType(EvidenceType.URL);
         item.setDescription(description);
         item.setUrl(url);
+        item.setCollectedAt(java.time.LocalDate.of(2020, 10, 31));
         return item;
     }
 

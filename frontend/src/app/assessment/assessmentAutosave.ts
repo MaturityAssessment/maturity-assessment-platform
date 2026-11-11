@@ -144,7 +144,7 @@ function reconcileEvidenceItem(
 
   const metadata = {
     requirementCode: current.requirementCode === sent.requirementCode ? persisted.requirementCode ?? current.requirementCode : current.requirementCode,
-    evidenceDate: current.evidenceDate === sent.evidenceDate ? persisted.evidenceDate ?? current.evidenceDate : current.evidenceDate,
+    collectedAt: current.collectedAt === sent.collectedAt ? persisted.collectedAt ?? current.collectedAt : current.collectedAt,
   };
   if (current.type === "text") {
     return { ...current, ...metadata, evidenceId: persisted.id, description, referencedQuestionIds };

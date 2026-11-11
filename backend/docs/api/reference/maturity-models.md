@@ -429,7 +429,7 @@ exactly one option; ambiguous editable answers need an explicit option selection
 Practices define `evidenceRequirements`, an ordered array of up to 50 entries:
 
 ```json
-[{"code":"monthly-report","name":"Monthly incident report","instructions":"Use the last day of the reporting period as the evidence date.","required":true,"format":"FILE_OR_URL"}]
+[{"code":"monthly-report","name":"Monthly incident report","instructions":"Use the last day of the reporting period as the evidence date.","required":true,"format":"FILE_OR_URL","frequency":"monthly","maxAgeDays":null}]
 ```
 
 Codes are unique (case-insensitive) within a practice, start with a letter and contain
@@ -438,8 +438,14 @@ are optional (up to 500 characters). `format` is `FILE`, `URL`, `FILE_OR_URL`, o
 (the latter also permits notes). Requirements are copied into new model versions.
 `required` blocks submission when that specific requirement has no evidence, provided
 the practice has an active question. Evidence question references remain optional.
-The editor exposes requirements in the practice's Evidence tab; it has no `max_age`
-or verification configuration yet.
+The editor exposes lifecycle configuration in the practice's Evidence tab.
+`frequency` is `adhoc` (default), `monthly`, `quarterly` or `yearly`. An omitted/null
+`maxAgeDays` uses 31 days for monthly, 92 for quarterly and 366 for yearly; ad hoc
+indicators without an override do not expire. An explicit `maxAgeDays` must be a
+nonnegative integer and overrides the frequency default (zero means same-day
+validity). Expiry uses days, never calendar-month arithmetic. Lifecycle settings
+are versioned and survive editor and workbook round-trips. Verification remains
+deferred. These informational indicators do not impose score penalties.
 
 `requiresEvidence` remains a compatibility field, derived from mandatory named
 requirements on write. Legacy writes with a true flag and no requirements become

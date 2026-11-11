@@ -42,7 +42,7 @@ public class CampaignRespondentController {
             @PathVariable Long campaignId,
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.master_thesis.maturity_assessment.auth.models.User user
     ) {
-        return ResponseEntity.ok(respondentService.openAssessment(campaignId, user));
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(respondentService.openAssessment(campaignId, user));
     }
 
     @PutMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -56,7 +56,7 @@ public class CampaignRespondentController {
             @RequestParam(value = "evidenceFileKey", required = false)
             List<String> evidenceFileKeys
     ) throws IOException {
-        return ResponseEntity.ok(respondentService.saveDraft(
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(respondentService.saveDraft(
                 campaignId, user,
                 parseAssessment(assessmentJson),
                 parseEvidenceMetadata(evidenceMetadataJson),
@@ -76,7 +76,7 @@ public class CampaignRespondentController {
             @RequestParam(value = "evidenceFileKey", required = false)
             List<String> evidenceFileKeys
     ) throws IOException {
-        return ResponseEntity.ok(respondentService.submitAssessment(
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(respondentService.submitAssessment(
                 campaignId, user,
                 parseAssessment(assessmentJson),
                 parseEvidenceMetadata(evidenceMetadataJson),
@@ -92,7 +92,7 @@ public class CampaignRespondentController {
             @PathVariable Long evidenceId
     ) throws IOException {
         Resource resource = respondentService.downloadEvidence(campaignId, user, evidenceId);
-        return ResponseEntity.ok()
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore())
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .header(
                         HttpHeaders.CONTENT_DISPOSITION,

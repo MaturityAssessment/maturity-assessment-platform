@@ -65,12 +65,12 @@ public class AssessmentController {
                 evidenceFileKeys,
                 metadataProvided
         );
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(response);
     }
 
     @PostMapping(value = "/drafts", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<AssessmentResponse> saveJsonDraft(@RequestBody AssessmentRequest request) {
-        return ResponseEntity.ok(evidenceWorkflowService.saveJsonDraft(request, getCurrentUser()));
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(evidenceWorkflowService.saveJsonDraft(request, getCurrentUser()));
     }
 
     @PostMapping(value = "/drafts", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -90,7 +90,7 @@ public class AssessmentController {
                 evidenceFileKeys,
                 metadataProvided
         );
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(response);
     }
 
     @PutMapping("/drafts/by-model/{maturityModelId}")
@@ -100,7 +100,7 @@ public class AssessmentController {
         User user = getCurrentUser();
         AssessmentResponse response = assessmentService.ensureDraftForModel(maturityModelId, user);
         response.setEvidence(evidenceService.getEvidenceByAssessment(response.getId(), user));
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(response);
     }
 
     @PutMapping(value = "/drafts/{draftId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -120,7 +120,7 @@ public class AssessmentController {
                 evidenceFiles,
                 evidenceFileKeys
         );
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(response);
     }
 
     @PostMapping(value = "/drafts/{draftId}/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -140,22 +140,22 @@ public class AssessmentController {
                 evidenceFiles,
                 evidenceFileKeys
         );
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(response);
     }
 
     @PutMapping("/drafts/{draftId}/reset")
     public ResponseEntity<AssessmentResponse> resetDraft(@PathVariable Long draftId) {
-        return ResponseEntity.ok(evidenceWorkflowService.resetDraft(draftId, getCurrentUser()));
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(evidenceWorkflowService.resetDraft(draftId, getCurrentUser()));
     }
 
     @GetMapping
     public ResponseEntity<List<AssessmentResponse>> getUserAssessments() {
-        return ResponseEntity.ok(assessmentService.getAssessmentsByUser(getCurrentUser()));
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(assessmentService.getAssessmentsByUser(getCurrentUser()));
     }
 
     @GetMapping("/drafts")
     public ResponseEntity<List<AssessmentResponse>> getDrafts() {
-        return ResponseEntity.ok(assessmentService.getDraftsByUser(getCurrentUser()));
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(assessmentService.getDraftsByUser(getCurrentUser()));
     }
 
     @GetMapping("/drafts/by-model/{maturityModelId}")
@@ -163,14 +163,14 @@ public class AssessmentController {
         User user = getCurrentUser();
         AssessmentResponse response = assessmentService.getDraftByMaturityModel(maturityModelId, user);
         response.setEvidence(evidenceService.getEvidenceByAssessment(response.getId(), user));
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(response);
     }
 
     @GetMapping("/drafts/by-model-lineage/{maturityModelId}")
     public ResponseEntity<List<AssessmentResponse>> getDraftsByMaturityModelLineage(
             @PathVariable Long maturityModelId
     ) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(
                 assessmentService.getDraftsByMaturityModelLineage(maturityModelId, getCurrentUser())
         );
     }
@@ -178,13 +178,13 @@ public class AssessmentController {
     @GetMapping("/all")
     @PreAuthorize("hasAnyRole('CURATOR', 'ADMIN')")
     public ResponseEntity<List<AssessmentResponse>> getAllAssessments() {
-        return ResponseEntity.ok(assessmentService.getAllAssessments());
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(assessmentService.getAllAssessments());
     }
 
     @GetMapping("/pending")
     @PreAuthorize("hasAnyRole('CURATOR', 'ADMIN')")
     public ResponseEntity<List<AssessmentResponse>> getPendingReviewAssessments() {
-        return ResponseEntity.ok(assessmentService.getPendingReviewAssessments());
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(assessmentService.getPendingReviewAssessments());
     }
 
     @GetMapping("/{id}")
@@ -192,7 +192,7 @@ public class AssessmentController {
         User user = getCurrentUser();
         AssessmentResponse response = assessmentService.getAssessmentById(id, user);
         response.setEvidence(evidenceService.getEvidenceByAssessment(id, user));
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(response);
     }
 
     @PutMapping("/{id}/complete")
@@ -201,7 +201,7 @@ public class AssessmentController {
             @PathVariable Long id,
             @RequestBody(required = false) ManualEvaluationRequest request
     ) {
-        return ResponseEntity.ok(assessmentService.completeAssessment(id, request, getCurrentUser()));
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(assessmentService.completeAssessment(id, request, getCurrentUser()));
     }
 
     @PutMapping("/{id}/evaluate")
@@ -210,7 +210,7 @@ public class AssessmentController {
             @PathVariable Long id,
             @RequestBody ManualEvaluationRequest request
     ) {
-        return ResponseEntity.ok(assessmentService.evaluateAssessment(id, request, getCurrentUser()));
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(assessmentService.evaluateAssessment(id, request, getCurrentUser()));
     }
 
     @PutMapping("/{id}/evaluation/reviews")
@@ -219,7 +219,7 @@ public class AssessmentController {
             @PathVariable Long id,
             @RequestBody ManualEvaluationRequest request
     ) {
-        return ResponseEntity.ok(assessmentService.saveEvaluationProgress(id, request, getCurrentUser()));
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(assessmentService.saveEvaluationProgress(id, request, getCurrentUser()));
     }
 
     @PutMapping("/{id}/evaluation/finish")
@@ -228,7 +228,7 @@ public class AssessmentController {
             @PathVariable Long id,
             @RequestBody(required = false) ManualEvaluationRequest request
     ) {
-        return ResponseEntity.ok(assessmentService.finishEvaluation(id, request, getCurrentUser()));
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(assessmentService.finishEvaluation(id, request, getCurrentUser()));
     }
 
     @PutMapping("/{id}/evaluation/send-back")
@@ -237,19 +237,19 @@ public class AssessmentController {
             @PathVariable Long id,
             @RequestBody(required = false) ManualEvaluationRequest request
     ) {
-        return ResponseEntity.ok(assessmentService.sendEvaluationBack(id, request, getCurrentUser()));
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(assessmentService.sendEvaluationBack(id, request, getCurrentUser()));
     }
 
     @PostMapping("/{id}/agent-evaluation/draft")
     @PreAuthorize("hasAnyRole('CURATOR', 'ADMIN')")
     public ResponseEntity<AgentEvaluationDraftResponse> generateLocalAgentEvaluationDraft(@PathVariable Long id) {
-        return ResponseEntity.ok(localAgentEvaluationService.generateDraft(id));
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(localAgentEvaluationService.generateDraft(id));
     }
 
     @GetMapping("/{id}/open-answers")
     @PreAuthorize("hasAnyRole('CURATOR', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getOpenAnswerQuestions(@PathVariable Long id) {
-        return ResponseEntity.ok(assessmentService.getOpenAnswerQuestions(id, getCurrentUser()));
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(assessmentService.getOpenAnswerQuestions(id, getCurrentUser()));
     }
 
     @DeleteMapping("/{id}")

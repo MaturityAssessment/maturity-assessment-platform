@@ -2,6 +2,7 @@ import type { EvidenceRequirement } from "@/api/types";
 import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { inputClass, labelClass } from "../../components/FormFields";
 import { TEXT_LIMITS } from "@/config/textLimits";
+import { EVIDENCE_AGE_DEFAULTS, effectiveMaxAgeDays } from "@/app/assessment/evidenceLifecycle";
 
 export default function PracticeEvidenceEditor({ requirements, onChange }: {
   requirements: EvidenceRequirement[];
@@ -23,6 +24,25 @@ export default function PracticeEvidenceEditor({ requirements, onChange }: {
           placeholder="Provide the latest completed monthly report. Use the last day of its reporting period as the evidence date."
           onChange={event => update(index, { instructions: event.target.value })} />
       </label>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className={labelClass}>Evidence frequency
+          <select className={inputClass} value={item.frequency ?? "adhoc"}
+            onChange={event => update(index, { frequency: event.target.value as EvidenceRequirement["frequency"], maxAgeDays: null })}>
+            <option value="adhoc">Ad hoc (no default expiry)</option>
+            <option value="monthly">Monthly (31 days)</option>
+            <option value="quarterly">Quarterly (92 days)</option>
+            <option value="yearly">Yearly (366 days)</option>
+          </select>
+        </label>
+        <label className={labelClass}>Maximum evidence age (days)
+          <input type="number" min={0} max={2147483647} step={1} className={inputClass}
+            value={item.maxAgeDays ?? ""} placeholder={String(EVIDENCE_AGE_DEFAULTS[item.frequency ?? "adhoc"] ?? "No maximum")}
+            onChange={event => update(index, { maxAgeDays: event.target.value === "" ? null : Number(event.target.value) })} />
+          <span className="text-xs font-normal text-slate-500">{effectiveMaxAgeDays(item) == null
+            ? "No expiry. Set a day limit to override."
+            : `Valid through day ${effectiveMaxAgeDays(item)} after the evidence date; outdated from the following day.`} Leave blank to use the frequency default.</span>
+        </label>
+      </div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <label className={labelClass}>Accepted formats
           <select className={inputClass} value={item.format} onChange={event => update(index, { format: event.target.value as EvidenceRequirement["format"] })}>

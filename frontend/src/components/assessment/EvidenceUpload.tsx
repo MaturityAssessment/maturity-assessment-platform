@@ -24,7 +24,7 @@ interface EvidenceUploadProps extends EvidenceReferenceProps {
 type EditorState = { item: AssessmentEvidenceInputItem; referencesOnly: boolean; isNew: boolean };
 
 export default function EvidenceUpload({ practiceId, items, onItemsChange, required = false,
-  allowedType = "both", readOnly = false, questions = [], inactiveQuestionIds, requirement, evidenceRequirements = [], onDownload }: EvidenceUploadProps) {
+  allowedType = "both", readOnly = false, questions = [], inactiveQuestionIds, requirement, evidenceRequirements = [], onDownload, currentEvidenceFreshness, historicalEvidenceValidity }: EvidenceUploadProps) {
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const remainingSlots = MAX_EVIDENCE_ITEMS_PER_FIELD - items.length;
@@ -56,7 +56,7 @@ export default function EvidenceUpload({ practiceId, items, onItemsChange, requi
         : "Upload a file, add a secure HTTPS link, or write a note."}
     </div>}
     {items.map(item => <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
-      <EvidenceItemDetails item={item} questions={questions} inactiveQuestionIds={inactiveQuestionIds} evidenceRequirements={evidenceRequirements}
+      <EvidenceItemDetails currentEvidenceFreshness={currentEvidenceFreshness} historicalEvidenceValidity={historicalEvidenceValidity} item={item} questions={questions} inactiveQuestionIds={inactiveQuestionIds} evidenceRequirements={evidenceRequirements}
         onDownload={onDownload && item.evidenceId ? () => onDownload(item.evidenceId!, item.fileName) : undefined} />
       {!readOnly && <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
         <Button type="button" variant="outline" size="sm" onClick={() => setEditor({ item, referencesOnly: true, isNew: false })}>Reference questions</Button>

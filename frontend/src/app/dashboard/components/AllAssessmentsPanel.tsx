@@ -1,4 +1,5 @@
 "use client";
+import { freshnessWarning } from "@/app/assessment/evidenceLifecycle";
 
 import { useMemo, useState } from "react";
 import {
@@ -396,6 +397,11 @@ export default function AllAssessmentsPanel({
                       </td>
                       <td className="px-5 py-4">
                         <StatusBadge status={assessment.status} />
+                        {freshnessWarning(assessment.assessment.currentEvidenceFreshness) && <button type="button"
+                          className="mt-2 block max-w-56 text-left text-xs font-medium text-amber-800 underline"
+                          onClick={() => onOpen(assessment.assessment)} title={`Checked ${assessment.assessment.currentEvidenceFreshness?.evaluatedOn}`}>
+                          {freshnessWarning(assessment.assessment.currentEvidenceFreshness)}
+                        </button>}
                       </td>
                       <td className="px-5 py-4">
                         <ProgressResult assessment={assessment} />

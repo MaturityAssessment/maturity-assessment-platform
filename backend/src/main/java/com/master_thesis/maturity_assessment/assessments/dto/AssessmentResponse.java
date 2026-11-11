@@ -14,6 +14,10 @@ public class AssessmentResponse {
     private Boolean isCompleted;
     private String status; // New field
     private Long maturityModelId;
+    private java.time.LocalDate referenceDate;
+    private boolean referenceDateInferred;
+    private EvidenceFreshnessSummary historicalEvidenceValidity;
+    private EvidenceFreshnessSummary currentEvidenceFreshness;
     /** Version of the maturity model used for this assessment. */
     private Integer maturityModelVersion;
     /** Domain name of the maturity model used for this assessment (batch-populated on list/detail). */

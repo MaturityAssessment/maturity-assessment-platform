@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import useFreshnessRefresh from "@/hooks/useFreshnessRefresh";
 import apiClient from "@/api/axios";
 import type { AssessmentResponse, MaturityModelSummary } from "@/api/types";
 import {
@@ -14,31 +15,46 @@ export default function useDashboardAssessments() {
   const [modelDetails, setModelDetails] = useState<ModelDetails>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const loadingRef = useRef(false);
+  const mounted = useRef(true);
 
-  const loadAssessments = useCallback(async () => {
+  const loadAssessments = useCallback(async (silent = false) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const [assessmentResponse, modelResponse] = await Promise.all([
         apiClient.get<AssessmentResponse[]>("/api/v1/assessments"),
-        apiClient.get<MaturityModelSummary[]>("/api/v1/maturity-model"),
+        silent ? Promise.resolve(null) : apiClient.get<MaturityModelSummary[]>("/api/v1/maturity-model"),
       ]);
 
+      if (!mounted.current) return;
       setAssessments(assessmentResponse.data);
-      setModelDetails(
+      if (modelResponse) setModelDetails(
         Object.fromEntries(modelResponse.data.map((model) => [model.id, model]))
       );
       setError(null);
+      setRefreshError(null);
     } catch (loadError) {
       console.error("Error loading dashboard:", loadError);
-      setError("We could not load your assessments. Please try again.");
+      if (mounted.current) {
+        if (silent) setRefreshError("Evidence freshness could not be refreshed. Values shown are from the last successful check.");
+        else setError("We could not load your assessments. Please try again.");
+      }
     } finally {
-      setLoading(false);
+      loadingRef.current = false;
+      if (mounted.current && !silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    mounted.current = true;
     void loadAssessments();
+    return () => { mounted.current = false; };
   }, [loadAssessments]);
+  const nextRefreshAt = assessments.map(item => item.currentEvidenceFreshness?.nextRefreshAt).filter((date): date is string => Boolean(date)).sort()[0];
+  useFreshnessRefresh(() => loadAssessments(true), nextRefreshAt, !loading);
 
   const removeAssessment = useCallback((assessmentId: number) => {
     setAssessments((current) =>
@@ -73,7 +89,8 @@ export default function useDashboardAssessments() {
     draftAssessments,
     loading,
     error,
-    retry: loadAssessments,
+    retry: () => loadAssessments(),
+    refreshError,
     removeAssessment,
   };
 }

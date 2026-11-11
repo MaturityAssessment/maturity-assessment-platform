@@ -1,5 +1,6 @@
 "use client";
 
+import EvidenceLifecyclePanel from "@/components/assessment/EvidenceLifecyclePanel";
 import { useMemo } from "react";
 import {
   ArrowRight,
@@ -83,6 +84,9 @@ type AssessmentDashboardProps = {
   changesRequested: boolean;
   completed: boolean;
   assessment: AssessmentResponse;
+  referenceDate?: string;
+  onReferenceDateChange?: (date: string) => void;
+  freshnessError?: string | null;
   evaluatorInsight?: string | null;
   questionEvaluations?: AssessmentResponse["questionEvaluations"];
   respondentUpdatedResponseKeys: ReadonlySet<string>;
@@ -135,6 +139,9 @@ export default function AssessmentDashboard({
   changesRequested,
   completed,
   assessment,
+  referenceDate,
+  onReferenceDateChange,
+  freshnessError,
   evaluatorInsight,
   questionEvaluations,
   respondentUpdatedResponseKeys,
@@ -271,6 +278,11 @@ export default function AssessmentDashboard({
           </>
         }
       />
+
+      <div className="mx-auto w-full max-w-[1440px] px-4 pt-5 sm:px-6 lg:px-10">
+        <EvidenceLifecyclePanel assessment={assessment} referenceDate={referenceDate} onReferenceDateChange={onReferenceDateChange}
+          readOnly={readOnly} practiceSteps={practiceSteps} routeContext={routeContext} refreshingError={freshnessError} pending={saveStatus !== "saved"} />
+      </div>
 
       {tourInvitation && (
         <div className="mx-auto w-full max-w-[1440px] px-4 pt-5 sm:px-6 lg:px-10">

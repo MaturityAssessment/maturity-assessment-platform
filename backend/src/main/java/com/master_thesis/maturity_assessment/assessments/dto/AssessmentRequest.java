@@ -10,6 +10,7 @@ import java.util.Set;
 @JsonIgnoreProperties(ignoreUnknown = false)
 public class AssessmentRequest {
     private Long maturityModelId;
+    private java.time.LocalDate referenceDate;
     private Map<String, QuestionResponseRequest> questionResponses;
     private Set<String> respondentUpdatedResponseKeys;
 

@@ -19,14 +19,14 @@ export default function EvidenceItemEditor({ initialItem, questions, inactiveQue
   const [error, setError] = useState<string | null>(null);
   const update = (value: Partial<AssessmentEvidenceInputItem>) => { setError(null); setDraft(current => ({ ...current, ...value })); };
   const requirement = evidenceRequirements.find(item => item.code === draft.requirementCode);
-  const needsDate = Boolean(requirement && (isNew || initialItem.evidenceDate || draft.file
-    || draft.requirementCode !== initialItem.requirementCode || draft.url !== initialItem.url || (draft.type === "text" && draft.description !== initialItem.description)));
+  const needsDate = Boolean(isNew || initialItem.collectedAt || draft.file
+    || draft.requirementCode !== initialItem.requirementCode || draft.url !== initialItem.url || (draft.type === "text" && draft.description !== initialItem.description));
   return <form className="space-y-5" onSubmit={event => {
     event.preventDefault();
     const validation = validateEvidenceForSave(new Map([["draft", [draft]]]));
     if (validation) { setError(validation); return; }
     if (requirement && !acceptsEvidenceType(requirement, draft.type)) { setError("Choose a format accepted by this evidence requirement."); return; }
-    if (needsDate && !draft.evidenceDate) { setError("Enter the document date or reporting-period end."); return; }
+    if (needsDate && !draft.collectedAt) { setError("Enter the document date or reporting-period end."); return; }
     onSave({ ...draft, description: draft.description.trim(), url: draft.url.trim() }, initialItem);
   }}>
     {!referencesOnly && <>
@@ -54,18 +54,18 @@ export default function EvidenceItemEditor({ initialItem, questions, inactiveQue
       {draft.type === "file" && <label className="block text-sm font-medium text-slate-800">
         {draft.fileName || "Choose a file"}
         <input type="file" accept={ACCEPTED_EVIDENCE_TYPES.join(",")} className="mt-2 block w-full text-xs"
-          onChange={event => { const file = event.target.files?.[0]; if (file) update({ file, fileName: file.name, fileSize: file.size, fileType: file.type, ...(initialItem.evidenceId ? { evidenceDate: "" } : {}) }); }} />
+          onChange={event => { const file = event.target.files?.[0]; if (file) update({ file, fileName: file.name, fileSize: file.size, fileType: file.type, ...(initialItem.evidenceId ? { collectedAt: "" } : {}) }); }} />
         <span className="mt-1 block text-xs font-normal text-slate-500">PDF, Office, image, or text files up to 50MB.</span>
       </label>}
       {draft.type === "link" && <label className="block text-sm font-medium text-slate-800">HTTPS link
         <input type="url" value={draft.url} maxLength={TEXT_LIMITS.url} placeholder="https://example.com/evidence"
           className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm" onChange={event => update({ url: event.target.value })} />
       </label>}
-      <label className="block text-sm font-medium text-slate-800">Evidence date {requirement ? "" : "(optional)"}
-        <input type="date" value={draft.evidenceDate || ""} max={evidenceToday()} required={needsDate}
-          className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm" onChange={event => update({ evidenceDate: event.target.value || null })} />
+      <label className="block text-sm font-medium text-slate-800">Evidence date {needsDate ? "(required)" : "(legacy date unknown)"}
+        <input type="date" value={draft.collectedAt || ""} max={evidenceToday()} required={needsDate}
+          className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm" onChange={event => update({ collectedAt: event.target.value || null })} />
         <span className="mt-1 block text-xs font-normal leading-5 text-slate-500">Use the document issue or approval date, or the last day of the reporting period. This is separate from the upload date.</span>
-        {requirement && !needsDate && !draft.evidenceDate && <span className="mt-1 block text-xs text-amber-700">Date unknown for this existing attachment. Add it when available.</span>}
+        {!needsDate && !draft.collectedAt && <span className="mt-1 block text-xs text-amber-700">Date unknown for this existing attachment. Add it when available.</span>}
       </label>
       <label className="block text-sm font-medium text-slate-800">{draft.type === "text" ? "Note text" : "Description (optional)"}
         <textarea value={draft.description} rows={draft.type === "text" ? 5 : 3}
@@ -88,7 +88,7 @@ export default function EvidenceItemEditor({ initialItem, questions, inactiveQue
 export function mergeEvidenceEdit(current: AssessmentEvidenceInputItem, draft: AssessmentEvidenceInputItem, original: AssessmentEvidenceInputItem) {
   const fileChanged = draft.file !== original.file;
   return { ...current, description: draft.description, url: draft.url,
-    requirementCode: draft.requirementCode, evidenceDate: draft.evidenceDate,
+    requirementCode: draft.requirementCode, collectedAt: draft.collectedAt,
     referencedQuestionIds: [...(draft.referencedQuestionIds || [])],
     ...(fileChanged ? { file: draft.file, fileName: draft.fileName, fileSize: draft.fileSize, fileType: draft.fileType } : {}),
   };

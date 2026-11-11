@@ -216,7 +216,7 @@ export function hydrateDocument(
           description: practice.description ?? "",
           requiresEvidence: practice.requiresEvidence ?? false,
           evidenceRequirements: (practice.evidenceRequirements?.length ? practice.evidenceRequirements : practice.requiresEvidence
-            ? [{ code: "supporting-evidence", name: "Supporting evidence", instructions: "Use the document approval date or reporting-period end.", required: true, format: "ANY" as const }] : []).map(item => ({ ...item })),
+            ? [{ code: "supporting-evidence", name: "Supporting evidence", instructions: "Use the document approval date or reporting-period end.", required: true, format: "ANY" as const }] : []).map(item => ({ ...item, frequency: item.frequency ?? "adhoc", maxAgeDays: item.maxAgeDays ?? null })),
           clientKey: practice.clientKey || key(),
           codeLocked: false,
           weight: practice.weight ?? 1,
