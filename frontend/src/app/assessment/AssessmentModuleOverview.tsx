@@ -9,6 +9,7 @@ import {
   FileQuestion,
   Flag,
   Layers3,
+  LockKeyhole,
 } from "lucide-react";
 import type { Dimension, Module } from "@/api/types";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,7 @@ export default function AssessmentModuleOverview({
   const navigationModule = navigationModules.find(
     (item) => item.key === activeModuleKey
   );
+  const locked = navigationModule?.locked ?? false;
   const practices = navigationModule?.practices ?? [];
   const firstIncomplete =
     practices.find((practice) => practice.outstandingFlaggedCount > 0) ??
@@ -154,6 +156,12 @@ export default function AssessmentModuleOverview({
             </div>
           </section>
 
+          {locked && <div role="status" className="mt-5 rounded-xl border border-slate-200 bg-slate-100 p-5 text-slate-600">
+            <p className="flex items-center gap-2 font-semibold"><LockKeyhole className="h-4 w-4" aria-hidden="true" /> Module locked</p>
+            <p className="mt-2 text-sm">Complete the required answers and evidence in these modules first:</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">{navigationModule?.missingPrerequisites?.map((name, index) => <li key={`${index}-${name}`}>{name}</li>)}</ul>
+            <p className="mt-3 text-sm">Your existing answers and evidence are retained. This module will unlock when its prerequisites are complete again.</p>
+          </div>}
           <section
             className="mt-6"
             aria-labelledby="module-structure-heading"
@@ -204,7 +212,8 @@ export default function AssessmentModuleOverview({
                     <button
                       type="button"
                       onClick={() => onPracticeSelect(practice.key)}
-                      className="group flex w-full min-w-0 items-center gap-4 px-4 py-4 text-left transition hover:bg-indigo-50/50 focus:outline-none focus-visible:bg-indigo-50 sm:px-5"
+                      disabled={locked}
+                      className="group flex w-full min-w-0 items-center gap-4 px-4 py-4 text-left transition hover:bg-indigo-50/50 focus:outline-none focus-visible:bg-indigo-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-50 sm:px-5"
                     >
                       <span
                         className={cn(
@@ -277,7 +286,7 @@ export default function AssessmentModuleOverview({
             )}
           </section>
 
-          {firstIncomplete && (
+          {firstIncomplete && !locked && (
             <div className="flex justify-center pb-2 pt-8 sm:pt-10">
               <button
                 type="button"

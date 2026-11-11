@@ -2,6 +2,7 @@ package com.master_thesis.maturity_assessment.assessments.services;
 
 import com.master_thesis.maturity_assessment.assessments.dto.AssessmentRequest;
 import com.master_thesis.maturity_assessment.assessments.dto.AssessmentResponse;
+import com.master_thesis.maturity_assessment.assessments.dto.EvidenceDTO;
 import com.master_thesis.maturity_assessment.assessments.dto.DimensionResultResponse;
 import com.master_thesis.maturity_assessment.assessments.dto.ManualEvaluationRequest;
 import com.master_thesis.maturity_assessment.assessments.dto.QuestionEvaluationRequest;
@@ -11,6 +12,8 @@ import com.master_thesis.maturity_assessment.assessments.models.Assessment;
 import com.master_thesis.maturity_assessment.assessments.models.AssessmentStatus;
 import com.master_thesis.maturity_assessment.assessments.models.DimensionResult;
 import com.master_thesis.maturity_assessment.assessments.models.Evidence;
+import com.master_thesis.maturity_assessment.assessments.models.EvidenceType;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.master_thesis.maturity_assessment.assessments.models.QuestionEvaluation;
 import com.master_thesis.maturity_assessment.assessments.models.QuestionEvaluationStatus;
 import com.master_thesis.maturity_assessment.auth.models.User;
@@ -46,6 +49,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.master_thesis.maturity_assessment.maturity_models.dto.QuestionChoiceDTO;
 
 import com.master_thesis.maturity_assessment.maturity_models.services.QuestionDependencies;
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -2592,6 +2596,145 @@ public class AssessmentService {
         return maturityModelRepository.findById(maturityModelId)
                 .map(maturityModel -> maturityModel.getAutoEvaluated() != null ? maturityModel.getAutoEvaluated() : true)
                 .orElse(true); // Default to auto-evaluated if model not found
+    }
+
+    record PrerequisiteResponse(Long questionId, JsonNode response,
+                                Integer choiceIndex, String justification) {}
+    record PrerequisiteEvidence(Long practiceId, EvidenceType type, String description, String url,
+                                String filePath, Set<Long> questionIds) {}
+    record PrerequisiteSnapshot(Map<String, PrerequisiteResponse> responses,
+                                Map<Long, PrerequisiteEvidence> evidence) {}
+
+    /** Capture content before any writes so relocking never erases existing downstream work. */
+    PrerequisiteSnapshot capturePrerequisiteSnapshot(AssessmentRequest request, Long draftId,
+                                                   User user, CampaignParticipant participant) {
+        if (request == null || request.getMaturityModelId() == null) return null;
+        MaturityModel model = maturityModelRepository.findById(request.getMaturityModelId()).orElse(null);
+        if (model == null || !hasModulePrerequisites(model)) return null;
+        Assessment assessment;
+        if (participant != null) assessment = requireCampaignRespondentAssessmentForUpdate(participant);
+        else if (draftId != null) assessment = requireOwnedRespondentAssessmentForUpdate(draftId, user);
+        else {
+            User lockedUser = lockUserForDraftCreation(user);
+            assessment = assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
+                    lockedUser.getId(), request.getMaturityModelId(), AssessmentStatus.DRAFT).orElse(null);
+        }
+        Map<String, PrerequisiteResponse> responses = new HashMap<>();
+        Map<Long, PrerequisiteEvidence> evidence = new HashMap<>();
+        if (assessment != null && assessment.getId() != null) {
+            for (QuestionEvaluation row : questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(assessment.getId())) {
+                responses.put(row.getResponseKey(), new PrerequisiteResponse(row.getQuestionId(), row.getResponse(),
+                        row.getChoiceIndex(), normalizeRespondentJustification(row.getRespondentJustification())));
+            }
+            for (Evidence item : evidenceRepository.findByAssessmentIdOrderByIdAsc(assessment.getId())) {
+                evidence.put(item.getId(), prerequisiteEvidence(item));
+            }
+        }
+        return new PrerequisiteSnapshot(responses, evidence);
+    }
+
+    void requireModuleUnlockedForEvidence(Assessment assessment, Practice practice) {
+        Module module = practice == null ? null : practice.getModule();
+        if (module == null || module.getPrerequisiteModuleCodes() == null || module.getPrerequisiteModuleCodes().isEmpty()) return;
+        MaturityModel model = maturityModelRepository.findById(assessment.getMaturityModelId())
+                .orElseThrow(() -> new ResourceNotFoundException("Maturity model not found"));
+        Map<String, Object> responses = responseValues(
+                questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(assessment.getId()), model.getId());
+        Set<Long> evidencePractices = evidenceRepository.findByAssessmentIdOrderByIdAsc(assessment.getId()).stream()
+                .filter(item -> item.getPractice() != null).map(item -> item.getPractice().getId()).collect(Collectors.toSet());
+        Map<Module, ModulePrerequisites.State> states = ModulePrerequisites.states(model,
+                question -> isQuestionVisible(question, responses),
+                question -> { String key = findQuestionKey(question.getId(), responses);
+                    return key != null && isAnswered(responses.get(key)); }, evidencePractices);
+        ModulePrerequisites.State state = states.get(module);
+        if (state == null && module.getId() != null) state = states.entrySet().stream()
+                .filter(entry -> module.getId().equals(entry.getKey().getId())).map(Map.Entry::getValue).findFirst().orElse(null);
+        if (state == null || state.locked()) throw new IllegalOperationException("MODULE_PREREQUISITES_INCOMPLETE",
+                "Module '" + module.getName() + "' is locked until its prerequisites are complete. Existing evidence is retained.");
+    }
+
+    private boolean hasModulePrerequisites(MaturityModel model) {
+        return Optional.ofNullable(model.getDimensions()).orElse(List.of()).stream()
+                .flatMap(dimension -> Optional.ofNullable(dimension.getModules()).orElse(List.of()).stream())
+                .anyMatch(module -> module.getPrerequisiteModuleCodes() != null && !module.getPrerequisiteModuleCodes().isEmpty());
+    }
+
+    private PrerequisiteEvidence prerequisiteEvidence(Evidence item) {
+        return new PrerequisiteEvidence(item.getPractice() == null ? null : item.getPractice().getId(),
+                item.getEvidenceType(), item.getDescription(), item.getExternalUrl(), item.getFilePath(),
+                Optional.ofNullable(item.getReferencedQuestions()).orElse(Set.of()).stream()
+                        .map(Question::getId).collect(Collectors.toSet()));
+    }
+
+    private boolean samePrerequisiteResponse(PrerequisiteResponse previous, PrerequisiteResponse next, Question question) {
+        if (previous == null || next == null) return previous == next;
+        if (!Objects.equals(previous.questionId(), next.questionId())
+                || !Objects.equals(previous.choiceIndex(), next.choiceIndex())
+                || !Objects.equals(previous.justification(), next.justification())) return false;
+        JsonNode before = previous.response();
+        JsonNode after = next.response();
+        if (before == null || after == null) return before == after;
+        if ("boolean".equals(question.getType())) {
+            Boolean answer = parseBooleanAnswer(objectMapper.convertValue(before, Object.class));
+            return answer != null && answer.equals(parseBooleanAnswer(objectMapper.convertValue(after, Object.class)));
+        }
+        if (!"open_answer".equals(question.getType()) && before.isValueNode() && after.isValueNode()) {
+            try { return new BigDecimal(before.asText()).compareTo(new BigDecimal(after.asText())) == 0; }
+            catch (NumberFormatException ignored) { return before.equals(after); }
+        }
+        return before.equals((left, right) -> left.isNumber() && right.isNumber()
+                ? left.decimalValue().compareTo(right.decimalValue()) : left.equals(right) ? 0 : 1, after);
+    }
+
+    /** Runs after evidence synchronization, in the same transaction as the complete save. */
+    void validateModulePrerequisiteAccess(AssessmentRequest request, AssessmentResponse response,
+                                         PrerequisiteSnapshot snapshot, boolean submitting) {
+        if (request == null || request.getMaturityModelId() == null) return;
+        MaturityModel model = maturityModelRepository.findById(request.getMaturityModelId()).orElse(null);
+        if (model == null || !hasModulePrerequisites(model)) return;
+        Map<String, Object> responses = responseValues(request);
+        Set<Long> evidencePractices = Optional.ofNullable(response.getEvidence()).orElse(List.of()).stream()
+                .map(EvidenceDTO::getPracticeId).collect(Collectors.toSet());
+        Map<Module, ModulePrerequisites.State> states = ModulePrerequisites.states(model,
+                question -> isQuestionVisible(question, responses),
+                question -> { String key = findQuestionKey(question.getId(), responses);
+                    return key != null && isAnswered(responses.get(key)); }, evidencePractices);
+        Map<Long, PrerequisiteEvidence> currentEvidence = new HashMap<>();
+        if (response.getId() != null) {
+            for (Evidence item : evidenceRepository.findByAssessmentIdOrderByIdAsc(response.getId()))
+                currentEvidence.put(item.getId(), prerequisiteEvidence(item));
+        }
+        PrerequisiteSnapshot previous = snapshot == null ? new PrerequisiteSnapshot(Map.of(), Map.of()) : snapshot;
+        for (Dimension dimension : Optional.ofNullable(model.getDimensions()).orElse(List.of())) {
+            for (Module module : Optional.ofNullable(dimension.getModules()).orElse(List.of())) {
+                ModulePrerequisites.State state = states.get(module);
+                if (Boolean.FALSE.equals(module.getVisible()) || state == null || !state.locked()) continue;
+                String message = "Module '" + module.getName() + "' is locked. Complete prerequisites: "
+                        + String.join(", ", state.missing()) + ". Existing answers are retained.";
+                if (submitting) throw new IllegalOperationException("MODULE_PREREQUISITES_INCOMPLETE", message);
+                Set<Long> practiceIds = new HashSet<>();
+                for (Practice practice : Optional.ofNullable(module.getPractices()).orElse(List.of())) {
+                    practiceIds.add(practice.getId());
+                    String practiceId = practice.getId() == null ? practice.getName() : practice.getId().toString();
+                    for (Question question : Optional.ofNullable(practice.getQuestions()).orElse(List.of())) {
+                        String key = dimension.getDimensionId() + "_" + module.getCode() + "_" + practiceId + "_" + question.getId();
+                        QuestionResponseRequest submitted = request.getQuestionResponses() == null ? null : request.getQuestionResponses().get(key);
+                        PrerequisiteResponse next = submitted == null ? null : new PrerequisiteResponse(submitted.getQuestionId(),
+                                objectMapper.valueToTree(submitted.getResponse()), submitted.getChoiceIndex(),
+                                normalizeRespondentJustification(submitted.getRespondentJustification()));
+                        if (!samePrerequisiteResponse(previous.responses().get(key), next, question))
+                            throw new IllegalOperationException("MODULE_PREREQUISITES_INCOMPLETE", message);
+                    }
+                }
+                Map<Long, PrerequisiteEvidence> before = previous.evidence().entrySet().stream()
+                        .filter(entry -> practiceIds.contains(entry.getValue().practiceId()))
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                Map<Long, PrerequisiteEvidence> after = currentEvidence.entrySet().stream()
+                        .filter(entry -> practiceIds.contains(entry.getValue().practiceId()))
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                if (!before.equals(after)) throw new IllegalOperationException("MODULE_PREREQUISITES_INCOMPLETE", message);
+            }
+        }
     }
 
     private void validateRequiredResponses(MaturityModel model, AssessmentRequest request) {

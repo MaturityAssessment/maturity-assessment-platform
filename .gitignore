@@ -15,3 +15,9 @@ backend/uploads/
 .idea/
 .vscode/
 *.iml
+
+# Local planning documents and reference files
+/docs/plans/assessment-evaluation-discussion.md
+/docs/plans/assessment-evaluation-engine-2026-11.md
+/temp/MM_Scoring&Aggregation_Profile_20261104.docx
+/temp/mmpdf.pdf

@@ -1,3 +1,4 @@
+import { hasValidModulePrerequisiteOrder, MODULE_PREREQUISITE_ORDER_MESSAGE, visibleModuleDependents } from "./modulePrerequisites.ts";
 import type { MaturityModelEditorDocument, ModelEditorDimension, ModelEditorModule, ModelEditorPractice, ModelEditorQuestion } from "@/api/types";
 import { compareDocuments, type ChangeEntry } from "./editorChanges.ts";
 import { codePrefix, codeSuffix } from "./editorCodes.ts";
@@ -30,6 +31,7 @@ function encodeReferences(items: Item[]) {
     return matches[0] ? token(matches[0].clientKey) : code;
   };
   for (const item of items) {
+    if ("practices" in item) item.prerequisiteModuleCodes = (item.prerequisiteModuleCodes ?? []).map(code => resolve(code, items)!);
     if ("dependsOnQuestionCode" in item && item.dependsOnQuestionCode) item.dependsOnQuestionCode = resolve(item.dependsOnQuestionCode, items);
     if ("gatingRules" in item) item.gatingRules = item.gatingRules.map(rule => rule.selection === "specificChild" ? { ...rule, childCode: resolve(rule.childCode, children(item)) } : rule);
     encodeReferences(children(item));
@@ -48,6 +50,7 @@ function finishReferences(items: Item[], deleted: Set<string>, depth = 0) {
   };
   for (const item of items) {
     finishReferences(children(item), deleted, depth + 1);
+    if ("practices" in item) item.prerequisiteModuleCodes = (item.prerequisiteModuleCodes ?? []).map(code => resolve(code, items) ?? code);
     if ("dependsOnQuestionCode" in item && item.dependsOnQuestionCode) {
       item.dependsOnQuestionCode = resolve(item.dependsOnQuestionCode, items);
       if (!item.dependsOnQuestionCode) item.dependencyCondition = undefined;
@@ -148,5 +151,11 @@ export function revertEditorChange(current: MaturityModelEditorDocument, baselin
     }
   }
   finishReferences(next.dimensions, deleted);
+  for (const dimension of next.dimensions) {
+    if (!hasValidModulePrerequisiteOrder(dimension.modules)) throw new Error(MODULE_PREREQUISITE_ORDER_MESSAGE);
+    if (dimension.modules.some((module) => module.visible === false && visibleModuleDependents(dimension.modules, module.code).length)) {
+      throw new Error("Visible modules require visible prerequisites. Hide dependent modules before reverting this visibility change.");
+    }
+  }
   return next;
 }

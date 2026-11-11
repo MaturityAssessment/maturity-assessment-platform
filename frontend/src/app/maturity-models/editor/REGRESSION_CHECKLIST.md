@@ -53,6 +53,27 @@ or question configuration.
 - Verify equal-valued options remain separately selectable and “None of the
   above” remains distinct from an unanswered question after assessment save/reload.
 
+## Module prerequisites
+
+- In Details, select zero or more earlier modules in the same dimension; later
+  modules and modules from other dimensions are unavailable.
+- Reject duplicate, missing, self and forward references through the API/import.
+- Arrow moves, drag reorders and change-review reverts cannot violate dependency
+  order. Allowed moves and renames preserve references by module identity.
+- Hide dependents before hiding their prerequisite. Showing a dependent restores
+  prerequisite visibility through the entire chain. Referenced modules cannot be
+  deleted until their references are removed.
+- Preserve prerequisites in browser drafts, new versions, review/revert and Excel
+  round trips. Older workbooks and models start without prerequisites.
+- Assessments grey out locked modules and show unmet names in desktop/mobile
+  navigation. Direct practice links show the locked module overview.
+- Required answers and evidence unlock dependents; optional unanswered questions,
+  low scores and inactive conditional questions do not block completion.
+- Incomplete prerequisites relock downstream modules while retaining their answers
+  and evidence. Recompletion restores access; submission remains blocked until
+  prerequisites are satisfied. Check individual and campaign assessments.
+- Locked modules cannot be edited through feedback review or direct API writes.
+
 ## Review and save
 
 - Show error counts on the correct wizard steps.

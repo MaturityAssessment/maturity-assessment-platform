@@ -311,6 +311,18 @@ Represents modules within dimensions. Modules group related practices.
 
 ---
 
+Modules also own the ordered `module_prerequisites` collection:
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| module_id | BIGINT | FK → modules(id), ON DELETE CASCADE | Dependent module in this version |
+| prerequisite_order | INTEGER | Composite PK with module_id | Order in the prerequisite list |
+| prerequisite_module_code | VARCHAR(64) | NOT NULL; UNIQUE with module_id | Code of an earlier module in the same dimension |
+
+The model service validates target scope, order, uniqueness and visibility.
+References use sibling public codes, as gating rules do. Version creation copies
+the configuration into the new version's module rows.
+
 ### 8. practices
 
 Represents practices within modules. Practices contain questions.

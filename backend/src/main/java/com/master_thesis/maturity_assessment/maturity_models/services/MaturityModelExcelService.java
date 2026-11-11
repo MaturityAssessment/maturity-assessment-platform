@@ -71,9 +71,9 @@ public class MaturityModelExcelService {
             "dimensionId", "moduleCode", "moduleName", "moduleDescription"
     );
     private static final List<String> MODULE_OPTIONAL_HEADERS = List.of(
-            "dimensionName", "moduleWeight", "moduleAggregationRule", "moduleGatingRules", "moduleVisible"
+            "dimensionName", "moduleWeight", "moduleAggregationRule", "moduleGatingRules", "moduleVisible", "modulePrerequisites"
     );
-    private static final List<String> MODULE_EXPORT_HEADERS = Stream.concat(MODULE_HEADERS.stream(), Stream.of("moduleWeight", "moduleAggregationRule", "moduleGatingRules", "moduleVisible")).toList();
+    private static final List<String> MODULE_EXPORT_HEADERS = Stream.concat(MODULE_HEADERS.stream(), Stream.of("moduleWeight", "moduleAggregationRule", "moduleGatingRules", "moduleVisible", "modulePrerequisites")).toList();
 
     private static final List<String> PRACTICE_HEADERS = List.of(
             "dimensionId", "moduleCode", "practiceName", "practiceDescription"
@@ -253,6 +253,7 @@ public class MaturityModelExcelService {
                 m.setModuleDescription(mod.get("moduleDescription"));
                 m.setModuleWeight(mod.get("moduleWeight"));
                 m.setModuleVisible(mod.get("moduleVisible"));
+                m.setModulePrerequisites(mod.get("modulePrerequisites"));
                 m.setModuleAggregationRule(mod.get("moduleAggregationRule"));
                 m.setModuleGatingRules(mod.get("moduleGatingRules"));
 
@@ -719,6 +720,7 @@ public class MaturityModelExcelService {
                 row.createCell(5).setCellValue(mod.getAggregationRule() == null ? "" : mod.getAggregationRule().name());
                 row.createCell(6).setCellValue(writeJson(mod.getGatingRules()));
                 row.createCell(7).setCellValue(!Boolean.FALSE.equals(mod.getVisible()));
+                row.createCell(8).setCellValue(writeJson(mod.getPrerequisiteModuleCodes()));
             }
         }
     }
@@ -851,6 +853,7 @@ public class MaturityModelExcelService {
                 "Use one row on Model. Imported models are inactive; choose a domain in the editor and review before saving as a new model or version.",
                 "Levels: define 2 to 12 levels numbered 1..N. Description is optional.",
                 "Join items using dimensionId, moduleCode and practiceCode. Codes must be unique among siblings. If changing a code, update all child references, dependencies and gating rules.",
+                "modulePrerequisites is an optional JSON array of earlier module codes in the same dimension. Visible modules require visible prerequisites.",
                 "Sheet row order determines dimension, module, practice and question order. Every dimension/module/practice must lead to a question. Remove child rows when deleting an item.",
                 "Aggregation rules: AVERAGE, WEIGHTED_AVERAGE, MINIMUM, MAXIMUM, SUM, MEDIAN. Empty values use the application defaults. Weights must be positive; optional questions may have zero weight.",
                 "dimensionMappingRules: JSON array, one threshold per level, starting at zero, strictly increasing within 0..1. Example: [{\"levelNumber\":1,\"minimumScore\":0},{\"levelNumber\":2,\"minimumScore\":0.5}].",

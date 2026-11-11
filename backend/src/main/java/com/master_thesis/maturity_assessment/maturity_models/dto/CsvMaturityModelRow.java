@@ -28,6 +28,7 @@ public class CsvMaturityModelRow {
     private String moduleName;
     private String moduleDescription;
     private String moduleVisible;
+    private String modulePrerequisites;
     private String moduleWeight;
     private String moduleAggregationRule;
     private String moduleGatingRules;

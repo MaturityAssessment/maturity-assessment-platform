@@ -10,6 +10,11 @@ Evidence is uploaded through assessment save/submit operations; there is no
 standalone POST upload endpoint. All operations on this page require a bearer
 token. Campaign respondents use [campaign-response routes](campaign-responses.md).
 
+Evidence creation and deletion in a module with unmet prerequisites return
+`400 MODULE_PREREQUISITES_INCOMPLETE`. Retained evidence remains readable while
+the module is locked. Multipart assessment saves validate prerequisite access
+after synchronizing evidence, within the same transaction.
+
 ## GET /api/v1/evidence/assessment/{assessmentId}
 
 **Access:** Assessment owner; curator/admin only when the assessment is not `DRAFT`.

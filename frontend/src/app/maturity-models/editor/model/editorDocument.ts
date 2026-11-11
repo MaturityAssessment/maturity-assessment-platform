@@ -119,6 +119,7 @@ export function emptyModule(
     aggregationRule: DEFAULT_AGGREGATION_RULE,
     gatingRules: [],
     visible: true,
+    prerequisiteModuleCodes: [],
     practices: [emptyPractice(practiceOrdinal, questionOrdinal)],
   };
 }
@@ -192,6 +193,7 @@ export function hydrateDocument(
         ...module,
         description: module.description ?? "",
         visible: module.visible !== false,
+        prerequisiteModuleCodes: [...(module.prerequisiteModuleCodes ?? [])],
         clientKey: module.clientKey || key(),
         codeLocked: false,
         weight: module.weight ?? 1,
@@ -279,6 +281,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
           ({ clientKey: _moduleKey, codeLocked: _moduleLocked, ...module }) => ({
             ...module,
             visible: module.visible !== false,
+            prerequisiteModuleCodes: [...(module.prerequisiteModuleCodes ?? [])],
             code: module.code.trim(),
             name: module.name.trim(),
             description: module.description.trim(),

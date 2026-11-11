@@ -13,6 +13,7 @@ public class ModuleDTO {
 
     // Weighting factor for aggregation (optional, defaults to 1.0)
     private Boolean visible = true;
+    private List<String> prerequisiteModuleCodes = new java.util.ArrayList<>();
     private Double weight;
     private AggregationRule aggregationRule;
     private List<GatingRuleDTO> gatingRules;

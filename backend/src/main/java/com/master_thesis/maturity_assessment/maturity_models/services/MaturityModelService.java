@@ -180,6 +180,7 @@ public class MaturityModelService {
                 validateMaturityModelLevels(maturityModelDTO);
                 validateDimensionMappingRules(maturityModelDTO);
                 validateGatingRules(maturityModelDTO);
+                validateModulePrerequisites(maturityModelDTO);
                 validateMaturityModelQuestions(maturityModelDTO);
 
                 MaturityModel model = convertFromDTO(maturityModelDTO);
@@ -211,6 +212,7 @@ public class MaturityModelService {
                 validateMaturityModelLevels(source);
                 validateDimensionMappingRules(source);
                 validateGatingRules(source);
+                validateModulePrerequisites(source);
                 validateMaturityModelQuestions(source);
                 return toEditorDocument(source);
         }
@@ -472,6 +474,7 @@ public class MaturityModelService {
                 }
                 dto.setCode(module.getCode());
                 dto.setVisible(!Boolean.FALSE.equals(module.getVisible()));
+                dto.setPrerequisiteModuleCodes(module.getPrerequisiteModuleCodes() == null ? List.of() : new ArrayList<>(module.getPrerequisiteModuleCodes()));
                 dto.setName(module.getName());
                 dto.setDescription(module.getDescription());
                 dto.setWeight(module.getWeight());
@@ -499,6 +502,7 @@ public class MaturityModelService {
                 module.setCode(code);
                 module.setName(dto.getName());
                 module.setVisible(!Boolean.FALSE.equals(dto.getVisible()));
+                module.setPrerequisiteModuleCodes(dto.getPrerequisiteModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(dto.getPrerequisiteModuleCodes()));
                 module.setDescription(dto.getDescription());
                 module.setWeight(dto.getWeight() != null ? dto.getWeight() : 1.0);
                 module.setAggregationRule(resolveAggregationRule(dto.getAggregationRule()));
@@ -749,6 +753,7 @@ public class MaturityModelService {
                                 var editorModule = new MaturityModelEditorDTO.EditorModuleDTO();
                                 editorModule.setCode(module.getCode());
                                 editorModule.setVisible(!Boolean.FALSE.equals(module.getVisible()));
+                                editorModule.setPrerequisiteModuleCodes(module.getPrerequisiteModuleCodes());
                                 editorModule.setName(module.getName());
                                 editorModule.setDescription(module.getDescription());
                                 editorModule.setWeight(module.getWeight());
@@ -831,6 +836,7 @@ public class MaturityModelService {
                                 ModuleDTO module = new ModuleDTO();
                                 module.setCode(editorModule.getCode());
                                 module.setVisible(!Boolean.FALSE.equals(editorModule.getVisible()));
+                                module.setPrerequisiteModuleCodes(editorModule.getPrerequisiteModuleCodes());
                                 module.setName(editorModule.getName());
                                 module.setDescription(editorModule.getDescription());
                                 module.setWeight(editorModule.getWeight());
@@ -1303,6 +1309,33 @@ public class MaturityModelService {
                 );
         }
 
+        private void validateModulePrerequisites(MaturityModelDTO dto) {
+                if (dto.getDimensions() == null) return;
+                for (DimensionDTO dimension : dto.getDimensions()) {
+                        Map<String, ModuleDTO> prior = new java.util.LinkedHashMap<>();
+                        for (ModuleDTO module : dimension.getModules() == null ? List.<ModuleDTO>of() : dimension.getModules()) {
+                                Set<String> seen = new HashSet<>();
+                                List<String> canonical = new ArrayList<>();
+                                for (String code : module.getPrerequisiteModuleCodes() == null ? List.<String>of() : module.getPrerequisiteModuleCodes()) {
+                                        String key = code == null ? "" : code.trim().toLowerCase(Locale.ROOT);
+                                        ModuleDTO prerequisite = prior.get(key);
+                                        if (prerequisite == null || !seen.add(key)) {
+                                                throw new IllegalOperationException("INVALID_MODULE_PREREQUISITES",
+                                                                "Prerequisites for module '" + module.getCode()
+                                                                + "' must be distinct earlier modules in the same dimension. No module can be reordered before its prerequisites or after a module that depends on it.");
+                                        }
+                                        if (!Boolean.FALSE.equals(module.getVisible()) && Boolean.FALSE.equals(prerequisite.getVisible())) {
+                                                throw new IllegalOperationException("HIDDEN_MODULE_PREREQUISITE",
+                                                                "Visible module '" + module.getCode() + "' requires hidden module '" + prerequisite.getCode() + "'. Show the prerequisite or hide the dependent module.");
+                                        }
+                                        canonical.add(prerequisite.getCode());
+                                }
+                                module.setPrerequisiteModuleCodes(canonical);
+                                prior.put(module.getCode().toLowerCase(Locale.ROOT), module);
+                        }
+                }
+        }
+
         private void validateGatingRules(MaturityModelDTO dto) {
                 if (dto.getDimensions() == null) {
                         return;
@@ -1631,6 +1664,7 @@ public class MaturityModelService {
                 validateMaturityModelLevels(maturityModelDTO);
                 validateDimensionMappingRules(maturityModelDTO);
                 validateGatingRules(maturityModelDTO);
+                validateModulePrerequisites(maturityModelDTO);
                 validateMaturityModelQuestions(maturityModelDTO);
 
                 int assessmentUsageCount = assessmentRepository.findByMaturityModelId(id).size();

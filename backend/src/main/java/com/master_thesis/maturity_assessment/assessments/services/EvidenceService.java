@@ -56,6 +56,7 @@ public class EvidenceService {
     private final AssessmentRepository assessmentRepository;
     private final PracticeRepository practiceRepository;
     private final QuestionRepository questionRepository;
+    private final AssessmentService assessmentService;
 
     @Value("${app.evidence.max-request-file-size:262144000}")
     private long maxRequestFileSize;
@@ -75,6 +76,7 @@ public class EvidenceService {
     ) throws IOException {
         Assessment assessment = requireOwnedAssessment(assessmentId, user);
         Practice practice = requirePracticeForModel(practiceId, assessment.getMaturityModelId());
+        assessmentService.requireModuleUnlockedForEvidence(assessment, practice);
         requireRoomForEvidence(assessmentId, practiceId);
         Evidence evidence = createFileEntity(file, assessment, practice, user, description);
         return toDTO(evidenceRepository.saveAndFlush(evidence));
@@ -90,6 +92,7 @@ public class EvidenceService {
     ) {
         Assessment assessment = requireOwnedAssessment(assessmentId, user);
         Practice practice = requirePracticeForModel(practiceId, assessment.getMaturityModelId());
+        assessmentService.requireModuleUnlockedForEvidence(assessment, practice);
         requireRoomForEvidence(assessmentId, practiceId);
         Evidence evidence = createUrlEntity(assessment, practice, user, description, url);
         return toDTO(evidenceRepository.saveAndFlush(evidence));
@@ -406,6 +409,7 @@ public class EvidenceService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized to delete this evidence.");
         }
 
+        assessmentService.requireModuleUnlockedForEvidence(evidence.getAssessment(), evidence.getPractice());
         if (effectiveType(evidence) == EvidenceType.FILE) {
             scheduleDeleteAfterCommit(evidence.getFilePath());
         }

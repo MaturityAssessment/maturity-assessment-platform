@@ -250,6 +250,32 @@ hidden modules; assessment clients filter `visible: false` before presentation.
 Workbook exports include optional `moduleVisible` in the Modules sheet. Imports
 without that column default all modules to visible.
 
+Modules also accept `prerequisiteModuleCodes`, an optional array of module codes
+(default `[]`). References are case-insensitive and resolve only to distinct
+**earlier modules in the same dimension**, using array order. Self-references,
+forward references, duplicate entries, unknown modules and cross-dimension
+references return `400 INVALID_MODULE_PREREQUISITES`. These restrictions prevent
+cycles and reject reorders that violate the dependency order. The editor updates
+references when modules are renamed or valid reorders renumber their codes.
+
+A visible module must have visible prerequisites; inconsistent API writes return
+`400 HIDDEN_MODULE_PREREQUISITE`. The editor blocks hiding a prerequisite while
+visible modules depend on it. Showing a dependent module also shows its entire
+prerequisite chain. Remove prerequisite references before deleting a module.
+
+During assessment, every selected prerequisite must have all active required
+answers and required practice evidence complete. Optional answers may remain
+unanswered; no numeric score or evaluator approval is needed. Unmet prerequisites
+lock the module and its practice links, with the missing module names shown.
+If a prerequisite becomes incomplete, downstream content is retained and locked;
+it becomes editable again when prerequisites are complete. Draft writes cannot
+modify locked content, and submission is blocked until prerequisites are complete
+(`400 MODULE_PREREQUISITES_INCOMPLETE`). This applies to individual and campaign
+assessments. Each model version retains its own prerequisite configuration.
+
+Workbook Modules sheets use optional `modulePrerequisites`, a JSON array such as
+`["M01_FOUNDATION", "M02_PLANNING"]`. Older workbooks default to no prerequisites.
+
 ## Model contracts
 
 MaturityModelDTO uses `dimensions[].id` for the string dimension code, while the

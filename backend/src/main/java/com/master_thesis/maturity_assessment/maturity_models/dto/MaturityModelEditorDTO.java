@@ -37,6 +37,7 @@ public class MaturityModelEditorDTO {
     @Data
     public static class EditorModuleDTO {
         private Boolean visible = true;
+        private List<String> prerequisiteModuleCodes = new ArrayList<>();
         private String code;
         private String name;
         private String description;

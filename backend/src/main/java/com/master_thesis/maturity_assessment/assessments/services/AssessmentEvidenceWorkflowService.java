@@ -33,8 +33,10 @@ public class AssessmentEvidenceWorkflowService {
 
     @Transactional(rollbackFor = Exception.class)
     public AssessmentResponse saveJsonDraft(AssessmentRequest request, User user) {
+        var prerequisiteSnapshot = assessmentService.capturePrerequisiteSnapshot(request, null, user, null);
         AssessmentResponse response = assessmentService.saveDraft(request, user);
         response.setEvidence(evidenceService.getEvidenceByAssessment(response.getId(), user));
+        assessmentService.validateModulePrerequisiteAccess(request, response, prerequisiteSnapshot, false);
         return response;
     }
 
@@ -47,6 +49,7 @@ public class AssessmentEvidenceWorkflowService {
             List<String> evidenceFileKeys,
             boolean metadataProvided
     ) throws IOException {
+        var prerequisiteSnapshot = assessmentService.capturePrerequisiteSnapshot(request, null, user, null);
         AssessmentResponse response = assessmentService.saveDraft(request, user);
         List<EvidenceDTO> synchronizedEvidence = synchronize(
                 response,
@@ -58,6 +61,7 @@ public class AssessmentEvidenceWorkflowService {
                 metadataProvided
         );
         response.setEvidence(synchronizedEvidence);
+        assessmentService.validateModulePrerequisiteAccess(request, response, prerequisiteSnapshot, false);
         return response;
     }
 
@@ -70,6 +74,7 @@ public class AssessmentEvidenceWorkflowService {
             List<MultipartFile> evidenceFiles,
             List<String> evidenceFileKeys
     ) throws IOException {
+        var prerequisiteSnapshot = assessmentService.capturePrerequisiteSnapshot(request, draftId, user, null);
         AssessmentResponse response = assessmentService.saveDraft(draftId, request, user);
         List<EvidenceDTO> synchronizedEvidence = synchronize(
                 response,
@@ -81,6 +86,7 @@ public class AssessmentEvidenceWorkflowService {
                 true
         );
         response.setEvidence(synchronizedEvidence);
+        assessmentService.validateModulePrerequisiteAccess(request, response, prerequisiteSnapshot, false);
         return response;
     }
 
@@ -101,6 +107,7 @@ public class AssessmentEvidenceWorkflowService {
             List<String> evidenceFileKeys,
             boolean metadataProvided
     ) throws IOException {
+        var prerequisiteSnapshot = assessmentService.capturePrerequisiteSnapshot(request, null, user, null);
         AssessmentResponse response = assessmentService.createAssessment(request, user);
         List<EvidenceDTO> synchronizedEvidence = synchronize(
                 response,
@@ -113,6 +120,7 @@ public class AssessmentEvidenceWorkflowService {
         );
         validateRequiredEvidence(request, synchronizedEvidence);
         response.setEvidence(synchronizedEvidence);
+        assessmentService.validateModulePrerequisiteAccess(request, response, prerequisiteSnapshot, true);
         return response;
     }
 
@@ -125,6 +133,7 @@ public class AssessmentEvidenceWorkflowService {
             List<MultipartFile> evidenceFiles,
             List<String> evidenceFileKeys
     ) throws IOException {
+        var prerequisiteSnapshot = assessmentService.capturePrerequisiteSnapshot(request, draftId, user, null);
         AssessmentResponse response = assessmentService.submitDraft(draftId, request, user);
         List<EvidenceDTO> synchronizedEvidence = synchronize(
                 response,
@@ -137,6 +146,7 @@ public class AssessmentEvidenceWorkflowService {
         );
         validateRequiredEvidence(request, synchronizedEvidence);
         response.setEvidence(synchronizedEvidence);
+        assessmentService.validateModulePrerequisiteAccess(request, response, prerequisiteSnapshot, true);
         return response;
     }
 
@@ -148,6 +158,7 @@ public class AssessmentEvidenceWorkflowService {
             List<MultipartFile> evidenceFiles,
             List<String> evidenceFileKeys
     ) throws IOException {
+        var prerequisiteSnapshot = assessmentService.capturePrerequisiteSnapshot(request, null, null, participant);
         AssessmentResponse response = assessmentService.saveCampaignDraft(request, participant);
         List<EvidenceDTO> synchronizedEvidence = evidenceService.synchronizeCampaignEvidence(
                 response.getId(),
@@ -159,6 +170,7 @@ public class AssessmentEvidenceWorkflowService {
                 true
         );
         response.setEvidence(synchronizedEvidence);
+        assessmentService.validateModulePrerequisiteAccess(request, response, prerequisiteSnapshot, false);
         return response;
     }
 
@@ -170,6 +182,7 @@ public class AssessmentEvidenceWorkflowService {
             List<MultipartFile> evidenceFiles,
             List<String> evidenceFileKeys
     ) throws IOException {
+        var prerequisiteSnapshot = assessmentService.capturePrerequisiteSnapshot(request, null, null, participant);
         AssessmentResponse response = assessmentService.submitCampaignAssessment(
                 request,
                 participant
@@ -185,6 +198,7 @@ public class AssessmentEvidenceWorkflowService {
         );
         validateRequiredEvidence(request, synchronizedEvidence);
         response.setEvidence(synchronizedEvidence);
+        assessmentService.validateModulePrerequisiteAccess(request, response, prerequisiteSnapshot, true);
         return response;
     }
 

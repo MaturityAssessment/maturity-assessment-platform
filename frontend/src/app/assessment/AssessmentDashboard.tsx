@@ -68,6 +68,7 @@ type AssessmentDashboardProps = {
   onEvaluationQuestion?: (responseKey: string) => void;
   evaluationActive?: boolean;
   readOnly?: boolean;
+  lockedPracticeKeys?: ReadonlySet<string>;
   model: MaturityModel;
   practiceSteps: AssessmentPracticeStep[];
   formData: AssessmentData;
@@ -119,6 +120,7 @@ export default function AssessmentDashboard({
   onEvaluationQuestion,
   evaluationActive = false,
   readOnly = false,
+  lockedPracticeKeys,
   model,
   practiceSteps,
   formData,
@@ -310,6 +312,7 @@ export default function AssessmentDashboard({
       ) : activeTab === "review" ? (
         feedbackItemCount > 0 ? (
           <AssessmentFeedbackReviewTab
+            lockedPracticeKeys={lockedPracticeKeys}
             evidenceFiles={evidenceFiles}
             onEvidenceItemsChange={onEvidenceItemsChange}
             readOnly={readOnly}

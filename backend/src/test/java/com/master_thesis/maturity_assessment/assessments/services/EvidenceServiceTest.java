@@ -63,6 +63,8 @@ class EvidenceServiceTest {
     private PracticeRepository practiceRepository;
     @Mock
     private QuestionRepository questionRepository;
+    @Mock
+    private AssessmentService assessmentService;
 
     private EvidenceService evidenceService;
     private User owner;
@@ -76,7 +78,8 @@ class EvidenceServiceTest {
                 fileStorageService,
                 assessmentRepository,
                 practiceRepository,
-                questionRepository
+                questionRepository,
+                assessmentService
         );
         ReflectionTestUtils.setField(evidenceService, "maxRequestFileSize", 250L * 1024 * 1024);
 
@@ -112,6 +115,17 @@ class EvidenceServiceTest {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.clearSynchronization();
         }
+    }
+
+    @Test
+    void standaloneEvidenceCreationHonorsModulePrerequisiteLocks() {
+        org.mockito.Mockito.doThrow(new com.master_thesis.maturity_assessment.config.IllegalOperationException(
+                "MODULE_PREREQUISITES_INCOMPLETE", "Module is locked"))
+                .when(assessmentService).requireModuleUnlockedForEvidence(assessment, practice);
+        assertThrows(com.master_thesis.maturity_assessment.config.IllegalOperationException.class,
+                () -> evidenceService.createUrlEvidence(ASSESSMENT_ID, PRACTICE_ID, owner,
+                        "Evidence", "https://example.com/evidence"));
+        org.mockito.Mockito.verify(evidenceRepository, org.mockito.Mockito.never()).saveAndFlush(any());
     }
 
     @Test

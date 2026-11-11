@@ -246,3 +246,38 @@ test("navigation clears evidence warnings once supplied and preserves evaluator 
   assert.match(evaluator, /5\/6 ready/);
   assert.doesNotMatch(evaluator, /Required evidence missing/);
 });
+
+
+test("locked modules render grey disabled navigation with unmet prerequisite names", () => {
+  const Navigation = load(resolve(sourceRoot, "app/assessment/AssessmentNavigationMenu.tsx")).default;
+  const locked = { key: "module-B", name: "Advanced", number: 2, locked: true, missingPrerequisites: ["Foundation", "Planning"], practices: [], totalPractices: 1, totalQuestions: 2, answeredCount: 0, completedPracticeCount: 0, isRequiredComplete: false, isFullyAnswered: false, outstandingFlaggedCount: 0, missingRequiredAnswerCount: 2, invalidAnswerCount: 0, missingEvidenceCount: 0 };
+  const html = renderToStaticMarkup(createElement(Navigation, { dimensionName: "Dimension", modules: [locked], activeModuleKey: "", activePracticeKey: null, onModuleSelect: noOp, onPracticeSelect: noOp }));
+  assert.match(html, /Complete first: Foundation, Planning/);
+  assert.match(html, /disabled=""/);
+  assert.match(html, /disabled:bg-slate-100/);
+});
+
+test("a locked module landing page explains the lock and disables its practice links", () => {
+  const Overview = load(resolve(sourceRoot, "app/assessment/AssessmentModuleOverview.tsx")).default;
+  const practice = { key: "practice-B", name: "Advanced practice", order: 1, answeredCount: 1, totalEnabledQuestions: 1, isRequiredComplete: true, isFullyAnswered: true, outstandingFlaggedCount: 0, missingRequiredAnswerCount: 0, invalidAnswerCount: 0, missingEvidenceCount: 0 };
+  const module = { key: "module-B", name: "Advanced", number: 2, locked: true, missingPrerequisites: ["Foundation"], practices: [practice], totalPractices: 1, totalQuestions: 1, answeredCount: 1, completedPracticeCount: 1, isRequiredComplete: true, isFullyAnswered: true, outstandingFlaggedCount: 0, missingRequiredAnswerCount: 0, invalidAnswerCount: 0, missingEvidenceCount: 0 };
+  const html = renderToStaticMarkup(createElement(Overview, { modelName: "Model", dimension: { name: "Dimension" }, module: { name: "Advanced" }, moduleNumber: 2, moduleCount: 2, navigationModules: [module], activeModuleKey: "module-B", onOverview: noOp, onModuleSelect: noOp, onPracticeSelect: noOp }));
+  assert.match(html, /Module locked/);
+  assert.match(html, /<li[^>]*>Foundation<\/li>/);
+  assert.match(html, /existing answers and evidence are retained/);
+  assert.doesNotMatch(html, /Start module|Continue module/);
+  assert.match(html, /disabled=""/);
+});
+
+
+test("module Details offers only earlier sibling modules as prerequisites", () => {
+  const ModuleEditor = load(resolve(sourceRoot, "app/maturity-models/editor/steps/structure/ModuleEditor.tsx")).default;
+  const { emptyModule } = load(resolve(sourceRoot, "app/maturity-models/editor/model/editorDocument.ts"));
+  const modules = ["Foundation", "Current", "Later"].map((name, index) => ({ ...emptyModule(index + 1, 1, 1), name }));
+  modules[1].prerequisiteModuleCodes = [modules[0].code];
+  const html = renderToStaticMarkup(createElement(ModuleEditor, { dimension: { clientKey: "dimension", name: "Dimension", modules, gatingRules: [] }, module: modules[1], onSelect: noOp, commands: {} }));
+  assert.match(html, /Prerequisite modules/);
+  assert.match(html, /Foundation/);
+  assert.doesNotMatch(html, /Later/);
+  assert.match(html, /Only earlier modules in this dimension/);
+});

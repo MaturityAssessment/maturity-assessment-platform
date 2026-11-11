@@ -237,6 +237,15 @@ export function validateDocument(
         type: "module",
         key: module.clientKey,
       };
+      const prerequisites = module.prerequisiteModuleCodes ?? [];
+      const prior = dimension.modules.slice(0, moduleIndex);
+      if (new Set(prerequisites.map((code) => code.toLowerCase())).size !== prerequisites.length ||
+          prerequisites.some((code) => !prior.some((candidate) => candidate.code.toLowerCase() === code.toLowerCase()))) {
+        add({ step: "structure", severity: "error", message: `${module.name || module.code}: prerequisites must be distinct earlier modules in this dimension.`, selection: moduleSelection });
+      }
+      if (module.visible !== false && prerequisites.some((code) => prior.some((candidate) => candidate.code.toLowerCase() === code.toLowerCase() && candidate.visible === false))) {
+        add({ step: "structure", severity: "error", message: `${module.name || module.code}: visible modules require visible prerequisites.`, selection: moduleSelection });
+      }
       checkCode(
         moduleCodes,
         module.code,

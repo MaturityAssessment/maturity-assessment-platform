@@ -85,6 +85,27 @@ class MaturityModelExcelServiceTest {
     }
 
     @Test
+    void prerequisiteListsRoundTripAndLegacyWorkbooksDefaultToEmpty() throws Exception {
+        MaturityModelDTO model = buildOfficialTemplateModel();
+        var modules = model.getDimensions().getFirst().getModules();
+        modules.get(1).setPrerequisiteModuleCodes(List.of(modules.getFirst().getCode()));
+        byte[] xlsx = excelService.exportMaturityModelToXlsx(model);
+        var parsed = excelService.parseExcelWorkbook(new ByteArrayInputStream(xlsx));
+        assertTrue(parsed.isSuccess(), parsed.getErrorDetails());
+        assertEquals(modules.get(1).getPrerequisiteModuleCodes(), parsed.getMaturityModel().getDimensions().getFirst().getModules().get(1).getPrerequisiteModuleCodes());
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(xlsx))) {
+            Sheet sheet = workbook.getSheet(MaturityModelExcelService.SHEET_MODULES);
+            for (Row row : sheet) if (row.getCell(8) != null) row.removeCell(row.getCell(8));
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            workbook.write(output);
+            var legacy = excelService.parseExcelWorkbook(new ByteArrayInputStream(output.toByteArray()));
+            assertTrue(legacy.isSuccess(), legacy.getErrorDetails());
+            assertTrue(legacy.getMaturityModel().getDimensions().stream().flatMap(d -> d.getModules().stream())
+                    .allMatch(module -> module.getPrerequisiteModuleCodes() == null || module.getPrerequisiteModuleCodes().isEmpty()));
+        }
+    }
+
+    @Test
     void invalidVisibilityInWorkbookIsRejected() throws Exception {
         try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(
                 excelService.exportMaturityModelToXlsx(buildSampleModel())))) {
@@ -106,7 +127,7 @@ class MaturityModelExcelServiceTest {
                     List.of("modelName", "modelDescription", "modelAutoEvaluated", "modelAggregationRule", "modelChangelogMarkdown"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_MODEL), fmt));
             assertEquals(
-                    List.of("dimensionId", "moduleCode", "moduleName", "moduleDescription", "moduleWeight", "moduleAggregationRule", "moduleGatingRules", "moduleVisible"),
+                    List.of("dimensionId", "moduleCode", "moduleName", "moduleDescription", "moduleWeight", "moduleAggregationRule", "moduleGatingRules", "moduleVisible", "modulePrerequisites"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_MODULES), fmt));
             assertEquals(
                     List.of("dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceGatingRules"),

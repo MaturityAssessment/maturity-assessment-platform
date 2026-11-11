@@ -29,6 +29,7 @@ import { isDependentQuestionDisabled } from "./assessmentFlowUtils";
 
 type AssessmentFeedbackReviewTabProps = {
   readOnly?: boolean;
+  lockedPracticeKeys?: ReadonlySet<string>;
   practiceSteps: AssessmentPracticeStep[];
   formData: AssessmentData;
   routeContext?: AssessmentRouteContext | null;
@@ -42,6 +43,7 @@ type AssessmentFeedbackReviewTabProps = {
 
 export default function AssessmentFeedbackReviewTab({
   readOnly = false,
+  lockedPracticeKeys,
   practiceSteps,
   formData,
   routeContext = null,
@@ -171,6 +173,7 @@ export default function AssessmentFeedbackReviewTab({
 
       <div className="mt-7 space-y-8">
         {items.map((item, index) => {
+          const moduleLocked = lockedPracticeKeys?.has(item.step.key) ?? false;
           const respondentUpdated = isReviewedItemUpdated(
             item.evaluation,
             respondentUpdatedResponseKeys
@@ -209,13 +212,14 @@ export default function AssessmentFeedbackReviewTab({
                 </span>
               </div>
 
-              <AssessmentQuestionCard readOnly={readOnly}
+              {moduleLocked && <p role="status" className="mb-3 rounded-lg bg-slate-100 p-3 text-sm text-slate-600">This module is locked until its prerequisites are complete. Your answer is retained.</p>}
+              <AssessmentQuestionCard readOnly={readOnly || moduleLocked}
                 responseDetails={item.step.practice.id != null && item.question.id != null ? <QuestionEvidence
                   questionId={item.question.id} practiceId={item.step.practice.id}
                   items={evidenceFiles.get(getPracticeEvidenceField(item.step.practice.id)) || []}
                   questions={item.step.practice.questions}
                   inactiveQuestionIds={new Set(item.step.practice.questions.filter(question => isDependentQuestionDisabled(item.step, question, formData)).map(question => question.id!))}
-                  inactive={isDependentQuestionDisabled(item.step, item.question, formData)} readOnly={readOnly}
+                  inactive={isDependentQuestionDisabled(item.step, item.question, formData)} readOnly={readOnly || moduleLocked}
                   onItemsChange={onEvidenceItemsChange ? items => onEvidenceItemsChange(getPracticeEvidenceField(item.step.practice.id), items) : undefined} /> : undefined}
                 question={item.question}
                 practiceQuestions={item.step.practice.questions}

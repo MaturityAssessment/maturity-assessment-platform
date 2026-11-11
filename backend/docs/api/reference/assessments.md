@@ -12,6 +12,14 @@ All operations require a bearer token. Success is `200` with
 Use the exact-draft write endpoints for new clients. They preserve the assessment
 ID across saves and submission and reject writes after the row stops being editable.
 
+Modules with prerequisites remain locked until all referenced earlier modules in
+the same dimension have complete required answers and evidence. Draft saves
+retain unchanged content in a module that becomes locked, but reject new or
+changed answers/evidence there. Submission also requires all prerequisites to be
+complete. Violations return `400 MODULE_PREREQUISITES_INCOMPLETE`; no partial save
+is committed. Optional unanswered questions do not block unlocking. See the
+[model contract](maturity-models.md#model-contracts) for authoring rules.
+
 ## Assessment request
 
 | Field | Contract |

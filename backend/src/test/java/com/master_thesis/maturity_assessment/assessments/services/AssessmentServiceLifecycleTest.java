@@ -229,6 +229,124 @@ class AssessmentServiceLifecycleTest {
     }
 
     @Test
+    void modulePrerequisitesRequireAnswersAndEvidenceWithoutAQualifyingScore() {
+        MaturityModel model = prerequisiteModel();
+        var first = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        first.setRequiresEvidence(true);
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        var incoming = request(Map.of("D1_M1_101_1001", 1, "D1_M2_102_1002", 1, "D1_M3_103_1003", 1));
+        var response = new AssessmentResponse();
+        response.setId(ASSESSMENT_ID);
+        response.setEvidence(List.of());
+        var error = assertThrows(IllegalOperationException.class,
+                () -> assessmentService.validateModulePrerequisiteAccess(incoming, response, null, true));
+        assertEquals("MODULE_PREREQUISITES_INCOMPLETE", error.getErrorCode());
+        response.setEvidence(List.of(com.master_thesis.maturity_assessment.assessments.dto.EvidenceDTO.builder()
+                .id(1L).practiceId(101L).build()));
+        assessmentService.validateModulePrerequisiteAccess(incoming, response, null, true);
+    }
+
+    @Test
+    void incompletePrerequisitesAllowEmptyDraftsButRejectNewDownstreamAnswers() {
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(prerequisiteModel()));
+        var response = new AssessmentResponse();
+        response.setId(ASSESSMENT_ID);
+        response.setEvidence(List.of());
+        assessmentService.validateModulePrerequisiteAccess(request(Map.of()), response, null, false);
+        var error = assertThrows(IllegalOperationException.class, () -> assessmentService.validateModulePrerequisiteAccess(
+                request(Map.of("D1_M2_102_1002", 3)), response, null, false));
+        assertEquals("MODULE_PREREQUISITES_INCOMPLETE", error.getErrorCode());
+        assertThrows(IllegalOperationException.class, () -> assessmentService.validateModulePrerequisiteAccess(
+                request(Map.of("D1_M1_101_1001", 3, "D1_M3_103_1003", 3)), response, null, false));
+    }
+
+    @Test
+    void relockingPreservesDownstreamAnswersButRejectsEditingAndSubmissionUntilRestored() {
+        MaturityModel model = prerequisiteModel();
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        var draft = draftAssessment();
+        when(assessmentRepository.findByIdForUpdate(ASSESSMENT_ID)).thenReturn(Optional.of(draft));
+        when(questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of(
+                questionRow(draft, "D1_M1_101_1001", 3, 3),
+                questionRow(draft, "D1_M2_102_1002", 3, 3),
+                questionRow(draft, "D1_M3_103_1003", 3, 3)));
+        var original = request(Map.of("D1_M1_101_1001", 3, "D1_M2_102_1002", 3, "D1_M3_103_1003", 3));
+        var snapshot = assessmentService.capturePrerequisiteSnapshot(original, ASSESSMENT_ID, user, null);
+        var relocked = request(Map.of("D1_M2_102_1002", 3, "D1_M3_103_1003", 3));
+        var response = new AssessmentResponse();
+        response.setId(ASSESSMENT_ID);
+        response.setEvidence(List.of());
+        assessmentService.validateModulePrerequisiteAccess(relocked, response, snapshot, false);
+        assertThrows(IllegalOperationException.class,
+                () -> assessmentService.validateModulePrerequisiteAccess(relocked, response, snapshot, true));
+        assertThrows(IllegalOperationException.class,
+                () -> assessmentService.validateModulePrerequisiteAccess(
+                        request(Map.of("D1_M2_102_1002", 4, "D1_M3_103_1003", 3)), response, snapshot, false));
+        assessmentService.validateModulePrerequisiteAccess(original, response, snapshot, true);
+    }
+
+    @Test
+    void retainedAnswersSurviveJsonNumberAndBooleanRepresentationsWhileRelocked() {
+        MaturityModel model = prerequisiteModel();
+        model.getDimensions().getFirst().getModules().get(2).getPractices().getFirst().getQuestions().getFirst().setType("boolean");
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        var draft = draftAssessment();
+        when(assessmentRepository.findByIdForUpdate(ASSESSMENT_ID)).thenReturn(Optional.of(draft));
+        when(questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of(
+                questionRow(draft, "D1_M2_102_1002", 3.0, 3),
+                questionRow(draft, "D1_M3_103_1003", true, 1)));
+        var incoming = request(Map.of("D1_M2_102_1002", 3, "D1_M3_103_1003", 1));
+        var snapshot = assessmentService.capturePrerequisiteSnapshot(incoming, ASSESSMENT_ID, user, null);
+        var response = new AssessmentResponse(); response.setId(ASSESSMENT_ID); response.setEvidence(List.of());
+        assessmentService.validateModulePrerequisiteAccess(incoming, response, snapshot, false);
+    }
+
+    @Test
+    void lockedModulesCannotReceiveNewEvidenceThroughDraftSaving() {
+        MaturityModel model = prerequisiteModel();
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        Evidence added = new Evidence();
+        added.setId(90L);
+        added.setPractice(model.getDimensions().getFirst().getModules().get(1).getPractices().getFirst());
+        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of(added));
+        var response = new AssessmentResponse();
+        response.setId(ASSESSMENT_ID);
+        response.setEvidence(List.of(com.master_thesis.maturity_assessment.assessments.dto.EvidenceDTO.builder()
+                .id(90L).practiceId(102L).build()));
+        assertThrows(IllegalOperationException.class,
+                () -> assessmentService.validateModulePrerequisiteAccess(request(Map.of()), response, null, false));
+    }
+
+    @Test
+    void standaloneEvidenceAccessUsesPersistedPrerequisiteCompletion() {
+        MaturityModel model = prerequisiteModel();
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        var target = model.getDimensions().getFirst().getModules().get(1).getPractices().getFirst();
+        var draft = draftAssessment();
+        assertThrows(IllegalOperationException.class,
+                () -> assessmentService.requireModuleUnlockedForEvidence(draft, target));
+        when(questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID))
+                .thenReturn(List.of(questionRow(draft, "D1_M1_101_1001", 1, 1)));
+        assessmentService.requireModuleUnlockedForEvidence(draft, target);
+    }
+
+    private MaturityModel prerequisiteModel() {
+        Question first = question(1001L); first.setRequired(true);
+        Question second = question(1002L); second.setRequired(true);
+        Question third = question(1003L); third.setRequired(true);
+        Module a = module("M1", practice(101L, "P1", first));
+        Module b = module("M2", practice(102L, "P2", second));
+        Module c = module("M3", practice(103L, "P3", third));
+        b.setPrerequisiteModuleCodes(List.of("m1"));
+        c.setPrerequisiteModuleCodes(List.of("M2"));
+        MaturityModel model = model(true);
+        Dimension dimension = dimension("D1", a, b, c);
+        dimension.setMaturityModel(model);
+        model.setDimensions(List.of(dimension));
+        return model;
+    }
+
+    @Test
     void hiddenModuleAnswersCannotBeSubmittedDirectly() {
         MaturityModel model = booleanScoringModel();
         model.getDimensions().getFirst().getModules().getFirst().setVisible(false);

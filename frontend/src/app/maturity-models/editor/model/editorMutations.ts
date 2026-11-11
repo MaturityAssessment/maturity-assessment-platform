@@ -12,6 +12,7 @@ import {
   emptyPractice,
   emptyQuestion,
 } from "./editorDocument.ts";
+import { hasValidModulePrerequisiteOrder, showModulePrerequisites } from "./modulePrerequisites.ts";
 import { renumberSiblingCodes } from "./editorCodes.ts";
 
 function replaceByKey<T extends { clientKey: string }>(
@@ -184,6 +185,7 @@ export function updateDimension(
   renumberModules = false
 ) {
   if (renumberModules && dimension.modules !== findDimension(document, dimensionKey)?.modules) {
+    if (!hasValidModulePrerequisiteOrder(dimension.modules)) return document;
     const result = renumberSiblingCodes(dimension.modules, "M", dimension.gatingRules);
     dimension = { ...dimension, modules: result.items, gatingRules: result.gatingRules };
   }
@@ -272,7 +274,11 @@ export function updateModule(
             : rule
         )
       : dimension.gatingRules,
-    modules: replaceByKey(dimension.modules, moduleKey, module),
+    modules: showModulePrerequisites(replaceByKey(dimension.modules, moduleKey, module).map((candidate) => ({
+      ...candidate,
+      prerequisiteModuleCodes: (candidate.prerequisiteModuleCodes ?? []).map((code) =>
+        previous && previous.code !== module.code && code.toLowerCase() === previous.code.toLowerCase() ? module.code : code),
+    }))),
   });
 }
 
@@ -315,6 +321,7 @@ export function deleteModule(
     (module) => module.clientKey === moduleKey
   );
   if (!removed) return document;
+  if (dimension.modules.some((module) => module.prerequisiteModuleCodes?.some((code) => code.toLowerCase() === removed.code.toLowerCase()))) return document;
   return updateDimension(document, dimensionKey, {
     ...dimension,
     gatingRules: dimension.gatingRules.filter(

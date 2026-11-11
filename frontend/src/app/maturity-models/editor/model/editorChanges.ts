@@ -25,7 +25,7 @@ const locationPath = (location: ChangeLocation[]) => location.map(item => `${ite
 const title = (item: Item) => `${item.code} — ${("text" in item ? item.text : item.name) || "Untitled"}`;
 const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const human = (value: string) => value.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().replace(/^./, c => c.toUpperCase());
-const labels: Record<string, string> = { visible: "Visible in assessments", text: "Question text", help: "Help text", autoEvaluated: "Automatic evaluation", domainId: "Domain", aggregationRule: "Aggregation", requiresEvidence: "Evidence required", dependsOnQuestionCode: "Depends on question", dependencyCondition: "Dependency condition", mappingRules: "Maturity mapping", gatingRules: "Gating rules", changelogMarkdown: "Release notes" };
+const labels: Record<string, string> = { prerequisiteModuleCodes: "Prerequisite modules", visible: "Visible in assessments", text: "Question text", help: "Help text", autoEvaluated: "Automatic evaluation", domainId: "Domain", aggregationRule: "Aggregation", requiresEvidence: "Evidence required", dependsOnQuestionCode: "Depends on question", dependencyCondition: "Dependency condition", mappingRules: "Maturity mapping", gatingRules: "Gating rules", changelogMarkdown: "Release notes" };
 function display(value: unknown): string {
   if (value === undefined || value === null || value === "") return "Not provided";
   if (typeof value === "boolean") return value ? "Yes" : "No";
@@ -47,6 +47,10 @@ function fields(item: Item, siblings: Item[]): Fields {
     let value = typeof original === "string" ? original.trim() : original;
     if (value == null) value = "";
     let text: string | undefined;
+    if (key === "prerequisiteModuleCodes" && "practices" in item) {
+      value = (item.prerequisiteModuleCodes ?? []).map(code => reference(code, siblings)?.clientKey ?? code).sort();
+      text = (item.prerequisiteModuleCodes ?? []).map(code => { const target = reference(code, siblings); return target ? title(target) : code; }).join("\n") || "None";
+    }
     if (key === "code") value = codeSuffix(String(value));
     if (key === "choices" && q) value = (q.choices ?? []).map(c => ({ label: c.label, ...(q.type === "multiple_selection" ? { rawValue: c.rawValue } : { score: c.score }) }));
     if (key === "dependsOnQuestionCode") {

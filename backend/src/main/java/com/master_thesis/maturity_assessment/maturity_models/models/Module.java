@@ -12,14 +12,15 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
 
 @Entity
 @Table(name = "modules")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString(exclude = { "dimension", "practices", "gatingRules" })
-@EqualsAndHashCode(exclude = { "dimension", "practices", "gatingRules" })
+@ToString(exclude = { "dimension", "practices", "gatingRules", "prerequisiteModuleCodes" })
+@EqualsAndHashCode(exclude = { "dimension", "practices", "gatingRules", "prerequisiteModuleCodes" })
 public class Module {
 
     @Id
@@ -39,6 +40,13 @@ public class Module {
     @Column(nullable = false)
     @ColumnDefault("true")
     private Boolean visible = true;
+
+    @ElementCollection
+    @CollectionTable(name = "module_prerequisites", joinColumns = @JoinColumn(name = "module_id"),
+            uniqueConstraints = @UniqueConstraint(columnNames = {"module_id", "prerequisite_module_code"}))
+    @OrderColumn(name = "prerequisite_order")
+    @Column(name = "prerequisite_module_code", nullable = false, length = 64)
+    private List<String> prerequisiteModuleCodes = new ArrayList<>();
 
     // Weighting factor for aggregation (optional, defaults to 1.0)
     @Column(nullable = false)

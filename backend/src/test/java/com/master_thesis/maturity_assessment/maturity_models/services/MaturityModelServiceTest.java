@@ -506,6 +506,97 @@ class MaturityModelServiceTest {
     }
 
     @Test
+    void prerequisitesPersistThroughEditorAndVersionConversion() {
+        Domain domain = domain();
+        var dto = updateDto(domain.getId(), null);
+        var dimension = dto.getDimensions().getFirst();
+        var first = dimension.getModules().getFirst();
+        var second = new ModuleDTO();
+        second.setCode("SECOND");
+        second.setName("Second module");
+        second.setPrerequisiteModuleCodes(List.of(first.getCode().toLowerCase()));
+        second.setPractices(first.getPractices());
+        dimension.setModules(List.of(first, second));
+        when(domainRepository.findById(domain.getId())).thenReturn(Optional.of(domain));
+        when(maturityModelRepository.saveAndFlush(any(MaturityModel.class))).thenAnswer(invocation -> {
+            MaturityModel model = invocation.getArgument(0);
+            assignGeneratedIds(model);
+            assertEquals(List.of(first.getCode()), model.getDimensions().getFirst().getModules().get(1).getPrerequisiteModuleCodes());
+            return model;
+        });
+        when(maturityModelRepository.save(any(MaturityModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        var original = service.createMaturityModel(dto);
+        var editor = service.prepareEditorDocument(original);
+        assertEquals(List.of(first.getCode()), editor.getDimensions().getFirst().getModules().get(1).getPrerequisiteModuleCodes());
+        MaturityModel source = existingModel(10L, 10L, 1, domain);
+        when(maturityModelRepository.findById(10L)).thenReturn(Optional.of(source));
+        when(maturityModelRepository.findByBaseModelIdOrderByVersionAsc(10L)).thenReturn(List.of(source));
+        var next = service.createVersionFromEditor(10L, editor);
+        assertEquals(2, next.getVersion());
+        assertEquals(List.of(first.getCode()), next.getDimensions().getFirst().getModules().get(1).getPrerequisiteModuleCodes());
+    }
+
+    @Test
+    void rejectsUnknownSelfForwardDuplicateAndCrossDimensionPrerequisites() {
+        for (List<String> references : List.of(List.of("UNKNOWN"), List.of("MOD"), List.of("SECOND"), List.of("UNKNOWN", "unknown"))) {
+            var dto = updateDto(domain().getId(), null);
+            dto.getDimensions().getFirst().getModules().getFirst().setPrerequisiteModuleCodes(references);
+            var error = assertThrows(IllegalOperationException.class, () -> service.createMaturityModel(dto));
+            assertEquals("INVALID_MODULE_PREREQUISITES", error.getErrorCode());
+        }
+        var dto = updateDto(domain().getId(), null);
+        var secondDimension = new DimensionDTO();
+        secondDimension.setId("other");
+        secondDimension.setName("Other dimension");
+        var second = new ModuleDTO();
+        second.setCode("OTHER");
+        second.setName("Other module");
+        second.setPractices(dto.getDimensions().getFirst().getModules().getFirst().getPractices());
+        second.setPrerequisiteModuleCodes(List.of("MOD"));
+        secondDimension.setModules(List.of(second));
+        dto.setDimensions(List.of(dto.getDimensions().getFirst(), secondDimension));
+        assertEquals("INVALID_MODULE_PREREQUISITES", assertThrows(IllegalOperationException.class,
+                () -> service.createMaturityModel(dto)).getErrorCode());
+        verify(maturityModelRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void duplicateEarlierPrerequisitesAndInvalidReordersAreRejected() {
+        var dto = updateDto(domain().getId(), null);
+        var dimension = dto.getDimensions().getFirst();
+        var first = dimension.getModules().getFirst();
+        var second = new ModuleDTO();
+        second.setCode("SECOND");
+        second.setName("Second");
+        second.setPractices(first.getPractices());
+        second.setPrerequisiteModuleCodes(List.of(first.getCode(), first.getCode().toLowerCase()));
+        dimension.setModules(List.of(first, second));
+        assertEquals("INVALID_MODULE_PREREQUISITES", assertThrows(IllegalOperationException.class,
+                () -> service.createMaturityModel(dto)).getErrorCode());
+        second.setPrerequisiteModuleCodes(List.of(first.getCode()));
+        dimension.setModules(List.of(second, first));
+        assertEquals("INVALID_MODULE_PREREQUISITES", assertThrows(IllegalOperationException.class,
+                () -> service.createMaturityModel(dto)).getErrorCode());
+    }
+
+    @Test
+    void visibleDependentsRequireVisiblePrerequisites() {
+        var dto = updateDto(domain().getId(), null);
+        var dimension = dto.getDimensions().getFirst();
+        var first = dimension.getModules().getFirst();
+        first.setVisible(false);
+        var second = new ModuleDTO();
+        second.setCode("SECOND");
+        second.setName("Second module");
+        second.setPractices(first.getPractices());
+        second.setPrerequisiteModuleCodes(List.of(first.getCode()));
+        dimension.setModules(List.of(first, second));
+        var error = assertThrows(IllegalOperationException.class, () -> service.createMaturityModel(dto));
+        assertEquals("HIDDEN_MODULE_PREREQUISITE", error.getErrorCode());
+        verify(maturityModelRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
     void hiddenModuleReferencesAreRejectedBeforeSaving() {
         MaturityModelDTO dto = updateDto(domain().getId(), null);
         var dimension = dto.getDimensions().getFirst();

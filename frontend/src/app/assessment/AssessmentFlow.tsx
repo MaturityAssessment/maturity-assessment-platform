@@ -12,6 +12,7 @@ import {
   MaturityModel,
   Module,
 } from "@/api/types";
+import { getModulePrerequisiteStates } from "./assessmentModulePrerequisites";
 import { visibleAssessmentModel } from "@/lib/moduleVisibility";
 import apiClient from "@/api/axios";
 import { ACCESS_TOKEN_STORAGE_KEY } from "@/config/authStorage";
@@ -222,6 +223,12 @@ export default function AssessmentFlow() {
           activeModule.code
         )
       : "";
+  const modulePrerequisiteStates = useMemo(
+    () => getModulePrerequisiteStates(maturityModel, practiceSteps, formData, evidenceFiles),
+    [maturityModel, practiceSteps, formData, evidenceFiles]
+  );
+  const activeModuleLocked = !capabilities.canEvaluate && Boolean(activeModule && modulePrerequisiteStates.get(activeModule)?.locked);
+  const lockedPrerequisiteModules = [...modulePrerequisiteStates.entries()].filter(([module, state]) => module.visible !== false && state.locked);
   const modulePracticeSteps = useMemo(
     () =>
       activeDimension && activeModule
@@ -259,8 +266,11 @@ export default function AssessmentFlow() {
       ? activeDimension.modules[activeModuleIndex + 1] ?? null
       : null;
 
-  const navigationModules = responseNavigationModules.map(module => {
-    if (!capabilities.canEvaluate) return module;
+  const navigationModules = responseNavigationModules.map((module, index) => {
+    if (!capabilities.canEvaluate) {
+      const state = activeDimension ? modulePrerequisiteStates.get(activeDimension.modules[index]) : undefined;
+      return { ...module, locked: state?.locked ?? false, missingPrerequisites: state?.missingPrerequisites.map((item) => item.name) ?? [] };
+    }
     const practices = module.practices.map(practice => {
       const step = practiceSteps.find(step => step.key === practice.key);
       const keys = new Set(step?.practice.questions.map(q => getFieldName(step, q)) || []);
@@ -310,7 +320,7 @@ export default function AssessmentFlow() {
       isPracticeRequiredComplete(step, formData, evidenceFiles)
     );
   const canReviewAssessment =
-    capabilities.canEditResponses && allRequiredItemsComplete &&
+    capabilities.canEditResponses && allRequiredItemsComplete && lockedPrerequisiteModules.length === 0 &&
     (!changesRequested || reviewCounts.outstandingFlaggedCount === 0);
   const assessmentAutosaveAvailable =
     capabilities.canEditResponses;
@@ -515,6 +525,10 @@ export default function AssessmentFlow() {
       return;
     }
 
+    if (activePracticeLocation && activeModuleLocked && activeDimension && activeModule) {
+      router.replace(buildAssessmentModuleHref(activeDimension, activeModule, routeContext), { scroll: false });
+      return;
+    }
     if (resolvedWorkspaceLocation.canonicalPath !== pathname) {
       router.replace(
         replaceAssessmentPathContext(
@@ -527,6 +541,9 @@ export default function AssessmentFlow() {
   }, [
     activeModuleLocation,
     activePracticeLocation,
+    activeModuleLocked,
+    activeDimension,
+    activeModule,
     completedAssessment,
     capabilities.canEvaluate,
     user,
@@ -594,8 +611,12 @@ export default function AssessmentFlow() {
     });
   };
 
+  const isLockedResponseField = (field: string) => !capabilities.canEvaluate && practiceSteps.some((step) =>
+    modulePrerequisiteStates.get(step.module)?.locked && step.practice.questions.some((question) =>
+      field === getFieldName(step, question) || field === `${getFieldName(step, question)}_justification`));
+
   const handleInputChange = (field: string, value: string | number | number[] | undefined) => {
-    if (!capabilities.canEditResponses || acceptedResponseKeys.has(field)) return;
+    if (!capabilities.canEditResponses || acceptedResponseKeys.has(field) || isLockedResponseField(field)) return;
 
     const { formData: nextFormData, removedFields } = pruneDisabledQuestionData(
       practiceSteps,
@@ -636,6 +657,7 @@ export default function AssessmentFlow() {
     if (!capabilities.canEditResponses) return;
     setReviewError(null);
     const practiceStep = practiceSteps.find((step) => getPracticeEvidenceField(step.practice.id) === field);
+    if (practiceStep && modulePrerequisiteStates.get(practiceStep.module)?.locked) return;
     if (hasEvidenceContentChanges(evidenceFiles.get(field) || [], items)) {
       markReviewedFieldsUpdated(new Set(practiceStep
         ? practiceStep.practice.questions.map((question) => getFieldName(practiceStep, question))
@@ -655,7 +677,7 @@ export default function AssessmentFlow() {
   };
 
   const handleClearAnswer = (field: string) => {
-    if (!capabilities.canEditResponses || acceptedResponseKeys.has(field)) return;
+    if (!capabilities.canEditResponses || acceptedResponseKeys.has(field) || isLockedResponseField(field)) return;
     const next = { ...formData };
     delete next[field];
     delete next[`${field}_justification`];
@@ -693,6 +715,7 @@ export default function AssessmentFlow() {
   };
 
   const openPractice = (nextStep: AssessmentPracticeStep) => {
+    if (!capabilities.canEvaluate && modulePrerequisiteStates.get(nextStep.module)?.locked) return;
     if (nextStep.key === activePracticeStep?.key) return;
 
     setEvaluationFocus(null);
@@ -917,6 +940,10 @@ export default function AssessmentFlow() {
       return;
     }
 
+    if (lockedPrerequisiteModules.length) {
+      setReviewError(`Complete module prerequisites before submitting: ${lockedPrerequisiteModules.map(([module, state]) => `${module.name} requires ${state.missingPrerequisites.map((item) => item.name).join(", ")}`).join("; ")}. Your existing answers are retained.`);
+      return;
+    }
     setIsSubmitting(true);
     setReviewError(null);
 
@@ -1185,6 +1212,7 @@ export default function AssessmentFlow() {
         <AssessmentDashboard
           routeContext={capabilities.canEvaluate ? { ...routeContext, tab: "evaluation" } : routeContext}
           model={maturityModel}
+          lockedPracticeKeys={new Set(practiceSteps.filter((step) => !capabilities.canEvaluate && modulePrerequisiteStates.get(step.module)?.locked).map((step) => step.key))}
           practiceSteps={practiceSteps}
           formData={formData}
           evidenceFiles={evidenceFiles}
@@ -1397,8 +1425,7 @@ export default function AssessmentFlow() {
       )}
 
       {!isLoadingDraft &&
-        isAssessmentModulePath(pathname) &&
-        activeModuleLocation &&
+        (isAssessmentModulePath(pathname) || (isAssessmentPracticePath(pathname) && activeModuleLocked)) &&
         activeDimension &&
         activeModule && (
           <div className="min-h-0 w-full flex-1 overflow-hidden px-4 pb-4 pt-4 sm:px-6 lg:px-6 lg:pb-5 lg:pt-5 xl:px-8">
@@ -1419,6 +1446,7 @@ export default function AssessmentFlow() {
 
       {!isLoadingDraft &&
         isAssessmentPracticePath(pathname) &&
+        !activeModuleLocked &&
         activePracticeStep && (
           <div className="min-h-0 w-full flex-1 overflow-hidden px-4 pb-4 pt-4 sm:px-6 lg:px-6 lg:pb-5 lg:pt-5 xl:px-8">
             <AssessmentStep
@@ -1433,7 +1461,7 @@ export default function AssessmentFlow() {
               practiceSteps={modulePracticeSteps}
               activePracticeKey={activePracticeStep.key}
               formData={formData}
-              nextModuleName={nextModule?.name ?? null}
+              nextModuleName={nextModule && (capabilities.canEvaluate || !modulePrerequisiteStates.get(nextModule)?.locked) ? nextModule.name : null}
               onModuleSelect={openModuleByKey}
               onModuleOverview={() =>
                 openModule(
@@ -1442,7 +1470,7 @@ export default function AssessmentFlow() {
                 )
               }
               onNextModule={
-                nextModule && activeDimension
+                nextModule && activeDimension && (capabilities.canEvaluate || !modulePrerequisiteStates.get(nextModule)?.locked)
                   ? () => openModule(activeDimension, nextModule)
                   : null
               }

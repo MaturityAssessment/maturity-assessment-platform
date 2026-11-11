@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, Flag, Layers3 } from "lucide-react";
+import { Check, ChevronDown, Flag, Layers3, LockKeyhole } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   getAssessmentPracticeRailState,
@@ -22,6 +22,8 @@ export type AssessmentNavigationPractice = AssessmentCompletionIssues & {
 };
 
 export type AssessmentNavigationModule = AssessmentCompletionIssues & {
+  locked?: boolean;
+  missingPrerequisites?: string[];
   reviewProgress?: string;
   key: string;
   name: string;
@@ -90,7 +92,7 @@ export default function AssessmentNavigationMenu({
           ))}
         </ol>
 
-        {activeModule && activeModule.practices.length > 0 && (
+        {activeModule && !activeModule.locked && activeModule.practices.length > 0 && (
           <PracticeList
             practices={activeModule.practices}
             activePracticeKey={activePracticeKey}
@@ -123,7 +125,7 @@ export default function AssessmentNavigationMenu({
                   onSelect={onModuleSelect}
                 />
 
-                {active && (
+                {active && !module.locked && (
                   <div className="ml-[18px] border-l border-indigo-200 pb-2 pl-3 pt-1">
                     {module.practices.length > 0 ? (
                       <PracticeList
@@ -159,8 +161,9 @@ function ModuleButton({
   onSelect: (moduleKey: string) => void;
 }) {
   const completionIssue = module.reviewProgress ? "" : getAssessmentCompletionIssueLabel(module);
-  const supportingLabel =
-    module.totalPractices === 0
+  const supportingLabel = module.locked
+    ? `Complete first: ${(module.missingPrerequisites ?? []).join(", ")}`
+    : module.totalPractices === 0
       ? "No practices"
       : module.outstandingFlaggedCount > 0
         ? `${module.outstandingFlaggedCount} change${
@@ -178,10 +181,12 @@ function ModuleButton({
     <button
       type="button"
       onClick={() => onSelect(module.key)}
+      disabled={module.locked}
+      title={module.locked ? supportingLabel : undefined}
       aria-expanded={active}
       aria-label={`Module ${module.number}, ${module.name}, ${module.reviewProgress ? `${module.reviewProgress}, ` : ""}${supportingLabel}`}
       className={cn(
-        "group flex min-w-0 items-center text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400",
+        "group flex min-w-0 items-center text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:opacity-70",
         compact
           ? "min-w-[10rem] gap-2.5 rounded-xl border px-3 py-2"
           : "w-full gap-3 rounded-xl px-2.5 py-2.5",
@@ -205,7 +210,7 @@ function ModuleButton({
         )}
         aria-hidden="true"
       >
-        {module.outstandingFlaggedCount > 0 ? (
+        {module.locked ? <LockKeyhole className="h-4 w-4 text-slate-400" /> : module.outstandingFlaggedCount > 0 ? (
           <Flag className="h-4 w-4 text-orange-600" />
         ) : module.isRequiredComplete ? (
           <Check className="h-4 w-4 stroke-[2.5]" />

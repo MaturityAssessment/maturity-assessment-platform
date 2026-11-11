@@ -40,6 +40,7 @@ See the [domain reference](./backend/docs/api/reference/domains.md).
 - Define between 2 and 12 named maturity levels and configure automatic or manual evaluation.
 - Edit a model by creating a new inactive version, with a changelog and stable public codes for model items.
 - Toggle module visibility from its editor or outline actions. Hidden modules remain editable and are excluded from assessments and evaluation for that version. Explicit gating references to hidden modules block saving until repaired.
+- Set module prerequisites in the Details tab using earlier modules in the same dimension. Invalid reorders and visibility changes are blocked. Assessment modules stay locked until required prerequisite answers and evidence are complete; relocking preserves existing answers and evidence.
 - Activate or deactivate versions. Activation replaces the active version within the same lineage; other model lineages in the domain remain available.
 - Keep existing assessments and campaigns tied to their original version. Deletion is rejected when assessments use that version.
 

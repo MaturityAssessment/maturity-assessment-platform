@@ -1,5 +1,6 @@
 "use client";
 
+import { MODULE_PREREQUISITE_ORDER_MESSAGE, visibleModuleDependents } from "../model/modulePrerequisites";
 import { moduleVisibilityDependencies } from "../model/moduleVisibility";
 
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
@@ -250,10 +251,16 @@ export function useMaturityModelEditor(
       mutation: (
         document: MaturityModelEditorDocument
       ) => MaturityModelEditorDocument,
-      selection?: Selection | null
+      selection?: Selection | null,
+      blockedMessage?: string
     ) => {
       if (!state.document) return;
-      replaceDocument(mutation(state.document), selection);
+      const next = mutation(state.document);
+      if (next === state.document && blockedMessage) {
+        dispatch({ type: "notice", notice: { type: "error", message: blockedMessage } });
+        return;
+      }
+      replaceDocument(next, selection);
     },
     [replaceDocument, state.document]
   );
@@ -305,6 +312,11 @@ export function useMaturityModelEditor(
         const module = dimension?.modules.find((item) => item.clientKey === moduleKey);
         if (!dimension || !module) return;
         const hiding = module.visible !== false;
+        const dependents = visibleModuleDependents(dimension.modules, module.code);
+        if (hiding && dependents.length) {
+          dispatch({ type: "notice", notice: { type: "error", message: `Hide dependent modules first: ${dependents.map((item) => item.name || item.code).join(", ")}. Visible modules require visible prerequisites.` } });
+          return;
+        }
         const dependencies = hiding ? moduleVisibilityDependencies(dimension, module) : [];
         replaceDocument(updateModule(state.document, dimensionKey, moduleKey, { ...module, visible: !hiding }));
         dispatch({ type: "notice", notice: dependencies.length
@@ -325,7 +337,8 @@ export function useMaturityModelEditor(
         direction: -1 | 1
       ) =>
         withDocument((document) =>
-          moveModule(document, dimensionKey, moduleKey, direction)
+          moveModule(document, dimensionKey, moduleKey, direction),
+          undefined, MODULE_PREREQUISITE_ORDER_MESSAGE
         ),
       reorderModule: (
         dimensionKey: string,
@@ -333,12 +346,17 @@ export function useMaturityModelEditor(
         overKey: string
       ) =>
         withDocument((document) =>
-          reorderModule(document, dimensionKey, activeKey, overKey)
+          reorderModule(document, dimensionKey, activeKey, overKey),
+          undefined, MODULE_PREREQUISITE_ORDER_MESSAGE
         ),
       deleteModule: (dimensionKey: string, moduleKey: string) => {
         if (!state.document) return;
         const dimension = findDimension(state.document, dimensionKey);
         const next = deleteModule(state.document, dimensionKey, moduleKey);
+        if (next === state.document) {
+          dispatch({ type: "notice", notice: { type: "error", message: "Remove this module from dependent modules’ prerequisites before deleting it." } });
+          return;
+        }
         replaceDocument(
           next,
           dimension

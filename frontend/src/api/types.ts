@@ -153,6 +153,8 @@ export interface Practice {
 }
 
 export interface Module {
+  /** Earlier modules in this dimension; all must be complete to unlock this module. */
+  prerequisiteModuleCodes?: string[];
   /** Omitted on older models means visible. Stored per model version. */
   visible?: boolean;
   dimensionId?: number; // FK to parent Dimension
@@ -470,6 +472,8 @@ export interface PracticeForm {
 }
 
 export interface ModuleForm {
+  /** Earlier modules in this dimension; all must be complete to unlock this module. */
+  prerequisiteModuleCodes?: string[];
   /** Omitted on older models means visible. Stored per model version. */
   visible?: boolean;
   code?: string;
@@ -544,6 +548,8 @@ export interface ModelEditorPractice {
 }
 
 export interface ModelEditorModule {
+  /** Earlier modules in this dimension; all must be complete to unlock this module. */
+  prerequisiteModuleCodes?: string[];
   /** Omitted on older models means visible. Stored per model version. */
   visible?: boolean;
   clientKey: string;
