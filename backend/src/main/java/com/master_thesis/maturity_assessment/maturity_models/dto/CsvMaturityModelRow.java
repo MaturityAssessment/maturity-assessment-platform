@@ -44,6 +44,7 @@ public class CsvMaturityModelRow {
     private String practiceDescription;
     private String practiceWeight;
     private String practiceRequiresEvidence;
+    private String practiceEvidenceRequirements;
     private String practiceAggregationRule;
     private String practiceGatingRules;
 

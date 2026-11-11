@@ -49,7 +49,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class EvidenceService {
 
-    private static final int MAX_ITEMS_PER_PRACTICE = 5;
+    private static final int MAX_ITEMS_PER_FIELD = 5;
 
     private final EvidenceRepository evidenceRepository;
     private final FileStorageService fileStorageService;
@@ -173,11 +173,20 @@ public class EvidenceService {
         Map<Long, Evidence> existingById = existing.stream()
                 .collect(Collectors.toMap(Evidence::getId, evidence -> evidence));
 
+        Map<Long, String> previousGroups = existing.stream().collect(Collectors.toMap(Evidence::getId,
+                item -> item.getPractice().getId() + ":" + item.getRequirementCode()));
+
         // Validate the entire snapshot's references before any file is stored.
         Map<EvidenceSubmissionItemRequest, Set<Question>> references = validateQuestionReferences(items);
         Map<Long, Practice> practices = new HashMap<>();
         for (EvidenceSubmissionItemRequest item : items) {
             practices.computeIfAbsent(item.getPracticeId(), id -> requirePracticeForModel(id, maturityModelId));
+        }
+
+        // Check classification, format and source dates before storing any files.
+        for (EvidenceSubmissionItemRequest item : items) {
+            Evidence previous = item.getEvidenceId() == null ? null : existingById.get(item.getEvidenceId());
+            validateRequirement(item, practices.get(item.getPracticeId()), previous);
         }
 
         List<Evidence> desired = authoritative ? new ArrayList<>() : new ArrayList<>(existing);
@@ -280,6 +289,8 @@ public class EvidenceService {
                 synchronizedItem.getReferencedQuestions().clear();
                 synchronizedItem.getReferencedQuestions().addAll(references.get(item));
             }
+            synchronizedItem.setRequirementCode(item.getRequirementCode());
+            synchronizedItem.setEvidenceDate(item.getEvidenceDate());
             Evidence saved = evidenceRepository.save(synchronizedItem);
             clientKeysByEvidence.put(saved, item.getClientKey());
             desired.add(saved);
@@ -291,7 +302,7 @@ public class EvidenceService {
             throw badRequest("Uploaded files were not referenced by evidence metadata: " + unused);
         }
 
-        validateItemCounts(desired, existingById.keySet());
+        validateItemCounts(desired, previousGroups);
 
         if (authoritative) {
             for (Evidence evidence : existing) {
@@ -309,6 +320,28 @@ public class EvidenceService {
                 .sorted(Comparator.comparing(Evidence::getId))
                 .map(evidence -> toDTO(evidence, clientKeysByEvidence.get(evidence)))
                 .toList();
+    }
+
+    private void validateRequirement(EvidenceSubmissionItemRequest item, Practice practice, Evidence previous) {
+        String code = item.getRequirementCode();
+        var requirement = code == null ? null : practice.getEvidenceRequirements().stream()
+                .filter(candidate -> code.equals(candidate.getCode())).findFirst()
+                .orElseThrow(() -> badRequest("Evidence requirement does not belong to this practice: " + code));
+        if (requirement != null && !requirement.accepts(item.getType().name())) {
+            throw badRequest("Evidence format is not accepted for requirement: " + requirement.getName());
+        }
+        boolean changedContent = previous == null
+                || (item.getItemKey() != null && !item.getItemKey().isBlank())
+                || !java.util.Objects.equals(previous.getRequirementCode(), code)
+                || (item.getType() == EvidenceType.URL && !java.util.Objects.equals(previous.getExternalUrl(), item.getUrl()))
+                || (item.getType() == EvidenceType.TEXT && !java.util.Objects.equals(previous.getDescription(), item.getDescription()));
+        if (requirement != null && item.getEvidenceDate() == null
+                && (changedContent || (previous != null && previous.getEvidenceDate() != null))) {
+            throw badRequest("Enter the document date or reporting-period end for: " + requirement.getName());
+        }
+        if (item.getEvidenceDate() != null && item.getEvidenceDate().isAfter(java.time.LocalDate.now(java.time.ZoneOffset.UTC))) {
+            throw badRequest("Evidence date cannot be in the future.");
+        }
     }
 
     private Map<EvidenceSubmissionItemRequest, Set<Question>> validateQuestionReferences(
@@ -577,25 +610,24 @@ public class EvidenceService {
     }
 
     private void requireRoomForEvidence(Long assessmentId, Long practiceId) {
-        if (evidenceRepository.findByAssessmentIdAndPracticeId(assessmentId, practiceId).size()
-                >= MAX_ITEMS_PER_PRACTICE) {
-            throw badRequest("A practice can contain at most five evidence items.");
+        if (evidenceRepository.findByAssessmentIdAndPracticeId(assessmentId, practiceId).stream()
+                .filter(item -> item.getRequirementCode() == null).count()
+                >= MAX_ITEMS_PER_FIELD) {
+            throw badRequest("Additional supporting evidence can contain at most five items.");
         }
     }
 
-    private void validateItemCounts(List<Evidence> evidenceItems, Set<Long> existingIds) {
-        Map<Long, Integer> counts = new HashMap<>();
-        Set<Long> practicesWithNewItems = new HashSet<>();
+    private void validateItemCounts(List<Evidence> evidenceItems, Map<Long, String> previousGroups) {
+        Map<String, Integer> counts = new HashMap<>();
+        Set<String> groupsWithNewItems = new HashSet<>();
         for (Evidence evidence : evidenceItems) {
-            Long practiceId = evidence.getPractice().getId();
-            counts.merge(practiceId, 1, Integer::sum);
-            if (!existingIds.contains(evidence.getId())) {
-                practicesWithNewItems.add(practiceId);
-            }
+            String group = evidence.getPractice().getId() + ":" + evidence.getRequirementCode();
+            counts.merge(group, 1, Integer::sum);
+            if (!group.equals(previousGroups.get(evidence.getId()))) groupsWithNewItems.add(group);
         }
-        for (Long practiceId : practicesWithNewItems) {
-            if (counts.get(practiceId) > MAX_ITEMS_PER_PRACTICE) {
-                throw badRequest("A practice can contain at most five evidence items.");
+        for (String group : groupsWithNewItems) {
+            if (counts.get(group) > MAX_ITEMS_PER_FIELD) {
+                throw badRequest("Each evidence requirement or additional-evidence group can contain at most five items.");
             }
         }
     }
@@ -672,6 +704,8 @@ public class EvidenceService {
                 .clientKey(clientKey)
                 .assessmentId(evidence.getAssessment().getId())
                 .practiceId(evidence.getPractice().getId())
+                .requirementCode(evidence.getRequirementCode())
+                .evidenceDate(evidence.getEvidenceDate())
                 .referencedQuestionIds(evidence.getReferencedQuestions().stream()
                         .map(Question::getId).sorted().toList())
                 .description(evidence.getDescription() == null ? "" : evidence.getDescription())

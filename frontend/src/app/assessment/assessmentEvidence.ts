@@ -4,6 +4,8 @@ import type {
   AssessmentEvidenceInputItem,
   AssessmentEvidenceMetadataItem,
   Evidence,
+  EvidenceRequirement,
+  Practice,
 } from "@/api/types";
 import { TEXT_LIMITS } from "../../config/textLimits.ts";
 import type { AssessmentPracticeStep } from "./AssessmentStep";
@@ -13,7 +15,7 @@ export type AssessmentEvidenceByField = Map<
   AssessmentEvidenceInputItem[]
 >;
 
-export const MAX_EVIDENCE_ITEMS_PER_PRACTICE = 5;
+export const MAX_EVIDENCE_ITEMS_PER_FIELD = 5;
 export const MAX_EVIDENCE_FILE_SIZE = 50 * 1024 * 1024;
 export const MAX_EVIDENCE_REQUEST_FILE_SIZE = 250 * 1024 * 1024;
 
@@ -59,8 +61,13 @@ export function validateEvidenceForSave(evidence: AssessmentEvidenceByField) {
   let uploadedBytes = 0;
 
   for (const items of evidence.values()) {
-    if (items.length > MAX_EVIDENCE_ITEMS_PER_PRACTICE && items.some((item) => !item.evidenceId)) {
-      return "A practice can contain at most five evidence items.";
+    const groups = new Map<string, AssessmentEvidenceInputItem[]>();
+    for (const item of items) {
+      const key = item.requirementCode || "";
+      groups.set(key, [...(groups.get(key) ?? []), item]);
+    }
+    if ([...groups.values()].some(group => group.length > MAX_EVIDENCE_ITEMS_PER_FIELD && group.some(item => !item.evidenceId))) {
+      return "Each evidence requirement or additional-evidence group can contain at most five items.";
     }
 
     for (const item of items) {
@@ -73,6 +80,12 @@ export function validateEvidenceForSave(evidence: AssessmentEvidenceByField) {
         return item.type === "text" ? "Enter text for every evidence note." : item.type === "link"
           ? "Evidence links must use a complete https:// URL."
           : "Select a file for every file evidence item.";
+      }
+      if (item.evidenceDate && !isValidEvidenceDate(item.evidenceDate)) {
+        return "Evidence dates must be valid dates on or before today.";
+      }
+      if (item.requirementCode && !item.evidenceDate && (!item.evidenceId || item.file)) {
+        return "Enter the document date or reporting-period end for required evidence fields.";
       }
       if (item.file) {
         if (!ACCEPTED_EVIDENCE_TYPES.includes(item.file.type)) {
@@ -105,6 +118,8 @@ export function buildEvidencePayload(evidence: AssessmentEvidenceByField) {
         clientKey: item.id,
         practiceId: item.practiceId,
         referencedQuestionIds: [...(item.referencedQuestionIds || [])],
+        requirementCode: item.requirementCode || null,
+        evidenceDate: item.evidenceDate || null,
         type: item.type === "file" ? "FILE" : item.type === "text" ? "TEXT" : "URL",
         description: item.description.trim(),
         ...(item.type === "link" ? { url: item.url.trim() } : {}),
@@ -154,6 +169,8 @@ export function evidenceToInputItem(evidence: Evidence): AssessmentEvidenceInput
     evidenceId: evidence.id,
     practiceId: evidence.practiceId,
     referencedQuestionIds: [...(evidence.referencedQuestionIds || [])],
+    requirementCode: evidence.requirementCode,
+    evidenceDate: evidence.evidenceDate,
     type: evidence.evidenceType === "FILE" ? "file" : evidence.evidenceType === "TEXT" ? "text" : "link",
     description: evidence.description || "",
     file: null,
@@ -176,4 +193,28 @@ export function removeEvidenceFields(
 
 export function getPracticeEvidenceField(practiceId: number | undefined) {
   return `practice_${practiceId}_evidence`;
+}
+
+export function evidenceToday() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function isValidEvidenceDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value > evidenceToday()) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+export function acceptsEvidenceType(requirement: EvidenceRequirement, type: AssessmentEvidenceInputItem["type"]) {
+  return requirement.format === "ANY" || (requirement.format === "FILE_OR_URL" && type !== "text")
+    || requirement.format === (type === "link" ? "URL" : type.toUpperCase());
+}
+
+export function missingEvidenceRequirements(practice: Practice, items: AssessmentEvidenceInputItem[] = []) {
+  if (practice.evidenceRequirements?.length) {
+    return practice.evidenceRequirements.filter(requirement => requirement.required && !items.some(item =>
+      item.requirementCode === requirement.code && isValidEvidenceItem(item) && acceptsEvidenceType(requirement, item.type)
+      && (item.evidenceDate ? isValidEvidenceDate(item.evidenceDate) : Boolean(item.evidenceId && !item.file)))).length;
+  }
+  return practice.requiresEvidence && !hasValidEvidenceItems(items) ? 1 : 0;
 }

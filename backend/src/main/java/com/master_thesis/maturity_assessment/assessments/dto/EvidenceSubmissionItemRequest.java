@@ -11,6 +11,8 @@ public class EvidenceSubmissionItemRequest {
     private String itemKey;
     private String clientKey;
     private Long practiceId;
+    private String requirementCode;
+    private java.time.LocalDate evidenceDate;
     @JsonDeserialize(contentUsing = QuestionReferenceIdDeserializer.class)
     private List<Long> referencedQuestionIds;
     private EvidenceType type;

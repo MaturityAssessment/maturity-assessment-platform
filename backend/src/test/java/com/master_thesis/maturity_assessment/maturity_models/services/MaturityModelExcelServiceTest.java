@@ -33,6 +33,19 @@ class MaturityModelExcelServiceTest {
     private final MaturityModelExcelService excelService = new MaturityModelExcelService(csvParsingService, objectMapper);
 
     @Test
+    void namedEvidenceRequirementsRoundTripThroughWorkbook() throws Exception {
+        var model = buildSampleModel();
+        var requirements = List.of(new com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement(
+                "incident-report", "Monthly incident report", "Use the reporting-period end", true,
+                com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement.Format.FILE_OR_URL));
+        model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().setEvidenceRequirements(requirements);
+        var parsed = excelService.parseExcelWorkbook(new ByteArrayInputStream(excelService.exportMaturityModelToXlsx(model)));
+        assertTrue(parsed.isSuccess(), parsed.getErrorDetails());
+        assertEquals(requirements, parsed.getMaturityModel().getDimensions().getFirst().getModules().getFirst()
+                .getPractices().getFirst().getEvidenceRequirements());
+    }
+
+    @Test
     void exportThenImport_shouldPreserveStructure() throws Exception {
         MaturityModelDTO model = buildSampleModel();
         model.setLevels(sampleFiveLevels());
@@ -187,7 +200,7 @@ class MaturityModelExcelServiceTest {
                     List.of("dimensionId", "moduleCode", "moduleName", "moduleDescription", "moduleWeight", "moduleAggregationRule", "moduleGatingRules", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_MODULES), fmt));
             assertEquals(
-                    List.of("dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceGatingRules"),
+                    List.of("dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceGatingRules", "practiceEvidenceRequirements"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_PRACTICES), fmt));
             assertEquals(
                     MaturityModelExcelService.QUESTION_EXPORT_HEADERS,

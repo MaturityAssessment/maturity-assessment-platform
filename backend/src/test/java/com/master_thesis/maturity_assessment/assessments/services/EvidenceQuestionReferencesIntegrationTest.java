@@ -157,6 +157,8 @@ class EvidenceQuestionReferencesIntegrationTest {
 
     private void assertReferences(AssessmentResponse response, Long questionId) {
         assertEquals(List.of(questionId), response.getEvidence().getFirst().getReferencedQuestionIds());
+        assertEquals("report", response.getEvidence().getFirst().getRequirementCode());
+        assertEquals(java.time.LocalDate.of(2020, 10, 31), response.getEvidence().getFirst().getEvidenceDate());
     }
 
     private ManualEvaluationRequest review(Fixture fixture, String status, String note) {
@@ -184,6 +186,8 @@ class EvidenceQuestionReferencesIntegrationTest {
         item.setPracticeId(fixture.practice.getId());
         item.setType(EvidenceType.TEXT);
         item.setDescription("Evidence content");
+        item.setRequirementCode("report");
+        item.setEvidenceDate(java.time.LocalDate.of(2020, 10, 31));
         item.setReferencedQuestionIds(List.of(fixture.question.getId()));
         return item;
     }
@@ -208,6 +212,7 @@ class EvidenceQuestionReferencesIntegrationTest {
         module.setCode("M"); module.setName("Module"); module.setDimension(dimension);
         Practice practice = new Practice();
         practice.setCode("P"); practice.setName("Practice"); practice.setModule(module); practice.setRequiresEvidence(true);
+        practice.setEvidenceRequirements(List.of(new EvidenceRequirement("report", "Monthly report", "Use reporting-period end", true, EvidenceRequirement.Format.ANY)));
         Question question = new Question();
         question.setCode("Q1"); question.setText("Documented?"); question.setType("boolean"); question.setRequired(true); question.setPractice(practice);
         practice.setQuestions(List.of(question));

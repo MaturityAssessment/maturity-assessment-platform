@@ -18,7 +18,6 @@ import type {
   Question,
 } from "@/api/types";
 import QuestionEvaluationControls from "./evaluation/QuestionEvaluationControls";
-import EvidenceReviewList from "./evaluation/EvidenceReviewList";
 import type { EvaluationController } from "./evaluation/useEvaluation";
 import type { MaturityLevel } from "@/api/types";
 import { AgentChatModal } from "@/components";
@@ -26,7 +25,7 @@ import { cn } from "@/lib/utils";
 import AssessmentNavigationMenu, {
   type AssessmentNavigationModule,
 } from "./AssessmentNavigationMenu";
-import EvidenceUpload from "@/components/assessment/EvidenceUpload";
+import PracticeEvidence from "@/components/assessment/PracticeEvidence";
 import QuestionEvidence from "@/components/assessment/QuestionEvidence";
 import { getPracticeEvidenceField } from "./assessmentEvidence";
 import { hydrateEvidenceByField } from "./assessmentEvidence";
@@ -228,7 +227,7 @@ export default function AssessmentStep({
           const previousPractice = practiceSteps[practiceIndex - 1];
           const nextPractice = practiceSteps[practiceIndex + 1];
           const isVisible = step.key === visiblePracticeKey;
-          const evidenceRequired = Boolean(step.practice.requiresEvidence) &&
+          const evidenceRequired = Boolean(step.practice.requiresEvidence || step.practice.evidenceRequirements?.some(item => item.required)) &&
             step.practice.questions.some((question) => !isDependentQuestionDisabled(step, question, formData));
           const inactiveQuestionIds = new Set(step.practice.questions
             .filter(question => isDependentQuestionDisabled(step, question, formData)).map(question => question.id!));
@@ -388,7 +387,7 @@ export default function AssessmentStep({
                           responseDetails={<>
                             {reviewControls("score")}
                             {step.practice.id != null && question.id != null && <QuestionEvidence
-                              questionId={question.id} practiceId={step.practice.id} items={practiceEvidence}
+                              questionId={question.id} practiceId={step.practice.id} items={practiceEvidence} evidenceRequirements={step.practice.evidenceRequirements}
                               questions={step.practice.questions} inactiveQuestionIds={inactiveQuestionIds}
                               inactive={disabled} readOnly={readOnly || Boolean(evaluationController)}
                               onDownload={evaluationController?.download}
@@ -425,12 +424,10 @@ export default function AssessmentStep({
                   <div className="mt-4 rounded-xl border bg-white p-5">
                     <h3 className="font-semibold">Practice evidence {evidenceRequired ? "(required)" : "(optional)"}</h3>
                     <p className="mb-3 mt-1 text-xs leading-5 text-slate-500">Evidence belongs to this practice. Optionally link it to the questions it supports.</p>
-                    {evaluationController ? <EvidenceReviewList questions={step.practice.questions} inactiveQuestionIds={inactiveQuestionIds}
-                      evidence={evaluationController.evidence.filter(item => item.practiceId === step.practice.id)} onDownload={evaluationController.download} /> : <EvidenceUpload readOnly={readOnly} practiceId={step.practice.id}
+                    <PracticeEvidence practice={step.practice} readOnly={readOnly || Boolean(evaluationController)}
                       questions={step.practice.questions} inactiveQuestionIds={inactiveQuestionIds}
-                      items={evidenceFiles.get(getPracticeEvidenceField(step.practice.id)) || []}
-                      required={evidenceRequired}
-                      onItemsChange={(items) => onEvidenceItemsChange(getPracticeEvidenceField(step.practice.id), items)} />}
+                      items={practiceEvidence} required={evidenceRequired} onDownload={evaluationController?.download}
+                      onItemsChange={items => onEvidenceItemsChange(getPracticeEvidenceField(step.practice.id), items)} />
                   </div>
                 )}
                 <div className="mt-auto flex justify-center pb-1 pt-8 sm:pt-10">

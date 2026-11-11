@@ -180,9 +180,21 @@ test("practice evidence requirements round-trip without question flags", () => {
   const document = createEmptyDocument();
   const practice = document.dimensions[0].modules[0].practices[0];
   assert.equal(practice.requiresEvidence, false);
-  practice.requiresEvidence = true;
+  practice.evidenceRequirements = [{ code: "report", name: "Monthly report", instructions: "Use reporting-period end", required: true, format: "FILE_OR_URL" }];
   const serialized = serializeDocument(document);
   const restored = hydrateDocument(serialized as Parameters<typeof hydrateDocument>[0], false);
   assert.equal(restored.dimensions[0].modules[0].practices[0].requiresEvidence, true);
   assert.equal("requiresEvidence" in serialized.dimensions[0].modules[0].practices[0].questions[0], false);
+});
+
+test("legacy evidence flags become a named requirement and can be removed explicitly", () => {
+  const document = createEmptyDocument();
+  const practice = document.dimensions[0].modules[0].practices[0];
+  practice.requiresEvidence = true;
+  delete practice.evidenceRequirements;
+  const restored = hydrateDocument(document, false);
+  const hydratedPractice = restored.dimensions[0].modules[0].practices[0];
+  assert.equal(hydratedPractice.evidenceRequirements?.[0].code, "supporting-evidence");
+  hydratedPractice.evidenceRequirements = [];
+  assert.equal(serializeDocument(restored).dimensions[0].modules[0].practices[0].requiresEvidence, false);
 });

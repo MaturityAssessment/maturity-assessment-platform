@@ -3,6 +3,7 @@ package com.master_thesis.maturity_assessment.maturity_models.dto;
 import com.master_thesis.maturity_assessment.maturity_models.models.AggregationRule;
 
 import lombok.Data;
+import com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +56,7 @@ public class MaturityModelEditorDTO {
 
     @Data
     public static class EditorPracticeDTO {
+        private List<EvidenceRequirement> evidenceRequirements = new ArrayList<>();
         private Boolean requiresEvidence = false;
         private String code;
         private String name;

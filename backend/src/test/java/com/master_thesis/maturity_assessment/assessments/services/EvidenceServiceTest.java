@@ -521,6 +521,84 @@ class EvidenceServiceTest {
                 EvidenceSubmissionItemRequest.class).getReferencedQuestionIds());
     }
 
+    @Test
+    void namedRequirementAndSourceDateRoundTripWithoutChangingUploadDate() throws Exception {
+        addRequirement();
+        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of());
+        var item = urlItem(null, "Monthly report", "https://example.com/report");
+        item.setRequirementCode("report");
+        item.setEvidenceDate(java.time.LocalDate.of(2020, 10, 31));
+        var result = synchronize(item).getFirst();
+        assertEquals("report", result.getRequirementCode());
+        assertEquals(java.time.LocalDate.of(2020, 10, 31), result.getEvidenceDate());
+    }
+
+    @Test
+    void rejectsMissingDateWrongFormatUnknownRequirementAndFutureDateBeforeSaving() {
+        addRequirement();
+        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of());
+        var item = urlItem(null, "Report", "https://example.com/report");
+        item.setRequirementCode("report");
+        assertThrows(ResponseStatusException.class, () -> synchronize(item));
+        item.setEvidenceDate(java.time.LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1));
+        assertThrows(ResponseStatusException.class, () -> synchronize(item));
+        item.setEvidenceDate(java.time.LocalDate.of(2020, 10, 31));
+        item.setRequirementCode("other-practice-report");
+        assertThrows(ResponseStatusException.class, () -> synchronize(item));
+        item.setRequirementCode("report"); item.setType(EvidenceType.TEXT);
+        assertThrows(ResponseStatusException.class, () -> synchronize(item));
+        org.mockito.Mockito.verify(evidenceRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    void unknownLegacyDateIsPreservedButChangedUrlRequiresADate() throws Exception {
+        addRequirement();
+        var existing = urlEvidence(1L, "https://example.com/old");
+        existing.setRequirementCode("report");
+        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of(existing));
+        var item = urlItem(1L, "", "https://example.com/old"); item.setRequirementCode("report");
+        assertEquals(null, synchronize(item).getFirst().getEvidenceDate());
+        item.setUrl("https://example.com/new");
+        assertThrows(ResponseStatusException.class, () -> synchronize(item));
+        item.setEvidenceDate(java.time.LocalDate.of(2020, 11, 30));
+        assertEquals(item.getEvidenceDate(), synchronize(item).getFirst().getEvidenceDate());
+        item.setEvidenceDate(null);
+        assertThrows(ResponseStatusException.class, () -> synchronize(item));
+    }
+
+    @Test
+    void eachRequirementHasItsOwnFiveItemAllowance() throws Exception {
+        addRequirement();
+        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of());
+        var items = new java.util.ArrayList<EvidenceSubmissionItemRequest>();
+        for (int i = 0; i < 10; i++) {
+            var item = urlItem(null, "", "https://example.com/" + i);
+            if (i < 5) { item.setRequirementCode("report"); item.setEvidenceDate(java.time.LocalDate.of(2020, 10, 31)); }
+            items.add(item);
+        }
+        assertEquals(10, evidenceService.synchronizeEvidence(ASSESSMENT_ID, MODEL_ID, owner, items, List.of(), List.of(), true).size());
+    }
+
+    @Test
+    void campaignEvidenceAlsoRequiresARealSourceDate() throws Exception {
+        addRequirement();
+        var participant = new CampaignParticipant(); participant.setId(77L); participant.setUser(owner);
+        assessment.setCampaignParticipant(participant);
+        when(evidenceRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of());
+        var item = urlItem(null, "", "https://example.com/report"); item.setRequirementCode("report");
+        assertThrows(ResponseStatusException.class, () -> evidenceService.synchronizeCampaignEvidence(
+                ASSESSMENT_ID, MODEL_ID, participant, List.of(item), List.of(), List.of(), true));
+        item.setEvidenceDate(java.time.LocalDate.of(2020, 10, 31));
+        assertEquals(item.getEvidenceDate(), evidenceService.synchronizeCampaignEvidence(
+                ASSESSMENT_ID, MODEL_ID, participant, List.of(item), List.of(), List.of(), true).getFirst().getEvidenceDate());
+    }
+
+    private void addRequirement() {
+        practice.setEvidenceRequirements(List.of(new com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement(
+                "report", "Monthly incident report", "Use reporting-period end", true,
+                com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement.Format.FILE_OR_URL)));
+    }
+
     private List<EvidenceDTO> synchronize(EvidenceSubmissionItemRequest request) throws Exception {
         return evidenceService.synchronizeEvidence(ASSESSMENT_ID, MODEL_ID, owner,
                 List.of(request), List.of(), List.of(), true);

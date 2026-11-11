@@ -338,6 +338,13 @@ export function validateDocument(
             selection: practiceSelection,
           });
         }
+        const requirements = practice.evidenceRequirements ?? [];
+        if (requirements.length > 50 || requirements.some(item => !validCode(item.code) || !item.name.trim()
+            || item.name.length > TEXT_LIMITS.name || item.instructions.length > TEXT_LIMITS.evidenceDescription
+            || typeof item.required !== "boolean" || !["FILE", "URL", "FILE_OR_URL", "ANY"].includes(item.format))
+            || new Set(requirements.map(item => item.code.toLowerCase())).size !== requirements.length) {
+          add({ step: "structure", severity: "error", message: "Define up to 50 evidence requirements with unique codes, names, valid formats and instructions of at most 500 characters.", selection: practiceSelection });
+        }
         const localCodes = new Set(
           practice.questions.map((question) => question.code.toLowerCase())
         );

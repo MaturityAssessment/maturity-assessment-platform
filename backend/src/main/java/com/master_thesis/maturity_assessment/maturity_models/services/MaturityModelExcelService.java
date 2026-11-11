@@ -79,10 +79,10 @@ public class MaturityModelExcelService {
             "dimensionId", "moduleCode", "practiceName", "practiceDescription"
     );
     private static final List<String> PRACTICE_OPTIONAL_HEADERS = List.of(
-            "practiceCode", "practiceId", "dimensionName", "moduleName", "practiceWeight", "practiceRequiresEvidence", "practiceAggregationRule", "practiceGatingRules"
+            "practiceCode", "practiceId", "dimensionName", "moduleName", "practiceWeight", "practiceRequiresEvidence", "practiceAggregationRule", "practiceGatingRules", "practiceEvidenceRequirements"
     );
     private static final List<String> PRACTICE_EXPORT_HEADERS = List.of(
-            "dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceGatingRules"
+            "dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceGatingRules", "practiceEvidenceRequirements"
     );
 
     private static final List<String> QUESTION_HEADERS = List.of(
@@ -278,6 +278,7 @@ public class MaturityModelExcelService {
                 m.setQuestionType(q.get("questionType"));
                 m.setQuestionHelp(q.get("questionHelp"));
                 m.setPracticeRequiresEvidence(pr.get("practiceRequiresEvidence"));
+                m.setPracticeEvidenceRequirements(pr.get("practiceEvidenceRequirements"));
                 m.setQuestionRequired(q.get("questionRequired"));
                 m.setQuestionBooleanCorrectAnswer(q.get("questionBooleanCorrectAnswer"));
                 m.setQuestionChoices(q.get("questionChoices"));
@@ -761,6 +762,7 @@ public class MaturityModelExcelService {
                     row.createCell(6).setCellValue(pr.getWeight() == null ? 1.0 : pr.getWeight());
                     row.createCell(7).setCellValue(pr.getAggregationRule() == null ? "" : pr.getAggregationRule().name());
                     row.createCell(8).setCellValue(writeJson(pr.getGatingRules()));
+                    row.createCell(9).setCellValue(writeJson(pr.getEvidenceRequirements()));
                 }
             }
         }

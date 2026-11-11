@@ -5,6 +5,9 @@ import {
   hasValidEvidenceItems,
   hydrateEvidenceByField,
   validateEvidenceForSave,
+  missingEvidenceRequirements,
+  isValidEvidenceDate,
+  evidenceToInputItem,
 } from "../../../../src/app/assessment/assessmentEvidence.ts";
 
 test("serializes retained links and uploads only local files", () => {
@@ -119,7 +122,7 @@ test("retains over-limit migrated evidence but rejects new additions", () => {
   }));
   assert.equal(validateEvidenceForSave(new Map([["practice_10_evidence", items]])), null);
   assert.match(validateEvidenceForSave(new Map([["practice_10_evidence",
-    [...items, { ...items[0], id: "new", evidenceId: undefined }]]]))!, /five evidence items/);
+    [...items, { ...items[0], id: "new", evidenceId: undefined }]]]))!, /five items/);
 });
 
 
@@ -149,4 +152,53 @@ test("respondent notes count as evidence and serialize without a file or URL", a
     questions: [{ id: 100, text: "Question", type: "boolean" as const, weight: 1, help: "", required: true }] } };
   assert.equal(isPracticeRequiredComplete(requiredStep, { D_M_10_100: 1 }, evidence), true);
   assert.equal(isPracticeRequiredComplete(requiredStep, { D_M_10_100: 1 }, new Map()), false);
+});
+
+test("mandatory indicators need their own dated evidence; unclassified and wrong formats do not satisfy them", () => {
+  const practice = { name: "Practice", questions: [], evidenceRequirements: [
+    { code: "report", name: "Monthly incident report", instructions: "Use period end", required: true, format: "FILE_OR_URL" as const },
+    { code: "policy", name: "Policy", instructions: "Use approval date", required: true, format: "FILE_OR_URL" as const },
+    { code: "extra", name: "Exercise report", instructions: "", required: false, format: "ANY" as const },
+  ] };
+  const link = { id: "a", practiceId: 10, type: "link" as const, description: "", file: null,
+    url: "https://example.com", evidenceDate: "2020-10-31" };
+  assert.equal(missingEvidenceRequirements(practice, [link]), 2);
+  assert.equal(missingEvidenceRequirements(practice, [{ ...link, requirementCode: "report" }]), 1);
+  assert.equal(missingEvidenceRequirements(practice, [
+    { ...link, requirementCode: "report" }, { ...link, id: "b", requirementCode: "policy" },
+  ]), 0);
+  assert.equal(missingEvidenceRequirements(practice, [{ ...link, requirementCode: "report", type: "text", description: "Not a report" }]), 2);
+  assert.equal(missingEvidenceRequirements(practice, [{ ...link, requirementCode: "report", evidenceDate: null }]), 2);
+  // Existing attachments with unknown dates remain usable without fabricated dates.
+  assert.equal(missingEvidenceRequirements(practice, [{ ...link, evidenceId: 1, requirementCode: "report", evidenceDate: null }]), 1);
+});
+
+test("classification and source date round-trip independently of the upload timestamp", () => {
+  const persisted = { id: 1, assessmentId: 2, practiceId: 10, referencedQuestionIds: [100],
+    requirementCode: "report", evidenceDate: "2020-10-31", createdAt: "2020-11-11T12:00:00",
+    evidenceType: "URL" as const, description: "Monthly report", url: "https://example.com/report" };
+  const item = evidenceToInputItem(persisted);
+  const payload = buildEvidencePayload(new Map([["practice_10_evidence", [item]]]));
+  assert.equal(payload.metadata[0].requirementCode, "report");
+  assert.equal(payload.metadata[0].evidenceDate, "2020-10-31");
+  assert.deepEqual(payload.metadata[0].referencedQuestionIds, [100]);
+  assert.equal(item.evidenceDate, "2020-10-31");
+});
+
+test("limits apply to each requirement and additional evidence separately", () => {
+  const items = Array.from({ length: 10 }, (_, index) => ({ id: String(index), practiceId: 10,
+    requirementCode: index < 5 ? "report" : "policy", evidenceDate: "2020-01-31",
+    type: "link" as const, description: "", file: null, url: "https://example.com" }));
+  assert.equal(validateEvidenceForSave(new Map([["practice", items]])), null);
+  assert.match(validateEvidenceForSave(new Map([["practice", [...items, { ...items[0], id: "overflow" }]]]))!, /five/);
+});
+
+test("source dates reject impossible and future dates; new classified evidence requires a date", () => {
+  assert.equal(isValidEvidenceDate("2024-02-29"), true);
+  assert.equal(isValidEvidenceDate("2025-02-29"), false);
+  assert.equal(isValidEvidenceDate("2999-01-01"), false);
+  assert.equal(isValidEvidenceDate("10/31/2020"), false);
+  const item = { id: "a", practiceId: 10, requirementCode: "report", type: "link" as const,
+    description: "", file: null, url: "https://example.com" };
+  assert.match(validateEvidenceForSave(new Map([["practice", [item]]]))!, /document date/);
 });

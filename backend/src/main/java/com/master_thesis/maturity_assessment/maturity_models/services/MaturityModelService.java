@@ -15,6 +15,7 @@ import com.master_thesis.maturity_assessment.maturity_models.dto.GatingRuleDTO;
 import com.master_thesis.maturity_assessment.maturity_models.models.MaturityLevel;
 import com.master_thesis.maturity_assessment.maturity_models.models.Question;
 import com.master_thesis.maturity_assessment.maturity_models.models.Practice;
+import com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement;
 import com.master_thesis.maturity_assessment.maturity_models.models.Module;
 import com.master_thesis.maturity_assessment.maturity_models.models.Dimension;
 import com.master_thesis.maturity_assessment.maturity_models.models.MaturityModel;
@@ -591,6 +592,7 @@ public class MaturityModelService {
                         dto.setModuleId(practice.getModule().getId());
                 }
                 dto.setRequiresEvidence(Boolean.TRUE.equals(practice.getRequiresEvidence()));
+                dto.setEvidenceRequirements(practice.getEvidenceRequirements().stream().map(EvidenceRequirement::copy).toList());
                 dto.setName(practice.getName());
                 dto.setDescription(practice.getDescription());
                 dto.setWeight(practice.getWeight());
@@ -614,6 +616,7 @@ public class MaturityModelService {
                 // This is important when creating new model versions
                 practice.setCode(dto.getCode());
                 practice.setRequiresEvidence(Boolean.TRUE.equals(dto.getRequiresEvidence()));
+                practice.setEvidenceRequirements(dto.getEvidenceRequirements().stream().map(EvidenceRequirement::copy).collect(Collectors.toCollection(ArrayList::new)));
                 practice.setName(dto.getName());
                 practice.setDescription(dto.getDescription());
                 practice.setWeight(dto.getWeight() != null ? dto.getWeight() : 1.0);
@@ -782,6 +785,7 @@ public class MaturityModelService {
                                         var editorPractice = new MaturityModelEditorDTO.EditorPracticeDTO();
                                         editorPractice.setCode(practice.getCode());
                                         editorPractice.setRequiresEvidence(practice.getRequiresEvidence());
+                                        editorPractice.setEvidenceRequirements(practice.getEvidenceRequirements());
                                         editorPractice.setName(practice.getName());
                                         editorPractice.setDescription(practice.getDescription());
                                         editorPractice.setWeight(practice.getWeight());
@@ -871,6 +875,7 @@ public class MaturityModelService {
                                         PracticeDTO practice = new PracticeDTO();
                                         practice.setCode(editorPractice.getCode());
                                         practice.setRequiresEvidence(Boolean.TRUE.equals(editorPractice.getRequiresEvidence()));
+                                        practice.setEvidenceRequirements(editorPractice.getEvidenceRequirements());
                                         practice.setName(editorPractice.getName());
                                         practice.setDescription(editorPractice.getDescription());
                                         practice.setWeight(editorPractice.getWeight());
@@ -1106,10 +1111,42 @@ public class MaturityModelService {
                                                         question.setCode(questionCode);
                                                 }
                                         }
+                                        validateEvidenceRequirements(practice, generateMissingCodes);
                                         validatePracticeDependencies(practice, generateMissingCodes);
                                 }
                         }
                 }
+        }
+
+        private void validateEvidenceRequirements(PracticeDTO practice, boolean writing) {
+                List<EvidenceRequirement> requirements = practice.getEvidenceRequirements();
+                if (requirements == null) requirements = new ArrayList<>();
+                if (writing && requirements.isEmpty() && Boolean.TRUE.equals(practice.getRequiresEvidence())) {
+                        requirements = new ArrayList<>(List.of(new EvidenceRequirement("supporting-evidence",
+                                "Supporting evidence", "Use the document approval date or reporting-period end.", true,
+                                EvidenceRequirement.Format.ANY)));
+                }
+                if (requirements.size() > 50) throw new IllegalOperationException("INVALID_EVIDENCE_REQUIREMENT",
+                        "A practice may define up to 50 evidence requirements.");
+                Set<String> codes = new HashSet<>();
+                for (EvidenceRequirement requirement : requirements) {
+                        if (requirement == null || requirement.getCode() == null
+                                || !requirement.getCode().matches("[A-Za-z][A-Za-z0-9_-]{0,63}")
+                                || !codes.add(requirement.getCode().toLowerCase(Locale.ROOT))
+                                || requirement.getName() == null || requirement.getName().isBlank()
+                                || requirement.getRequired() == null || requirement.getFormat() == null) {
+                                throw new IllegalOperationException("INVALID_EVIDENCE_REQUIREMENT",
+                                        "Evidence requirements need unique codes, a name, a required flag and an accepted format.");
+                        }
+                        TextLimits.requireAtMost(requirement.getName(), TextLimits.NAME, "Evidence requirement name");
+                        TextLimits.requireAtMost(requirement.getInstructions(), TextLimits.SHORT_GUIDANCE, "Evidence instructions");
+                        if (writing) {
+                                requirement.setName(requirement.getName().trim());
+                                requirement.setInstructions(requirement.getInstructions() == null ? "" : requirement.getInstructions().trim());
+                        }
+                }
+                practice.setEvidenceRequirements(requirements);
+                if (writing) practice.setRequiresEvidence(requirements.stream().anyMatch(r -> Boolean.TRUE.equals(r.getRequired())));
         }
 
         private String validateCode(

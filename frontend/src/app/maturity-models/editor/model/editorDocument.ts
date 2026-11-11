@@ -102,6 +102,7 @@ export function emptyPractice(
     aggregationRule: DEFAULT_AGGREGATION_RULE,
     gatingRules: [],
     requiresEvidence: false,
+    evidenceRequirements: [],
     questions: [emptyQuestion(questionOrdinal)],
   };
 }
@@ -214,6 +215,8 @@ export function hydrateDocument(
           ...practice,
           description: practice.description ?? "",
           requiresEvidence: practice.requiresEvidence ?? false,
+          evidenceRequirements: (practice.evidenceRequirements?.length ? practice.evidenceRequirements : practice.requiresEvidence
+            ? [{ code: "supporting-evidence", name: "Supporting evidence", instructions: "Use the document approval date or reporting-period end.", required: true, format: "ANY" as const }] : []).map(item => ({ ...item })),
           clientKey: practice.clientKey || key(),
           codeLocked: false,
           weight: practice.weight ?? 1,
@@ -309,6 +312,8 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
                 ...practice
               }) => ({
                 ...practice,
+                requiresEvidence: (practice.evidenceRequirements ?? []).some(item => item.required),
+                evidenceRequirements: (practice.evidenceRequirements ?? []).map(item => ({ ...item, name: item.name.trim(), instructions: item.instructions.trim() })),
                 code: practice.code.trim(),
                 name: practice.name.trim(),
                 description: practice.description.trim(),

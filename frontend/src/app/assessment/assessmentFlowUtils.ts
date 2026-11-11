@@ -3,7 +3,7 @@
 import type { AssessmentData, Question } from "@/api/types";
 import type { AssessmentPracticeStep } from "./AssessmentStep";
 import {
-  hasValidEvidenceItems,
+  missingEvidenceRequirements,
   getPracticeEvidenceField,
 } from "./assessmentEvidence.ts";
 import type { AssessmentEvidenceByField } from "./assessmentEvidence.ts";
@@ -130,9 +130,8 @@ export function getPracticeCompletionIssues(
     // Show the practice evidence blocker only once its answers are ready.
     missingEvidenceCount:
       missingRequiredAnswerCount === 0 && invalidAnswerCount === 0 &&
-      enabledQuestions.length > 0 && step.practice.requiresEvidence &&
-      !hasValidEvidenceItems(evidenceFiles.get(getPracticeEvidenceField(step.practice.id)))
-        ? 1 : 0,
+      enabledQuestions.length > 0
+        ? missingEvidenceRequirements(step.practice, evidenceFiles.get(getPracticeEvidenceField(step.practice.id))) : 0,
   };
 }
 
@@ -161,7 +160,7 @@ export function getAssessmentCompletionIssueLabel(issues: AssessmentCompletionIs
     labels.push(
       issues.missingEvidenceCount === 1
         ? "Required evidence missing"
-        : `Required evidence missing for ${issues.missingEvidenceCount} completed practices`
+        : `${issues.missingEvidenceCount} required evidence items missing`
     );
   }
   return labels.join(" · ");

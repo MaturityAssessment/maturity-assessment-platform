@@ -23,6 +23,11 @@ final class ModulePrerequisites {
 
     static Map<Module, State> states(MaturityModel model, Predicate<Question> active,
                                     Predicate<Question> answered, Set<Long> evidencePractices) {
+        return states(model, active, answered, practice -> !Boolean.TRUE.equals(practice.getRequiresEvidence()) || evidencePractices.contains(practice.getId()));
+    }
+
+    static Map<Module, State> states(MaturityModel model, Predicate<Question> active,
+                                    Predicate<Question> answered, Predicate<Practice> evidenceComplete) {
         Map<Module, State> states = new IdentityHashMap<>();
         for (Dimension dimension : safe(model.getDimensions())) {
             Map<String, Module> prior = new HashMap<>();
@@ -39,8 +44,7 @@ final class ModulePrerequisites {
                 for (Practice practice : safe(module.getPractices())) {
                     List<Question> questions = safe(practice.getQuestions()).stream().filter(active).toList();
                     if (questions.stream().anyMatch(question -> Boolean.TRUE.equals(question.getRequired()) && !answered.test(question))
-                            || (!questions.isEmpty() && Boolean.TRUE.equals(practice.getRequiresEvidence())
-                            && !evidencePractices.contains(practice.getId()))) complete = false;
+                            || (!questions.isEmpty() && !evidenceComplete.test(practice))) complete = false;
                 }
                 states.put(module, new State(locked, complete, missing));
                 if (module.getCode() != null) prior.put(module.getCode().toLowerCase(Locale.ROOT), module);

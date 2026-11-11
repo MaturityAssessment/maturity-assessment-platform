@@ -21,6 +21,11 @@ import java.util.List;
 @EqualsAndHashCode(exclude = { "module", "questions", "gatingRules" })
 public class Practice {
 
+    @ElementCollection
+    @CollectionTable(name = "practice_evidence_requirements", joinColumns = @JoinColumn(name = "practice_id"))
+    @OrderColumn(name = "sort_order")
+    private List<EvidenceRequirement> evidenceRequirements = new java.util.ArrayList<>();
+
     @Column(name = "requires_evidence", nullable = false)
     private Boolean requiresEvidence = false;
 

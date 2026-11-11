@@ -479,6 +479,9 @@ public class CsvParsingService {
                 practiceDTO.setDescription(blankToNull(row.getPracticeDescription()));
                 practiceDTO.setWeight(practiceWeight);
                 practiceDTO.setRequiresEvidence(parseBoolean(row.getPracticeRequiresEvidence(), false));
+                practiceDTO.setEvidenceRequirements(parseRules(row.getPracticeEvidenceRequirements(),
+                        com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement.class,
+                        "practiceEvidenceRequirements", rowNumber, errors));
                 practiceDTO.setAggregationRule(parseAggregationRule(row.getPracticeAggregationRule(), "practiceAggregationRule", rowNumber, errors));
                 practiceDTO.setGatingRules(parseRules(row.getPracticeGatingRules(), GatingRuleDTO.class, "practiceGatingRules", rowNumber, errors));
                 practice = new PracticeAccumulator(practiceDTO, row.getPracticeSortOrder());

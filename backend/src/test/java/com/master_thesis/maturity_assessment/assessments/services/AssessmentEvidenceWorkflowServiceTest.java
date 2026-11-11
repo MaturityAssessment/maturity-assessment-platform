@@ -441,6 +441,26 @@ class AssessmentEvidenceWorkflowServiceTest {
         assertEquals(List.of(note), submitModel(requiredEvidenceModel(), List.of(note)).getEvidence());
     }
 
+    @Test
+    void submissionRequiresEachMandatoryIndicatorAndIgnoresAdditionalEvidence() throws Exception {
+        var model = requiredEvidenceModel();
+        var practice = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        practice.setEvidenceRequirements(List.of(
+                new com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement("report", "Monthly report", "", true,
+                        com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement.Format.FILE_OR_URL),
+                new com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement("policy", "Policy", "", true,
+                        com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement.Format.FILE_OR_URL),
+                new com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement("optional", "Optional", "", false,
+                        com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement.Format.ANY)));
+        assertThrows(ResponseStatusException.class, () -> submitModel(model, List.of(evidence())));
+        var report = evidence(); report.setRequirementCode("report");
+        var policy = evidence(); policy.setId(6L); policy.setRequirementCode("policy");
+        assertThrows(ResponseStatusException.class, () -> submitModel(model, List.of(report)));
+        // Old evidence remains acceptable regardless of age; expiry is deferred.
+        report.setEvidenceDate(java.time.LocalDate.of(2000, 1, 1));
+        assertEquals(2, submitModel(model, List.of(report, policy)).getEvidence().size());
+    }
+
     private AssessmentResponse submitModel(MaturityModel model, List<EvidenceDTO> items) throws Exception {
         AssessmentRequest request = request(Map.of());
         when(assessmentService.createAssessment(request, user)).thenReturn(savedAssessment);

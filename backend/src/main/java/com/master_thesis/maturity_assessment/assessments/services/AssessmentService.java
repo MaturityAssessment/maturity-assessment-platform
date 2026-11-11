@@ -2601,7 +2601,7 @@ public class AssessmentService {
     record PrerequisiteResponse(Long questionId, JsonNode response,
                                 Integer choiceIndex, String justification) {}
     record PrerequisiteEvidence(Long practiceId, EvidenceType type, String description, String url,
-                                String filePath, Set<Long> questionIds) {}
+                                String filePath, Set<Long> questionIds, String requirementCode, java.time.LocalDate evidenceDate) {}
     record PrerequisiteSnapshot(Map<String, PrerequisiteResponse> responses,
                                 Map<Long, PrerequisiteEvidence> evidence) {}
 
@@ -2640,17 +2640,26 @@ public class AssessmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Maturity model not found"));
         Map<String, Object> responses = responseValues(
                 questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(assessment.getId()), model.getId());
-        Set<Long> evidencePractices = evidenceRepository.findByAssessmentIdOrderByIdAsc(assessment.getId()).stream()
-                .filter(item -> item.getPractice() != null).map(item -> item.getPractice().getId()).collect(Collectors.toSet());
+        var practiceEvidence = evidenceRepository.findByAssessmentIdOrderByIdAsc(assessment.getId());
         Map<Module, ModulePrerequisites.State> states = ModulePrerequisites.states(model,
                 question -> isQuestionVisible(question, responses),
                 question -> { String key = findQuestionKey(question.getId(), responses);
-                    return key != null && isAnswered(responses.get(key)); }, evidencePractices);
+                    return key != null && isAnswered(responses.get(key)); }, candidatePractice -> hasRequiredPracticeEvidence(candidatePractice,
+                        code -> practiceEvidence.stream().anyMatch(item -> candidatePractice.getId().equals(item.getPractice().getId())
+                                && (code == null || code.equals(item.getRequirementCode())))));
         ModulePrerequisites.State state = states.get(module);
         if (state == null && module.getId() != null) state = states.entrySet().stream()
                 .filter(entry -> module.getId().equals(entry.getKey().getId())).map(Map.Entry::getValue).findFirst().orElse(null);
         if (state == null || state.locked()) throw new IllegalOperationException("MODULE_PREREQUISITES_INCOMPLETE",
                 "Module '" + module.getName() + "' is locked until its prerequisites are complete. Existing evidence is retained.");
+    }
+
+    private boolean hasRequiredPracticeEvidence(Practice practice,
+                                               java.util.function.Predicate<String> supplied) {
+        var requirements = practice.getEvidenceRequirements();
+        if (requirements == null || requirements.isEmpty()) return !Boolean.TRUE.equals(practice.getRequiresEvidence()) || supplied.test(null);
+        return requirements.stream().filter(item -> Boolean.TRUE.equals(item.getRequired()))
+                .allMatch(item -> supplied.test(item.getCode()));
     }
 
     private boolean hasModulePrerequisites(MaturityModel model) {
@@ -2663,7 +2672,7 @@ public class AssessmentService {
         return new PrerequisiteEvidence(item.getPractice() == null ? null : item.getPractice().getId(),
                 item.getEvidenceType(), item.getDescription(), item.getExternalUrl(), item.getFilePath(),
                 Optional.ofNullable(item.getReferencedQuestions()).orElse(Set.of()).stream()
-                        .map(Question::getId).collect(Collectors.toSet()));
+                        .map(Question::getId).collect(Collectors.toSet()), item.getRequirementCode(), item.getEvidenceDate());
     }
 
     private boolean samePrerequisiteResponse(PrerequisiteResponse previous, PrerequisiteResponse next, Question question) {
@@ -2693,12 +2702,13 @@ public class AssessmentService {
         MaturityModel model = maturityModelRepository.findById(request.getMaturityModelId()).orElse(null);
         if (model == null || !hasModulePrerequisites(model)) return;
         Map<String, Object> responses = responseValues(request);
-        Set<Long> evidencePractices = Optional.ofNullable(response.getEvidence()).orElse(List.of()).stream()
-                .map(EvidenceDTO::getPracticeId).collect(Collectors.toSet());
+        var practiceEvidence = Optional.ofNullable(response.getEvidence()).orElse(List.of());
         Map<Module, ModulePrerequisites.State> states = ModulePrerequisites.states(model,
                 question -> isQuestionVisible(question, responses),
                 question -> { String key = findQuestionKey(question.getId(), responses);
-                    return key != null && isAnswered(responses.get(key)); }, evidencePractices);
+                    return key != null && isAnswered(responses.get(key)); }, practice -> hasRequiredPracticeEvidence(practice,
+                        code -> practiceEvidence.stream().anyMatch(item -> practice.getId().equals(item.getPracticeId())
+                                && (code == null || code.equals(item.getRequirementCode())))));
         Map<Long, PrerequisiteEvidence> currentEvidence = new HashMap<>();
         if (response.getId() != null) {
             for (Evidence item : evidenceRepository.findByAssessmentIdOrderByIdAsc(response.getId()))

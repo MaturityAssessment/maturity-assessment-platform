@@ -142,13 +142,18 @@ function reconcileEvidenceItem(
     ? [...(persisted.referencedQuestionIds ?? current.referencedQuestionIds ?? [])]
     : [...(current.referencedQuestionIds || [])];
 
+  const metadata = {
+    requirementCode: current.requirementCode === sent.requirementCode ? persisted.requirementCode ?? current.requirementCode : current.requirementCode,
+    evidenceDate: current.evidenceDate === sent.evidenceDate ? persisted.evidenceDate ?? current.evidenceDate : current.evidenceDate,
+  };
   if (current.type === "text") {
-    return { ...current, evidenceId: persisted.id, description, referencedQuestionIds };
+    return { ...current, ...metadata, evidenceId: persisted.id, description, referencedQuestionIds };
   }
 
   if (current.type === "link") {
     return {
       ...current,
+      ...metadata,
       evidenceId: persisted.id,
       description,
       referencedQuestionIds,
@@ -161,6 +166,7 @@ function reconcileEvidenceItem(
   const fileChangedDuringSave = current.file !== sent.file;
   return {
     ...current,
+    ...metadata,
     evidenceId: persisted.id,
     description,
     referencedQuestionIds,

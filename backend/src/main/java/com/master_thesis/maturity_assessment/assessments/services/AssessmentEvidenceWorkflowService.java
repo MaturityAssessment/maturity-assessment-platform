@@ -251,7 +251,15 @@ public class AssessmentEvidenceWorkflowService {
                 for (Practice practice : Optional.ofNullable(module.getPractices()).orElse(List.of())) {
                     boolean active = practice.getQuestions() != null && practice.getQuestions().stream()
                             .anyMatch(question -> assessmentService.isQuestionVisible(question, responses));
-                    if (active && Boolean.TRUE.equals(practice.getRequiresEvidence())
+                    if (active && practice.getEvidenceRequirements() != null && !practice.getEvidenceRequirements().isEmpty()) {
+                        for (var requirement : practice.getEvidenceRequirements()) {
+                            if (Boolean.TRUE.equals(requirement.getRequired()) && evidence.stream().noneMatch(item ->
+                                    practice.getId().equals(item.getPracticeId())
+                                    && requirement.getCode().equals(item.getRequirementCode()))) {
+                                throw badRequest("Missing required evidence: " + requirement.getName() + " (practiceId: " + practice.getId() + ")");
+                            }
+                        }
+                    } else if (active && Boolean.TRUE.equals(practice.getRequiresEvidence())
                             && !practiceIds.contains(practice.getId())) {
                         throw badRequest("Missing required evidence for practiceId: " + practice.getId());
                     }

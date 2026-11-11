@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Paperclip } from "lucide-react";
 import type { AssessmentEvidenceInputItem } from "@/api/types";
 import { Button } from "@/components/ui/button";
-import { createEvidenceClientId, MAX_EVIDENCE_ITEMS_PER_PRACTICE } from "@/app/assessment/assessmentEvidence";
+import { createEvidenceClientId, MAX_EVIDENCE_ITEMS_PER_FIELD } from "@/app/assessment/assessmentEvidence";
 import { evidenceItemLabel, setEvidenceQuestionReference } from "@/app/assessment/evidenceReferences";
 import EvidenceDialog from "./EvidenceDialog";
 import EvidenceItemDetails from "./EvidenceItemDetails";
@@ -12,7 +12,7 @@ import EvidenceItemEditor from "./EvidenceItemEditor";
 import type { EvidenceReferenceProps } from "./EvidenceQuestionReferences";
 
 export default function QuestionEvidence({ questionId, practiceId, items, onItemsChange,
-  readOnly = false, inactive = false, questions, inactiveQuestionIds, onDownload }: EvidenceReferenceProps & {
+  readOnly = false, inactive = false, questions, inactiveQuestionIds, onDownload, evidenceRequirements = [] }: EvidenceReferenceProps & {
   questionId: number; practiceId: number; items: AssessmentEvidenceInputItem[];
   onItemsChange?: (items: AssessmentEvidenceInputItem[]) => void; readOnly?: boolean; inactive?: boolean;
   onDownload?: (evidenceId: number, fileName?: string | null) => void;
@@ -24,7 +24,8 @@ export default function QuestionEvidence({ questionId, practiceId, items, onItem
   const [error, setError] = useState<string | null>(null);
   const linked = items.filter(item => item.referencedQuestionIds?.includes(questionId));
   const canEdit = !readOnly && Boolean(onItemsChange);
-  const canAdd = items.length < MAX_EVIDENCE_ITEMS_PER_PRACTICE;
+  const canAdd = items.filter(item => !item.requirementCode).length < MAX_EVIDENCE_ITEMS_PER_FIELD
+    || evidenceRequirements.some(requirement => items.filter(item => item.requirementCode === requirement.code).length < MAX_EVIDENCE_ITEMS_PER_FIELD);
   const viewedItem = items.find(item => item.id === dialog);
   const close = () => { setDialog(null); setError(null); };
 
@@ -42,7 +43,10 @@ export default function QuestionEvidence({ questionId, practiceId, items, onItem
       onClick={() => {
         setMode(canAdd ? "new" : "existing");
         setSelected(new Set(linked.map(item => item.id)));
-        setNewItem({ id: createEvidenceClientId(), practiceId, type: "file", description: "", file: null, url: "", referencedQuestionIds: [questionId] });
+        const defaultRequirement = items.filter(item => !item.requirementCode).length >= MAX_EVIDENCE_ITEMS_PER_FIELD
+          ? evidenceRequirements.find(requirement => items.filter(item => item.requirementCode === requirement.code).length < MAX_EVIDENCE_ITEMS_PER_FIELD) : undefined;
+        setNewItem({ id: createEvidenceClientId(), practiceId, type: defaultRequirement?.format === "URL" ? "link" : "file", description: "", file: null, url: "", referencedQuestionIds: [questionId],
+          requirementCode: defaultRequirement?.code });
         setDialog("add");
       }}><Paperclip className="h-3.5 w-3.5" aria-hidden="true" /> Add evidence</button>}
     {dialog === "add" && canEdit && !inactive && <EvidenceDialog title="Evidence for this question" onClose={close}>
@@ -51,9 +55,11 @@ export default function QuestionEvidence({ questionId, practiceId, items, onItem
         <Button type="button" variant={mode === "existing" ? "default" : "outline"} aria-pressed={mode === "existing"} onClick={() => setMode("existing")}>Use existing</Button>
       </div>
       {!canAdd && <p className="mb-4 text-sm text-slate-600">This practice has reached its evidence limit. You can still link existing evidence.</p>}
-      {mode === "new" && newItem ? <EvidenceItemEditor isNew initialItem={newItem} questions={questions} inactiveQuestionIds={inactiveQuestionIds}
+      {mode === "new" && newItem ? <EvidenceItemEditor isNew initialItem={newItem} evidenceRequirements={evidenceRequirements} questions={questions} inactiveQuestionIds={inactiveQuestionIds}
         onCancel={close} onSave={draft => {
-          if (!canAdd) { setError("A practice can contain at most five evidence items."); return; }
+          if (items.filter(item => (item.requirementCode || null) === (draft.requirementCode || null)).length >= MAX_EVIDENCE_ITEMS_PER_FIELD) {
+            setError("This evidence field can contain at most five items."); return;
+          }
           onItemsChange?.([...items, draft]);
           close();
         }} /> : <form onSubmit={event => {
@@ -83,6 +89,7 @@ export default function QuestionEvidence({ questionId, practiceId, items, onItem
     </EvidenceDialog>}
     {viewedItem && <EvidenceDialog title="Linked practice evidence" onClose={close}>
       <EvidenceItemDetails item={viewedItem} questions={questions} inactiveQuestionIds={inactiveQuestionIds}
+        evidenceRequirements={evidenceRequirements}
         onDownload={onDownload && viewedItem.evidenceId ? () => onDownload(viewedItem.evidenceId!, viewedItem.fileName) : undefined} />
       {canEdit && <Button type="button" variant="outline" size="sm" className="mt-5" onClick={() => {
         onItemsChange?.(setEvidenceQuestionReference(items, viewedItem.id, questionId, false)); close();

@@ -5,6 +5,7 @@ import { questionReferenceLabel, type EvidenceQuestionOption } from "@/app/asses
 
 export type EvidenceReferenceProps = {
   questions?: EvidenceQuestionOption[];
+  evidenceRequirements?: import("@/api/types").EvidenceRequirement[];
   inactiveQuestionIds?: ReadonlySet<number>;
 };
 

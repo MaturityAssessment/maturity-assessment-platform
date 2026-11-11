@@ -426,10 +426,27 @@ activation resolves the index against the assessment's model version. Historical
 score-only answers activate an option-specific rule only when the score identifies
 exactly one option; ambiguous editable answers need an explicit option selection.
 
-`requiresEvidence` is a practice field, defaults to `false`, and is preserved
-through model versions and editor read/write. In workbooks, use
-`practiceRequiresEvidence` on the Practices sheet. Legacy question-level flags
-are ignored; evidence-only question types are rejected.
+Practices define `evidenceRequirements`, an ordered array of up to 50 entries:
+
+```json
+[{"code":"monthly-report","name":"Monthly incident report","instructions":"Use the last day of the reporting period as the evidence date.","required":true,"format":"FILE_OR_URL"}]
+```
+
+Codes are unique (case-insensitive) within a practice, start with a letter and contain
+up to 64 letters, digits, underscores or hyphens. Names are required; instructions
+are optional (up to 500 characters). `format` is `FILE`, `URL`, `FILE_OR_URL`, or `ANY`
+(the latter also permits notes). Requirements are copied into new model versions.
+`required` blocks submission when that specific requirement has no evidence, provided
+the practice has an active question. Evidence question references remain optional.
+The editor exposes requirements in the practice's Evidence tab; it has no `max_age`
+or verification configuration yet.
+
+`requiresEvidence` remains a compatibility field, derived from mandatory named
+requirements on write. Legacy writes with a true flag and no requirements become
+one `supporting-evidence` requirement accepting any format. Excel/CSV preserves
+requirements as JSON in the optional `practiceEvidenceRequirements` column;
+`practiceRequiresEvidence` remains supported for older workbooks. Legacy
+question-level evidence flags are ignored.
 
 | Type | Authoring settings | Respondent value |
 |---|---|---|

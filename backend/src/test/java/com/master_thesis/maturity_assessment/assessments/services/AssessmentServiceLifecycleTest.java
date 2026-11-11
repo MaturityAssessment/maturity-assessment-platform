@@ -247,6 +247,30 @@ class AssessmentServiceLifecycleTest {
     }
 
     @Test
+    void modulePrerequisitesRequireEveryNamedEvidenceIndicator() {
+        var model = prerequisiteModel();
+        var first = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        first.setRequiresEvidence(true);
+        first.setEvidenceRequirements(List.of(
+                new com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement("report", "Report", "", true,
+                        com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement.Format.FILE_OR_URL),
+                new com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement("policy", "Policy", "", true,
+                        com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement.Format.FILE_OR_URL)));
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        var incoming = request(Map.of("D1_M1_101_1001", 1, "D1_M2_102_1002", 1, "D1_M3_103_1003", 1));
+        var response = new AssessmentResponse(); response.setId(ASSESSMENT_ID);
+        var report = com.master_thesis.maturity_assessment.assessments.dto.EvidenceDTO.builder()
+                .id(1L).practiceId(101L).requirementCode("report").build();
+        response.setEvidence(List.of(report));
+        assertThrows(IllegalOperationException.class,
+                () -> assessmentService.validateModulePrerequisiteAccess(incoming, response, null, true));
+        var policy = com.master_thesis.maturity_assessment.assessments.dto.EvidenceDTO.builder()
+                .id(2L).practiceId(101L).requirementCode("policy").build();
+        response.setEvidence(List.of(report, policy));
+        assessmentService.validateModulePrerequisiteAccess(incoming, response, null, true);
+    }
+
+    @Test
     void incompletePrerequisitesAllowEmptyDraftsButRejectNewDownstreamAnswers() {
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(prerequisiteModel()));
         var response = new AssessmentResponse();

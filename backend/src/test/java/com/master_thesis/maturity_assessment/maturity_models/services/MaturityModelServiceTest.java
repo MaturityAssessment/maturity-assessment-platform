@@ -20,6 +20,7 @@ import com.master_thesis.maturity_assessment.maturity_models.models.MaturityLeve
 import com.master_thesis.maturity_assessment.maturity_models.models.MaturityModel;
 import com.master_thesis.maturity_assessment.maturity_models.models.Module;
 import com.master_thesis.maturity_assessment.maturity_models.models.Practice;
+import com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement;
 import com.master_thesis.maturity_assessment.maturity_models.models.Question;
 import com.master_thesis.maturity_assessment.maturity_models.models.AggregationRule;
 import com.master_thesis.maturity_assessment.maturity_models.models.GatingComparisonOperator;
@@ -71,6 +72,37 @@ class MaturityModelServiceTest {
         ReflectionTestUtils.setField(service, "assessmentRepository", assessmentRepository);
         ReflectionTestUtils.setField(service, "domainRepository", domainRepository);
         ReflectionTestUtils.setField(service, "objectMapper", new ObjectMapper());
+    }
+
+    @Test
+    void evidenceRequirementsAreValidatedAndCopiedIntoNewVersions() {
+        var domain = domain();
+        var dto = updateDto(domain.getId(), null);
+        var practice = dto.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        var report = new EvidenceRequirement("report", " Monthly incident report ", " Use period end ", true, EvidenceRequirement.Format.FILE_OR_URL);
+        practice.setEvidenceRequirements(new ArrayList<>(List.of(report)));
+        when(domainRepository.findById(domain.getId())).thenReturn(Optional.of(domain));
+        List<MaturityModel> saved = new ArrayList<>();
+        when(maturityModelRepository.saveAndFlush(any(MaturityModel.class))).thenAnswer(invocation -> {
+            MaturityModel model = invocation.getArgument(0); assignGeneratedIds(model); saved.add(model); return model;
+        });
+        when(maturityModelRepository.save(any(MaturityModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        var original = service.createMaturityModel(dto);
+        var source = saved.getFirst();
+        when(maturityModelRepository.findById(source.getId())).thenReturn(Optional.of(source));
+        when(maturityModelRepository.findByBaseModelIdOrderByVersionAsc(source.getId())).thenReturn(List.of(source));
+        var editor = service.prepareEditorDocument(original);
+        var requirement = editor.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getEvidenceRequirements().getFirst();
+        assertEquals("Monthly incident report", requirement.getName());
+        requirement.setName("Revised report");
+        var version = service.createVersionFromEditor(source.getId(), editor);
+        assertEquals("Revised report", version.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getEvidenceRequirements().getFirst().getName());
+        assertEquals("Monthly incident report", source.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getEvidenceRequirements().getFirst().getName());
+        var editorPractice = editor.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        editorPractice.setEvidenceRequirements(List.of(requirement, requirement.copy()));
+        assertThrows(IllegalOperationException.class, () -> service.createFromEditor(editor));
+        editorPractice.setEvidenceRequirements(List.of(new EvidenceRequirement("blank", " ", "", true, EvidenceRequirement.Format.ANY)));
+        assertThrows(IllegalOperationException.class, () -> service.createFromEditor(editor));
     }
 
     @Test
@@ -326,6 +358,7 @@ class MaturityModelServiceTest {
         child.setScaleHighPointIsMaximum(false);
         var practice = new MaturityModelEditorDTO.EditorPracticeDTO();
         practice.setRequiresEvidence(true);
+        practice.setEvidenceRequirements(List.of(new EvidenceRequirement("report", "Monthly report", "Use period end", true, EvidenceRequirement.Format.FILE_OR_URL)));
         practice.setCode("P1_TEST");
         practice.setName("Practice");
         practice.setWeight(1.0);
@@ -370,6 +403,8 @@ class MaturityModelServiceTest {
         creator.setEmail("curator@example.com");
 
         MaturityModelDTO response = service.createFromEditor(editor, creator);
+        assertEquals(practice.getEvidenceRequirements(), response.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getEvidenceRequirements());
+        assertEquals(practice.getEvidenceRequirements(), service.prepareEditorDocument(response).getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getEvidenceRequirements());
         assertTrue(response.getDimensions().getFirst().getModules().getFirst()
                 .getPractices().getFirst().getRequiresEvidence());
         assertTrue(service.prepareEditorDocument(response).getDimensions().getFirst().getModules().getFirst()

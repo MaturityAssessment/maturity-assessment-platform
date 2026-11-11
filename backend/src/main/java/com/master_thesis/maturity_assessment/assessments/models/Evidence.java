@@ -37,6 +37,12 @@ public class Evidence {
     @JoinColumn(name = "practice_id", nullable = false)
     private Practice practice;
 
+    @Column(name = "requirement_code", length = 64)
+    private String requirementCode;
+
+    @Column(name = "evidence_date")
+    private java.time.LocalDate evidenceDate;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "evidence_question_references",
             joinColumns = @JoinColumn(name = "evidence_id"),

@@ -1,3 +1,4 @@
+import PracticeEvidenceEditor from "./PracticeEvidenceEditor";
 import WeightInput from "../../components/WeightInput";
 import { useMemo, useState } from "react";
 import { ArrowLeftIcon, PlusIcon } from "@heroicons/react/24/outline";
@@ -185,17 +186,17 @@ export default function PracticeEditor({
                       }
                     />
                   </label>
-                  <label className="flex items-start gap-3 rounded-lg bg-gray-50 p-4 text-sm text-gray-700 @2xl:col-span-2">
-                    <input type="checkbox" className="mt-1 rounded border-gray-300 text-blue-600"
-                      checked={practice.requiresEvidence ?? false}
-                      onChange={(event) => update({ ...practice, requiresEvidence: event.target.checked })} />
-                    <span><span className="block font-semibold text-gray-900">Requires practice evidence</span>
-                      <span className="mt-1 block text-gray-500">Ask respondents to provide evidence for this practice.</span>
-                    </span>
-                  </label>
+
                 </div>
               </>
             ),
+          },
+          {
+            id: "evidence",
+            label: "Evidence",
+            count: practice.evidenceRequirements?.length ?? 0,
+            content: <PracticeEvidenceEditor requirements={practice.evidenceRequirements ?? []}
+              onChange={evidenceRequirements => update({ ...practice, evidenceRequirements, requiresEvidence: evidenceRequirements.some(item => item.required) })} />,
           },
           {
             id: "scoring",

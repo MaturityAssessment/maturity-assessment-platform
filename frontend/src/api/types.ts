@@ -96,11 +96,21 @@ export interface Question {
   clientKey?: string;
 }
 
+export interface EvidenceRequirement {
+  code: string;
+  name: string;
+  instructions: string;
+  required: boolean;
+  format: "FILE" | "URL" | "FILE_OR_URL" | "ANY";
+}
+
 export interface Evidence {
   id: number;
   assessmentId: number;
   practiceId: number;
   referencedQuestionIds?: number[];
+  requirementCode?: string | null;
+  evidenceDate?: string | null;
   /** Ephemeral client identity echoed by draft saves for safe reconciliation. */
   clientKey?: string | null;
   description: string;
@@ -118,6 +128,8 @@ export interface AssessmentEvidenceInputItem {
   evidenceId?: number;
   practiceId: number;
   referencedQuestionIds?: number[];
+  requirementCode?: string | null;
+  evidenceDate?: string | null;
   type: "file" | "link" | "text";
   description: string;
   file: File | null;
@@ -134,6 +146,8 @@ export interface AssessmentEvidenceMetadataItem {
   clientKey?: string;
   practiceId: number;
   referencedQuestionIds?: number[];
+  requirementCode?: string | null;
+  evidenceDate?: string | null;
   type: "FILE" | "URL" | "TEXT";
   description: string;
   url?: string;
@@ -141,6 +155,7 @@ export interface AssessmentEvidenceMetadataItem {
 
 export interface Practice {
   requiresEvidence?: boolean;
+  evidenceRequirements?: EvidenceRequirement[];
   id?: number; // Numeric database ID (unique identifier)
   moduleId?: number; // FK to parent Module
   code?: string;
@@ -469,6 +484,7 @@ export interface CampaignAssessmentSession {
 
 export interface PracticeForm {
   requiresEvidence?: boolean;
+  evidenceRequirements?: EvidenceRequirement[];
   id?: number; // Numeric database ID (unique identifier)
   moduleId?: number; // FK to parent Module
   code?: string;
@@ -550,6 +566,7 @@ export interface ModelEditorQuestion {
 
 export interface ModelEditorPractice {
   requiresEvidence?: boolean;
+  evidenceRequirements?: EvidenceRequirement[];
   clientKey: string;
   code: string;
   codeLocked?: boolean;

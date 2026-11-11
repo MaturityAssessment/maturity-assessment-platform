@@ -87,6 +87,8 @@ snapshot saves to coordinate answer/evidence edits in the respondent workflow.
 | Field | Meaning |
 |---|---|
 | `practiceId` | Required; practice must belong to the assessment's exact model |
+| `requirementCode` | Optional code of a named evidence requirement in this practice; null/omitted means additional supporting evidence |
+| `evidenceDate` | Optional ISO date (`YYYY-MM-DD`), on or before today (UTC); required for new/replaced/reclassified evidence in a named requirement |
 | `referencedQuestionIds` | Optional array of unique positive integer question IDs in this practice; omitted/null preserves existing references, `[]` clears them, and new items default to `[]` |
 | `type` | Required: `FILE`, `URL`, or `TEXT` |
 | `evidenceId` | Include to retain/update an existing item in this assessment |
@@ -102,8 +104,8 @@ them by also supplying an `itemKey` and matching file. Existing items cannot be
 moved to another practice or changed to a different evidence type.
 
 Respondent notes use `type: "TEXT"` with the note in `description`, without a URL
-or uploaded file. They count as practice evidence and share the five-item limit
-with files and links. Notes are included in review and local-agent text extraction.
+or uploaded file. They count as practice evidence and share the five-item limit within each evidence field
+with files and links. Named requirements may restrict accepted formats and exclude notes. Notes are included in review and local-agent text extraction.
 
 Evidence remains owned by its practice. References only explain which questions
 an item supports: one item may reference several questions, and each question
@@ -129,11 +131,13 @@ Replace the IDs/key/path with real local values. Exact-draft and campaign writes
 use authoritative snapshots: omitted existing evidence is removed, and `[]`
 removes all evidence. Include every retained item. An evidence item must belong
 to a practice in the assessment’s exact model version; it can be attached before
-answering any questions. Submission requires at least one item for every practice
-with `requiresEvidence: true` and at least one visible child question. Drafts may
+answering any questions. Submission requires evidence for every mandatory named requirement in each practice
+with at least one visible child question. Unclassified evidence cannot fulfil a named
+requirement. Legacy practices without named requirements retain the `requiresEvidence`
+rule (at least one practice item). Drafts may
 still be incomplete. Clearing an answer does not remove practice evidence.
 
-Defaults: five items per practice; 50 MiB per file; 250 MiB total file bytes per
+Defaults: five items per named requirement, plus five additional supporting items per practice; 50 MiB per file; 250 MiB total file bytes per
 request. Allowed MIME types cover PDF, DOC/DOCX, XLS/XLSX, JPEG/PNG, and plain text.
 Specifically: `application/pdf`, `application/msword`,
 `application/vnd.openxmlformats-officedocument.wordprocessingml.document`,
@@ -141,8 +145,8 @@ Specifically: `application/pdf`, `application/msword`,
 `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`,
 `image/jpeg`, `image/jpg`, `image/png`, and `text/plain`.
 Deployments can override file limits/types. Existing migrated practices with more
-than five items may retain, replace, or remove those items. Adding a new item requires
-a final total of at most five.
+than five items in a field may retain, replace, or remove those items. Adding or moving an
+item into a field requires a final count of at most five in that field.
 
 Malformed metadata, duplicate IDs/keys, wrong practice/model, empty files, invalid
 MIME types, and non-HTTPS links return `400`. Request-size enforcement returns
@@ -159,6 +163,8 @@ Content-Type header.
   "assessmentId": 25,
   "practiceId": 42,
   "referencedQuestionIds": [100, 101],
+  "requirementCode": "policy",
+  "evidenceDate": "2026-08-15",
   "description": "Code review policy",
   "evidenceType": "FILE",
   "fileName": "policy.pdf",
@@ -176,3 +182,21 @@ campaign authentication, construct the campaign download path from the evidence
 ID; the ordinary `downloadUrl` is not a campaign-token route.
 
 `referencedQuestionIds` is always an array (including `[]`) in responses.
+
+## Source dates and named requirements
+
+Evidence remains owned by its practice and can still reference multiple questions.
+`requirementCode` classifies an item into one named requirement; a requirement may
+have several attachments. Requirements are owned by the exact model version.
+Unknown or cross-practice codes and disallowed formats return `400`, before file storage.
+
+`evidenceDate` is the document issue/approval date or reporting-period end, according
+to the model author's instructions. `createdAt` remains the upload timestamp. Neither
+is inferred from the other. Legacy attachments with unknown dates may be retained;
+replacing their content or assigning them to a different named requirement needs a
+source date. A known date on classified evidence cannot be cleared. Additional
+supporting evidence can remain undated. Authoritative metadata includes these fields
+for retained items as well as new ones; null clears optional classification/date values.
+
+There is no age calculation, expiry warning, verification status, or scoring change
+in this phase. See [V49 deployment notes](../../migrations/named-evidence-requirements.md).

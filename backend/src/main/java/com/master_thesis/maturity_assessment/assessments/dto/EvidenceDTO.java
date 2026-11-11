@@ -13,6 +13,8 @@ public class EvidenceDTO {
     private String clientKey;
     private Long assessmentId;
     private Long practiceId;
+    private String requirementCode;
+    private java.time.LocalDate evidenceDate;
     @Builder.Default
     private List<Long> referencedQuestionIds = List.of();
     private String description;

@@ -70,6 +70,8 @@ class MaturityModelExcelPersistenceIntegrationTest {
         module.setGatingRules(List.of(gate(module.getPractices().getFirst().getCode())));
         var practice = module.getPractices().getFirst();
         practice.setRequiresEvidence(true);
+        practice.setEvidenceRequirements(List.of(new EvidenceRequirement("report", "Monthly incident report",
+                "Use reporting-period end", true, EvidenceRequirement.Format.FILE_OR_URL)));
         practice.setWeight(4.5);
         practice.setGatingRules(List.of(gate(practice.getQuestions().getFirst().getCode())));
         practice.getQuestions().getFirst().setType("likert");
@@ -106,7 +108,8 @@ class MaturityModelExcelPersistenceIntegrationTest {
         assertEquals(2, reloaded.getVersion());
         assertEquals(original.getId(), reloaded.getBaseModelId());
         assertFalse(reloaded.getIsActive());
-        assertEquals("Edited workbook version", reloaded.getName());
+        // Version edits preserve lineage settings; names change through model settings.
+        assertEquals(editor.getName(), reloaded.getName());
         assertEquals(editor.getName(), models.getMaturityModelById(original.getId()).getName());
         var savedDimension = reloaded.getDimensions().getFirst();
         assertEquals(2.5, savedDimension.getWeight());
@@ -118,6 +121,7 @@ class MaturityModelExcelPersistenceIntegrationTest {
         var savedPractice = savedModule.getPractices().getFirst();
         assertEquals(4.5, savedPractice.getWeight());
         assertTrue(savedPractice.getRequiresEvidence());
+        assertEquals(practice.getEvidenceRequirements(), savedPractice.getEvidenceRequirements());
         assertEquals(practice.getGatingRules(), savedPractice.getGatingRules());
         assertEquals("Edited question from Excel", savedPractice.getQuestions().getFirst().getText());
         assertEquals(condition, savedPractice.getQuestions().get(1).getDependencyCondition());
