@@ -1,3 +1,4 @@
+import ModuleBadgeFields from "./ModuleBadgeFields";
 import type { ModelEditorDimension, ModelEditorModule } from "@/api/types";
 import { moduleRelationshipIssues, synchronizeModuleRelationships } from "../../model/moduleRelationships";
 
@@ -57,5 +58,6 @@ export default function ModuleRelationshipsField({ dimension, module, onChange }
         ))}
       </fieldset>;
     })}
+    <ModuleBadgeFields dimension={dimension} module={module} onChange={onChange} />
   </div>;
 }

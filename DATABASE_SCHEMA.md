@@ -297,6 +297,7 @@ Represents modules within dimensions. Modules group related practices.
 | code              | VARCHAR(255) | NOT NULL              | Module code (e.g., "PM1")        |
 | name              | VARCHAR(255) | NOT NULL              | Module name                      |
 | visible           | BOOLEAN      | NOT NULL, DEFAULT TRUE | Include module in assessments and evaluation for this version |
+| mandatory_badge   | BOOLEAN      | NOT NULL, DEFAULT FALSE | Informational Mandatory label for model editors |
 | description       | TEXT         |                       | Module description               |
 | label_type        | VARCHAR(255) |                       | Evaluative label type            |
 | weight            | DOUBLE       | NOT NULL, DEFAULT 1.0 | Weight factor for aggregation    |
@@ -336,6 +337,13 @@ The model service stores reciprocal edges and validates scope, visibility and
 conflicts across prerequisite/co-requisite paths. Co-requisites form visibility
 groups; mutex remains pairwise. These collections are copied into each new model
 version; existing versions and their assessments retain their configurations.
+
+Informational notes are stored in `module_reinforcement_badges` and
+`module_substitution_badges`. Each table has `module_id` (FK → modules(id),
+ON DELETE CASCADE), `badge_order` (INTEGER) and `target_module_code` (VARCHAR(64),
+NOT NULL), with composite primary key `(module_id, badge_order)`. Targets are
+editor notes rather than enforced relationships. Neither these collections nor
+`mandatory_badge` participate in visibility or evaluation rules.
 
 ### 8. practices
 

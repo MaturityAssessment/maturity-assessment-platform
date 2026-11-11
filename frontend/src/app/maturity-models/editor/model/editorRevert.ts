@@ -1,3 +1,4 @@
+import { MODULE_BADGE_REFERENCE_FIELDS } from "./moduleBadges.ts";
 import { moduleRelationshipIssues, normalizeModuleRelationships, synchronizeModuleRelationships, SYMMETRIC_RELATION_FIELDS } from "./moduleRelationships.ts";
 import { hasValidModulePrerequisiteOrder, MODULE_PREREQUISITE_ORDER_MESSAGE, visibleModuleDependents } from "./modulePrerequisites.ts";
 import type { MaturityModelEditorDocument, ModelEditorDimension, ModelEditorModule, ModelEditorPractice, ModelEditorQuestion } from "@/api/types";
@@ -34,7 +35,7 @@ function encodeReferences(items: Item[]) {
   for (const item of items) {
     if ("practices" in item) {
       item.prerequisiteModuleCodes = (item.prerequisiteModuleCodes ?? []).map(code => resolve(code, items)!);
-      for (const field of SYMMETRIC_RELATION_FIELDS) item[field] = (item[field] ?? []).map(code => resolve(code, items)!);
+      for (const field of [...SYMMETRIC_RELATION_FIELDS, ...MODULE_BADGE_REFERENCE_FIELDS]) item[field] = (item[field] ?? []).map(code => resolve(code, items)!);
     }
     if ("dependsOnQuestionCode" in item && item.dependsOnQuestionCode) item.dependsOnQuestionCode = resolve(item.dependsOnQuestionCode, items);
     if ("gatingRules" in item) item.gatingRules = item.gatingRules.map(rule => rule.selection === "specificChild" ? { ...rule, childCode: resolve(rule.childCode, children(item)) } : rule);
@@ -56,7 +57,7 @@ function finishReferences(items: Item[], deleted: Set<string>, depth = 0) {
     finishReferences(children(item), deleted, depth + 1);
     if ("practices" in item) {
       item.prerequisiteModuleCodes = (item.prerequisiteModuleCodes ?? []).map(code => resolve(code, items) ?? code);
-      for (const field of SYMMETRIC_RELATION_FIELDS) item[field] = (item[field] ?? []).flatMap(code => { const target = resolve(code, items); return target ? [target] : []; });
+      for (const field of [...SYMMETRIC_RELATION_FIELDS, ...MODULE_BADGE_REFERENCE_FIELDS]) item[field] = (item[field] ?? []).flatMap(code => { const target = resolve(code, items); return target ? [target] : []; });
     }
     if ("dependsOnQuestionCode" in item && item.dependsOnQuestionCode) {
       item.dependsOnQuestionCode = resolve(item.dependsOnQuestionCode, items);

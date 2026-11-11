@@ -288,3 +288,25 @@ test("module Relationships provides all three controls, with prerequisites restr
   assert.match(html, /Both modules may be hidden/);
   assert.match(html, /Visibility paths/);
 });
+
+
+test("informational badges appear on the module editor page and never in assessment module views", () => {
+  const Editor = load(resolve(sourceRoot, "app/maturity-models/editor/steps/structure/ModuleEditor.tsx")).default;
+  const BadgeFields = load(resolve(sourceRoot, "app/maturity-models/editor/steps/structure/ModuleBadgeFields.tsx")).default;
+  const { emptyModule } = load(resolve(sourceRoot, "app/maturity-models/editor/model/editorDocument.ts"));
+  const modules = ["Foundation", "Current", "Alternative"].map((name, index) => ({ ...emptyModule(index + 1, 1, 1), code: `M0${index + 1}_${name}`, name, visible: index === 1 }));
+  modules[1].mandatoryBadge = true;
+  modules[1].reinforcesModuleCodes = [modules[0].code]; modules[1].substitutesModuleCodes = [modules[2].code];
+  const dimension = { clientKey: "dimension", name: "Dimension", modules, gatingRules: [] };
+  const html = renderToStaticMarkup(createElement(Editor, { dimension, module: modules[1], onSelect: noOp, commands: {} }));
+  assert.match(html, /aria-label="Informational module badges"/);
+  assert.match(html, />Mandatory<|>Mandatory<\/span>/);
+  assert.match(html, /Reinforces Foundation/);
+  assert.match(html, /Substitutes Alternative/);
+  const controls = renderToStaticMarkup(createElement(BadgeFields, { dimension, module: modules[1], onChange: noOp }));
+  assert.match(controls, /Informational badges/);
+  assert.match(controls, /Hidden and later modules are available/);
+  assert.doesNotMatch(controls, /disabled=""/);
+  const assessment = renderToStaticMarkup(createElement(ModuleOverview, { modelName: "Model", dimension, module: modules[1], moduleNumber: 2, moduleCount: 3, navigationModules: [], activeModuleKey: "", onOverview: noOp, onModuleSelect: noOp, onPracticeSelect: noOp }));
+  assert.doesNotMatch(assessment, /Informational module badges|Mandatory|Reinforces Foundation|Substitutes Alternative/);
+});

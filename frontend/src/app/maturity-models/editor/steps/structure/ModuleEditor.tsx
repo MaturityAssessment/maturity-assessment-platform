@@ -1,3 +1,5 @@
+import { Badge } from "@/components/ui/badge";
+import { getModuleBadges } from "../../model/moduleBadges";
 import ModuleRelationshipsField from "./ModuleRelationshipsField";
 import { moduleVisibilityDependencies } from "../../model/moduleVisibility";
 import WeightInput from "../../components/WeightInput";
@@ -38,6 +40,7 @@ export default function ModuleEditor({
   const moduleIndex = dimension.modules.findIndex(
     (candidate) => candidate.clientKey === module.clientKey
   );
+  const badges = getModuleBadges(dimension, module);
   const visibilityDependencies = module.visible === false
     ? moduleVisibilityDependencies(dimension, module)
     : [];
@@ -82,6 +85,12 @@ export default function ModuleEditor({
           commands.deleteModule(dimension.clientKey, module.clientKey);
         }}
       />
+      {badges.length > 0 && <section aria-label="Informational module badges" className="mb-5">
+        <p className="mb-2 text-xs font-medium text-gray-500">Editor notes</p>
+        <div className="flex flex-wrap gap-2">
+          {badges.map((badge, index) => <Badge key={`${badge.key}:${index}`} color={badge.color} title={badge.title} className="max-w-full whitespace-normal break-words">{badge.label}</Badge>)}
+        </div>
+      </section>}
       <label className="mb-5 flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
         <input
           type="checkbox"

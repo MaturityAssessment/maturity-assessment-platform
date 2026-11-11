@@ -19,8 +19,8 @@ import java.util.ArrayList;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString(exclude = { "dimension", "practices", "gatingRules", "prerequisiteModuleCodes", "coRequisiteModuleCodes", "mutexModuleCodes" })
-@EqualsAndHashCode(exclude = { "dimension", "practices", "gatingRules", "prerequisiteModuleCodes", "coRequisiteModuleCodes", "mutexModuleCodes" })
+@ToString(exclude = { "dimension", "practices", "gatingRules", "prerequisiteModuleCodes", "coRequisiteModuleCodes", "mutexModuleCodes", "reinforcesModuleCodes", "substitutesModuleCodes" })
+@EqualsAndHashCode(exclude = { "dimension", "practices", "gatingRules", "prerequisiteModuleCodes", "coRequisiteModuleCodes", "mutexModuleCodes", "reinforcesModuleCodes", "substitutesModuleCodes" })
 public class Module {
 
     @Id
@@ -61,6 +61,23 @@ public class Module {
     @OrderColumn(name = "relationship_order")
     @Column(name = "related_module_code", nullable = false, length = 64)
     private List<String> mutexModuleCodes = new ArrayList<>();
+
+    // Informational editor annotations; never used as evaluation or visibility rules.
+    @Column(name = "mandatory_badge", nullable = false)
+    @ColumnDefault("false")
+    private Boolean mandatoryBadge = false;
+
+    @ElementCollection
+    @CollectionTable(name = "module_reinforcement_badges", joinColumns = @JoinColumn(name = "module_id"))
+    @OrderColumn(name = "badge_order")
+    @Column(name = "target_module_code", nullable = false, length = 64)
+    private List<String> reinforcesModuleCodes = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "module_substitution_badges", joinColumns = @JoinColumn(name = "module_id"))
+    @OrderColumn(name = "badge_order")
+    @Column(name = "target_module_code", nullable = false, length = 64)
+    private List<String> substitutesModuleCodes = new ArrayList<>();
 
     // Weighting factor for aggregation (optional, defaults to 1.0)
     @Column(nullable = false)

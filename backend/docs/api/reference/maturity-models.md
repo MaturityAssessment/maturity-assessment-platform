@@ -315,6 +315,33 @@ Workbook Modules sheets add optional `moduleCoRequisites` and `moduleMutex`, eac
 a JSON array of sibling codes. Older workbooks default to no such relationships.
 The shipped template and exports include both columns.
 
+Modules also carry optional **informational editor badges**:
+
+| Field | Default | Meaning |
+|---|---|---|
+| `mandatoryBadge` | `false` | Display a “Mandatory” editorial label |
+| `reinforcesModuleCodes` | `[]` | Display “Reinforces X” for each target module |
+| `substitutesModuleCodes` | `[]` | Display “Substitutes Y” for each target module |
+
+These fields are notes for future model editors. They impose no visibility,
+prerequisite, completion, scoring, aggregation, mapping or gating constraints.
+A hidden module can carry Mandatory, and a note may refer to a prerequisite,
+co-requisite or mutually exclusive module without adding any rule. Notes are
+directional; targets receive no reciprocal annotations. Historical/unresolved
+codes are retained as notes and do not block saving.
+
+The module editor shows badges below its header and offers controls under
+Relationships → Informational badges. It supports multiple targets from the same
+dimension, including hidden and later modules. Badges are absent from the sidebar,
+model browsing and respondent/evaluator assessment views. Rename/reorder updates
+references; deleting a target removes its incoming badge references in the editor
+without blocking deletion. Drafts, change review/revert and model versions preserve
+the annotations.
+
+Optional workbook columns are `moduleMandatoryBadge` (boolean), `moduleReinforces`
+and `moduleSubstitutes` (JSON arrays of module codes). Legacy workbooks default to
+no badges. These annotations are included in exports and the shipped template.
+
 ## Model contracts
 
 MaturityModelDTO uses `dimensions[].id` for the string dimension code, while the

@@ -173,6 +173,7 @@ public class CsvParsingService {
     private void validateRow(CsvMaturityModelRow row, int lineNumber, List<String> errors, int maxMaturityLevel) {
         validateBoolean(row.getModelAutoEvaluated(), "modelAutoEvaluated", lineNumber, errors);
         validateBoolean(row.getModuleVisible(), "moduleVisible", lineNumber, errors);
+        validateBoolean(row.getModuleMandatoryBadge(), "moduleMandatoryBadge", lineNumber, errors);
         validateBoolean(row.getPracticeRequiresEvidence(), "practiceRequiresEvidence", lineNumber, errors);
         validateBoolean(row.getQuestionRequired(), "questionRequired", lineNumber, errors);
         validateBoolean(row.getQuestionBooleanCorrectAnswer(), "questionBooleanCorrectAnswer", lineNumber, errors);
@@ -456,6 +457,9 @@ public class CsvParsingService {
                 moduleDTO.setPrerequisiteModuleCodes(parseRules(row.getModulePrerequisites(), String.class, "modulePrerequisites", rowNumber, errors));
                 moduleDTO.setCoRequisiteModuleCodes(parseRules(row.getModuleCoRequisites(), String.class, "moduleCoRequisites", rowNumber, errors));
                 moduleDTO.setMutexModuleCodes(parseRules(row.getModuleMutex(), String.class, "moduleMutex", rowNumber, errors));
+                moduleDTO.setMandatoryBadge(parseBoolean(row.getModuleMandatoryBadge(), false));
+                moduleDTO.setReinforcesModuleCodes(parseRules(row.getModuleReinforces(), String.class, "moduleReinforces", rowNumber, errors));
+                moduleDTO.setSubstitutesModuleCodes(parseRules(row.getModuleSubstitutes(), String.class, "moduleSubstitutes", rowNumber, errors));
                 moduleDTO.setAggregationRule(parseAggregationRule(row.getModuleAggregationRule(), "moduleAggregationRule", rowNumber, errors));
                 moduleDTO.setGatingRules(parseRules(row.getModuleGatingRules(), GatingRuleDTO.class, "moduleGatingRules", rowNumber, errors));
                 module = new ModuleAccumulator(moduleDTO);

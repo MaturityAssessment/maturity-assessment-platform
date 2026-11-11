@@ -40,6 +40,10 @@ public class MaturityModelEditorDTO {
         private List<String> prerequisiteModuleCodes = new ArrayList<>();
         private List<String> coRequisiteModuleCodes = new ArrayList<>();
         private List<String> mutexModuleCodes = new ArrayList<>();
+        // Informational badges only; no behavioral constraints.
+        private Boolean mandatoryBadge = false;
+        private List<String> reinforcesModuleCodes = new ArrayList<>();
+        private List<String> substitutesModuleCodes = new ArrayList<>();
         private String code;
         private String name;
         private String description;

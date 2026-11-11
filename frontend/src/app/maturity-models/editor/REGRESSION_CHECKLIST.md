@@ -94,6 +94,21 @@ or question configuration.
 - Co-requisites/mutex add no completion locks or score operations during assessment;
   only visible modules appear and contribute to evaluation.
 
+## Informational module badges
+
+- Set Mandatory and select multiple Reinforces/Substitutes targets under
+  Relationships → Informational badges. Hidden and later sibling modules are
+  available; annotations are directional and add no reciprocal labels.
+- Display the resulting badges only on the module editor page, across tabs.
+  Keep the sidebar and assessment views free of these badges.
+- A hidden Mandatory module stays hidden. Reinforcing/substituting prerequisites,
+  co-requisites or mutex modules neither adds constraints nor changes visibility.
+- Preserve badges in drafts, save/reload, versions, review/revert and Excel round
+  trips. Legacy models/workbooks default to no badges.
+- Rename/reorder updates target references and labels. Deleting a badge target
+  removes incoming annotations without blocking deletion or retargeting another
+  module after code renumbering.
+
 ## Review and save
 
 - Show error counts on the correct wizard steps.

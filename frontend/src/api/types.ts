@@ -158,6 +158,10 @@ export interface Module {
   /** Symmetric visibility relationships within the same dimension. */
   coRequisiteModuleCodes?: string[];
   mutexModuleCodes?: string[];
+  /** Informational editor notes only; these never impose constraints. */
+  mandatoryBadge?: boolean;
+  reinforcesModuleCodes?: string[];
+  substitutesModuleCodes?: string[];
   /** Omitted on older models means visible. Stored per model version. */
   visible?: boolean;
   dimensionId?: number; // FK to parent Dimension
@@ -480,6 +484,10 @@ export interface ModuleForm {
   /** Symmetric visibility relationships within the same dimension. */
   coRequisiteModuleCodes?: string[];
   mutexModuleCodes?: string[];
+  /** Informational editor notes only; these never impose constraints. */
+  mandatoryBadge?: boolean;
+  reinforcesModuleCodes?: string[];
+  substitutesModuleCodes?: string[];
   /** Omitted on older models means visible. Stored per model version. */
   visible?: boolean;
   code?: string;
@@ -559,6 +567,10 @@ export interface ModelEditorModule {
   /** Symmetric visibility relationships within the same dimension. */
   coRequisiteModuleCodes?: string[];
   mutexModuleCodes?: string[];
+  /** Informational editor notes only; these never impose constraints. */
+  mandatoryBadge?: boolean;
+  reinforcesModuleCodes?: string[];
+  substitutesModuleCodes?: string[];
   /** Omitted on older models means visible. Stored per model version. */
   visible?: boolean;
   clientKey: string;

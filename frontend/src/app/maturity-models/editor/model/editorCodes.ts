@@ -16,7 +16,7 @@ export function codeWithPrefix(prefix: string, suffix: string) {
 }
 
 export function renumberSiblingCodes<
-  T extends { code: string; dependsOnQuestionCode?: string; prerequisiteModuleCodes?: string[]; coRequisiteModuleCodes?: string[]; mutexModuleCodes?: string[] }
+  T extends { code: string; dependsOnQuestionCode?: string; prerequisiteModuleCodes?: string[]; coRequisiteModuleCodes?: string[]; mutexModuleCodes?: string[]; reinforcesModuleCodes?: string[]; substitutesModuleCodes?: string[] }
 >(items: T[], type: ElementCodeType, gatingRules: GatingRule[] = []) {
   const nextCodes = items.map((item, index) =>
     codeWithPrefix(codePrefix(type, index + 1), codeSuffix(item.code))
@@ -34,6 +34,8 @@ export function renumberSiblingCodes<
       ...(item.prerequisiteModuleCodes && { prerequisiteModuleCodes: item.prerequisiteModuleCodes.map((code) => reference(code)!) }),
       ...(item.coRequisiteModuleCodes && { coRequisiteModuleCodes: item.coRequisiteModuleCodes.map((code) => reference(code)!) }),
       ...(item.mutexModuleCodes && { mutexModuleCodes: item.mutexModuleCodes.map((code) => reference(code)!) }),
+      ...(item.reinforcesModuleCodes && { reinforcesModuleCodes: item.reinforcesModuleCodes.map((code) => reference(code)!) }),
+      ...(item.substitutesModuleCodes && { substitutesModuleCodes: item.substitutesModuleCodes.map((code) => reference(code)!) }),
       ...(item.dependsOnQuestionCode && {
         dependsOnQuestionCode: reference(item.dependsOnQuestionCode),
       }),

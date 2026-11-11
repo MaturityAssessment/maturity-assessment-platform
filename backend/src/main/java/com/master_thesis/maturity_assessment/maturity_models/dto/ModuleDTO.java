@@ -16,6 +16,10 @@ public class ModuleDTO {
     private List<String> prerequisiteModuleCodes = new java.util.ArrayList<>();
     private List<String> coRequisiteModuleCodes = new java.util.ArrayList<>();
     private List<String> mutexModuleCodes = new java.util.ArrayList<>();
+    // Informational badges only; no behavioral constraints.
+    private Boolean mandatoryBadge = false;
+    private List<String> reinforcesModuleCodes = new java.util.ArrayList<>();
+    private List<String> substitutesModuleCodes = new java.util.ArrayList<>();
     private Double weight;
     private AggregationRule aggregationRule;
     private List<GatingRuleDTO> gatingRules;

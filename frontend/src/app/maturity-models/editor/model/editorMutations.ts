@@ -13,6 +13,7 @@ import {
   emptyQuestion,
 } from "./editorDocument.ts";
 import { hasValidModulePrerequisiteOrder } from "./modulePrerequisites.ts";
+import { MODULE_BADGE_REFERENCE_FIELDS } from "./moduleBadges.ts";
 import { MODULE_RELATION_FIELDS, planModuleVisibility, synchronizeModuleRelationships } from "./moduleRelationships.ts";
 import { renumberSiblingCodes } from "./editorCodes.ts";
 
@@ -269,7 +270,7 @@ export function updateModule(
     JSON.stringify(previous[field] ?? []) !== JSON.stringify(module[field] ?? []));
   let modules = replaceByKey(dimension.modules, moduleKey, module).map((candidate) => ({
     ...candidate,
-    ...Object.fromEntries(MODULE_RELATION_FIELDS.map((field) => [field, (candidate[field] ?? []).map((code) =>
+    ...Object.fromEntries([...MODULE_RELATION_FIELDS, ...MODULE_BADGE_REFERENCE_FIELDS].map((field) => [field, (candidate[field] ?? []).map((code) =>
       previous.code !== module.code && code.toLowerCase() === previous.code.toLowerCase() ? module.code : code)])),
   }));
   modules = synchronizeModuleRelationships(modules, module.code);
@@ -340,6 +341,8 @@ export function deleteModule(
       ...module,
       coRequisiteModuleCodes: (module.coRequisiteModuleCodes ?? []).filter((code) => code.toLowerCase() !== removed.code.toLowerCase()),
       mutexModuleCodes: (module.mutexModuleCodes ?? []).filter((code) => code.toLowerCase() !== removed.code.toLowerCase()),
+      reinforcesModuleCodes: (module.reinforcesModuleCodes ?? []).filter((code) => code.toLowerCase() !== removed.code.toLowerCase()),
+      substitutesModuleCodes: (module.substitutesModuleCodes ?? []).filter((code) => code.toLowerCase() !== removed.code.toLowerCase()),
     })),
   }, true);
 }

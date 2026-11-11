@@ -90,3 +90,15 @@ test("hidden open-answer questions do not force manual evaluation", () => {
   module.visible = true;
   assert.equal(validateDocument(document).filter((issue) => issue.field === "model-auto-evaluated").length, 1);
 });
+
+
+test("assessment projection omits informational editor badges while preserving actual rules", () => {
+  const module = { code: "M", name: "Module", mandatoryBadge: true, reinforcesModuleCodes: ["X"], substitutesModuleCodes: ["Y"], prerequisiteModuleCodes: ["P"], practices: [] };
+  const model = { dimensions: [{ name: "Dimension", modules: [module] }] } as unknown as MaturityModel;
+  const projected = visibleAssessmentModel(model).dimensions[0].modules[0];
+  assert.equal("mandatoryBadge" in projected, false);
+  assert.equal("reinforcesModuleCodes" in projected, false);
+  assert.equal("substitutesModuleCodes" in projected, false);
+  assert.deepEqual(projected.prerequisiteModuleCodes, ["P"]);
+  assert.equal(model.dimensions[0].modules[0].mandatoryBadge, true);
+});

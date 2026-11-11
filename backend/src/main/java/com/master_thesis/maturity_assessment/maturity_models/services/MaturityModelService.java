@@ -479,6 +479,9 @@ public class MaturityModelService {
                 dto.setPrerequisiteModuleCodes(module.getPrerequisiteModuleCodes() == null ? List.of() : new ArrayList<>(module.getPrerequisiteModuleCodes()));
                 dto.setCoRequisiteModuleCodes(module.getCoRequisiteModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(module.getCoRequisiteModuleCodes()));
                 dto.setMutexModuleCodes(module.getMutexModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(module.getMutexModuleCodes()));
+                dto.setMandatoryBadge(Boolean.TRUE.equals(module.getMandatoryBadge()));
+                dto.setReinforcesModuleCodes(module.getReinforcesModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(module.getReinforcesModuleCodes()));
+                dto.setSubstitutesModuleCodes(module.getSubstitutesModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(module.getSubstitutesModuleCodes()));
                 dto.setName(module.getName());
                 dto.setDescription(module.getDescription());
                 dto.setWeight(module.getWeight());
@@ -509,6 +512,9 @@ public class MaturityModelService {
                 module.setPrerequisiteModuleCodes(dto.getPrerequisiteModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(dto.getPrerequisiteModuleCodes()));
                 module.setCoRequisiteModuleCodes(dto.getCoRequisiteModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(dto.getCoRequisiteModuleCodes()));
                 module.setMutexModuleCodes(dto.getMutexModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(dto.getMutexModuleCodes()));
+                module.setMandatoryBadge(Boolean.TRUE.equals(dto.getMandatoryBadge()));
+                module.setReinforcesModuleCodes(dto.getReinforcesModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(dto.getReinforcesModuleCodes()));
+                module.setSubstitutesModuleCodes(dto.getSubstitutesModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(dto.getSubstitutesModuleCodes()));
                 module.setDescription(dto.getDescription());
                 module.setWeight(dto.getWeight() != null ? dto.getWeight() : 1.0);
                 module.setAggregationRule(resolveAggregationRule(dto.getAggregationRule()));
@@ -762,6 +768,9 @@ public class MaturityModelService {
                                 editorModule.setPrerequisiteModuleCodes(module.getPrerequisiteModuleCodes());
                                 editorModule.setCoRequisiteModuleCodes(module.getCoRequisiteModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(module.getCoRequisiteModuleCodes()));
                                 editorModule.setMutexModuleCodes(module.getMutexModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(module.getMutexModuleCodes()));
+                                editorModule.setMandatoryBadge(Boolean.TRUE.equals(module.getMandatoryBadge()));
+                                editorModule.setReinforcesModuleCodes(module.getReinforcesModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(module.getReinforcesModuleCodes()));
+                                editorModule.setSubstitutesModuleCodes(module.getSubstitutesModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(module.getSubstitutesModuleCodes()));
                                 editorModule.setName(module.getName());
                                 editorModule.setDescription(module.getDescription());
                                 editorModule.setWeight(module.getWeight());
@@ -847,6 +856,9 @@ public class MaturityModelService {
                                 module.setPrerequisiteModuleCodes(editorModule.getPrerequisiteModuleCodes());
                                 module.setCoRequisiteModuleCodes(editorModule.getCoRequisiteModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(editorModule.getCoRequisiteModuleCodes()));
                                 module.setMutexModuleCodes(editorModule.getMutexModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(editorModule.getMutexModuleCodes()));
+                                module.setMandatoryBadge(Boolean.TRUE.equals(editorModule.getMandatoryBadge()));
+                                module.setReinforcesModuleCodes(editorModule.getReinforcesModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(editorModule.getReinforcesModuleCodes()));
+                                module.setSubstitutesModuleCodes(editorModule.getSubstitutesModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(editorModule.getSubstitutesModuleCodes()));
                                 module.setName(editorModule.getName());
                                 module.setDescription(editorModule.getDescription());
                                 module.setWeight(editorModule.getWeight());

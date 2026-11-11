@@ -7,7 +7,11 @@ export function visibleAssessmentModel(model: MaturityModel): MaturityModel {
     dimensions: model.dimensions
       .map((dimension) => ({
         ...dimension,
-        modules: dimension.modules.filter((module) => module.visible !== false),
+        // Editor notes do not belong in assessment views or exported evaluator context.
+        modules: dimension.modules.filter((module) => module.visible !== false).map(({
+          mandatoryBadge: _mandatory, reinforcesModuleCodes: _reinforces,
+          substitutesModuleCodes: _substitutes, ...module
+        }) => module),
       }))
       .filter((dimension) => dimension.modules.length > 0),
   };

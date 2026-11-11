@@ -639,6 +639,43 @@ class MaturityModelServiceTest {
     }
 
     @Test
+    void informationalBadgesPersistAcrossEditorVersionsWithoutImposingConstraints() {
+        Domain domain = domain();
+        var dto = updateDto(domain.getId(), null);
+        var first = dto.getDimensions().getFirst().getModules().getFirst();
+        first.setVisible(false); first.setMandatoryBadge(true);
+        first.setReinforcesModuleCodes(List.of("SECOND"));
+        first.setSubstitutesModuleCodes(List.of("SECOND", "HISTORICAL_NOTE"));
+        var second = new ModuleDTO(); second.setCode("SECOND"); second.setName("Second"); second.setPractices(first.getPractices());
+        dto.getDimensions().getFirst().setModules(List.of(first, second));
+        when(domainRepository.findById(domain.getId())).thenReturn(Optional.of(domain));
+        List<MaturityModel> saved = new ArrayList<>();
+        when(maturityModelRepository.saveAndFlush(any(MaturityModel.class))).thenAnswer(invocation -> {
+            MaturityModel model = invocation.getArgument(0); assignGeneratedIds(model); saved.add(model); return model;
+        });
+        when(maturityModelRepository.save(any(MaturityModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        var original = service.createMaturityModel(dto);
+        var originalModule = original.getDimensions().getFirst().getModules().getFirst();
+        assertTrue(originalModule.getMandatoryBadge()); assertFalse(originalModule.getVisible());
+        assertEquals(List.of("SECOND"), saved.getFirst().getDimensions().getFirst().getModules().getFirst().getReinforcesModuleCodes());
+        assertTrue(originalModule.getPrerequisiteModuleCodes().isEmpty());
+        assertTrue(original.getDimensions().getFirst().getModules().get(1).getReinforcesModuleCodes().isEmpty());
+        var editor = service.prepareEditorDocument(original);
+        assertTrue(editor.getDimensions().getFirst().getModules().getFirst().getMandatoryBadge());
+        var source = saved.getFirst();
+        when(maturityModelRepository.findById(source.getId())).thenReturn(Optional.of(source));
+        when(maturityModelRepository.findByBaseModelIdOrderByVersionAsc(source.getId())).thenReturn(List.of(source));
+        var version = service.createVersionFromEditor(source.getId(), editor);
+        var copied = version.getDimensions().getFirst().getModules().getFirst();
+        assertEquals(2, version.getVersion());
+        assertTrue(copied.getMandatoryBadge()); assertFalse(copied.getVisible());
+        assertEquals(List.of("SECOND"), copied.getReinforcesModuleCodes());
+        assertEquals(List.of("SECOND", "HISTORICAL_NOTE"), copied.getSubstitutesModuleCodes());
+        assertEquals(originalModule.getWeight(), copied.getWeight());
+        assertEquals(originalModule.getAggregationRule(), copied.getAggregationRule());
+    }
+
+    @Test
     void hiddenModuleReferencesAreRejectedBeforeSaving() {
         MaturityModelDTO dto = updateDto(domain().getId(), null);
         var dimension = dto.getDimensions().getFirst();

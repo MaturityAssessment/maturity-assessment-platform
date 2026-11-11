@@ -42,6 +42,7 @@ See the [domain reference](./backend/docs/api/reference/domains.md).
 - Toggle module visibility from its editor or outline actions. Hidden modules remain editable and are excluded from assessments and evaluation for that version. Explicit gating references to hidden modules block saving until repaired.
 - Set module prerequisites in the Relationships tab using earlier modules in the same dimension. Invalid reorders and visibility changes are blocked. Assessment modules stay locked until required prerequisite answers and evidence are complete; relocking preserves existing answers and evidence.
 - Define co-requisites and mutually exclusive modules in the same dimension. Co-requisite groups share visibility; mutually exclusive pairs allow at most one visible module. Changes preview affected visibility, preserve prerequisite consistency, and flag gating rules that need repair. Direct and indirect dependency conflicts are rejected; alternative modules may share a prerequisite.
+- Add informational Mandatory, Reinforces X and Substitutes Y badges for future editors. Manage them in the module Relationships tab and view them on the module editor page. They impose no rules and do not appear in the sidebar or assessments.
 - Activate or deactivate versions. Activation replaces the active version within the same lineage; other model lineages in the domain remain available.
 - Keep existing assessments and campaigns tied to their original version. Deletion is rejected when assessments use that version.
 
