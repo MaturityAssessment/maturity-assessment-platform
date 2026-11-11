@@ -276,6 +276,45 @@ assessments. Each model version retains its own prerequisite configuration.
 Workbook Modules sheets use optional `modulePrerequisites`, a JSON array such as
 `["M01_FOUNDATION", "M02_PLANNING"]`. Older workbooks default to no prerequisites.
 
+Modules accept two further optional arrays, defaulting to `[]`:
+
+| Field | Meaning |
+|---|---|
+| `coRequisiteModuleCodes` | Symmetric co-requisite edges: connected modules share visibility, either all visible or all hidden |
+| `mutexModuleCodes` | Symmetric exclusions: a pair may have at most one visible module; both may be hidden |
+
+Both fields reference distinct other modules in the same dimension. Define a pair
+on either endpoint; the service canonicalizes spelling/order and returns reciprocal
+entries on both. Full-document clients must remove a pair from both endpoints to
+remove it. The editor handles both sides automatically in the **Relationships**
+tab, alongside prerequisites. Renaming, allowed reordering, drafts, review/revert
+and version creation preserve references. Deleting a module removes its reciprocal
+co-requisite/mutex edges; prerequisite references must first be removed explicitly.
+
+Validation rejects configurations where showing any module would force both
+members of a mutex pair to be visible, regardless of current visibility. This
+includes direct/indirect prerequisites (A → B → C forbids mutex A/C), exclusions
+inside co-requisite groups, combined co-requisite/prerequisite paths, and a module
+requiring both alternatives. Alternatives may share a prerequisite. Mutex edges
+remain pairwise and are not transitive.
+
+Errors are `400 INVALID_MODULE_RELATIONSHIPS` for self, duplicate, missing or
+out-of-dimension references; `400 CONFLICTING_MODULE_RELATIONSHIPS` for impossible
+visibility implications; and `400 INCONSISTENT_MODULE_VISIBILITY` for co-requisites
+with different visibility or a mutex pair with both modules visible. API writes
+reject inconsistent visibility rather than changing it implicitly.
+
+The editor previews group visibility changes and mutex switches before applying
+them. It blocks hiding a prerequisite still needed by another visible module and
+alerts about affected gating rules; explicit gates referencing hidden modules
+continue to block saving. Sidebar badges summarize relationships. Co-requisites
+and mutex affect visibility only: assessment completion, scoring and gating gain
+no additional runtime rules. Existing hidden-module exclusion still applies.
+
+Workbook Modules sheets add optional `moduleCoRequisites` and `moduleMutex`, each
+a JSON array of sibling codes. Older workbooks default to no such relationships.
+The shipped template and exports include both columns.
+
 ## Model contracts
 
 MaturityModelDTO uses `dimensions[].id` for the string dimension code, while the

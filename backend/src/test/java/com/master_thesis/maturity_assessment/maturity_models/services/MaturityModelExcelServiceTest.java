@@ -106,6 +106,36 @@ class MaturityModelExcelServiceTest {
     }
 
     @Test
+    void visibilityRelationshipsRoundTripThroughExcelAndLegacyColumnsRemainOptional() throws Exception {
+        var model = buildOfficialTemplateModel();
+        var dimension = model.getDimensions().getFirst();
+        var modules = new ArrayList<>(dimension.getModules());
+        var first = modules.getFirst();
+        var second = modules.get(1);
+        var third = new ModuleDTO();
+        third.setCode("ALTERNATIVE"); third.setName("Alternative"); third.setVisible(false);
+        third.setPractices(first.getPractices());
+        first.setCoRequisiteModuleCodes(List.of(second.getCode()));
+        second.setMutexModuleCodes(List.of(third.getCode()));
+        modules.add(third); dimension.setModules(modules);
+        byte[] xlsx = excelService.exportMaturityModelToXlsx(model);
+        var parsed = excelService.parseExcelWorkbook(new ByteArrayInputStream(xlsx));
+        assertTrue(parsed.isSuccess(), parsed.getErrorDetails());
+        assertEquals(List.of(second.getCode()), parsed.getMaturityModel().getDimensions().getFirst().getModules().getFirst().getCoRequisiteModuleCodes());
+        assertEquals(List.of(third.getCode()), parsed.getMaturityModel().getDimensions().getFirst().getModules().get(1).getMutexModuleCodes());
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(xlsx))) {
+            Sheet sheet = workbook.getSheet(MaturityModelExcelService.SHEET_MODULES);
+            for (Row row : sheet) for (int column : List.of(9, 10)) if (row.getCell(column) != null) row.removeCell(row.getCell(column));
+            ByteArrayOutputStream output = new ByteArrayOutputStream(); workbook.write(output);
+            var legacy = excelService.parseExcelWorkbook(new ByteArrayInputStream(output.toByteArray()));
+            assertTrue(legacy.isSuccess(), legacy.getErrorDetails());
+            assertTrue(legacy.getMaturityModel().getDimensions().stream().flatMap(d -> d.getModules().stream())
+                    .allMatch(module -> (module.getCoRequisiteModuleCodes() == null || module.getCoRequisiteModuleCodes().isEmpty())
+                            && (module.getMutexModuleCodes() == null || module.getMutexModuleCodes().isEmpty())));
+        }
+    }
+
+    @Test
     void invalidVisibilityInWorkbookIsRejected() throws Exception {
         try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(
                 excelService.exportMaturityModelToXlsx(buildSampleModel())))) {
@@ -127,7 +157,7 @@ class MaturityModelExcelServiceTest {
                     List.of("modelName", "modelDescription", "modelAutoEvaluated", "modelAggregationRule", "modelChangelogMarkdown"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_MODEL), fmt));
             assertEquals(
-                    List.of("dimensionId", "moduleCode", "moduleName", "moduleDescription", "moduleWeight", "moduleAggregationRule", "moduleGatingRules", "moduleVisible", "modulePrerequisites"),
+                    List.of("dimensionId", "moduleCode", "moduleName", "moduleDescription", "moduleWeight", "moduleAggregationRule", "moduleGatingRules", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_MODULES), fmt));
             assertEquals(
                     List.of("dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceGatingRules"),

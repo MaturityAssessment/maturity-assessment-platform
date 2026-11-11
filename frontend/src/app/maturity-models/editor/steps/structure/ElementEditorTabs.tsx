@@ -20,12 +20,12 @@ export default function ElementEditorTabs({
     <TabGroup className="@container">
       <TabList
         aria-label={`${kind} settings`}
-        className="grid grid-cols-2 gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1 @2xl:grid-cols-4"
+        className={`gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1 ${tabs.length > 4 ? "flex overflow-x-auto" : "grid grid-cols-2 @2xl:grid-cols-4"}`}
       >
         {tabs.map((tab) => (
           <Tab
             key={tab.id}
-            className="group flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 outline-none transition hover:bg-white/70 hover:text-gray-950 focus-visible:ring-2 focus-visible:ring-blue-500 data-[selected]:bg-white data-[selected]:text-blue-700 data-[selected]:shadow-sm"
+            className="group flex flex-1 shrink-0 min-h-11 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 outline-none transition hover:bg-white/70 hover:text-gray-950 focus-visible:ring-2 focus-visible:ring-blue-500 data-[selected]:bg-white data-[selected]:text-blue-700 data-[selected]:shadow-sm"
           >
             {tab.label}
             {!!tab.issueCount && (

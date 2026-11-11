@@ -19,8 +19,8 @@ import java.util.ArrayList;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString(exclude = { "dimension", "practices", "gatingRules", "prerequisiteModuleCodes" })
-@EqualsAndHashCode(exclude = { "dimension", "practices", "gatingRules", "prerequisiteModuleCodes" })
+@ToString(exclude = { "dimension", "practices", "gatingRules", "prerequisiteModuleCodes", "coRequisiteModuleCodes", "mutexModuleCodes" })
+@EqualsAndHashCode(exclude = { "dimension", "practices", "gatingRules", "prerequisiteModuleCodes", "coRequisiteModuleCodes", "mutexModuleCodes" })
 public class Module {
 
     @Id
@@ -47,6 +47,20 @@ public class Module {
     @OrderColumn(name = "prerequisite_order")
     @Column(name = "prerequisite_module_code", nullable = false, length = 64)
     private List<String> prerequisiteModuleCodes = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "module_corequisites", joinColumns = @JoinColumn(name = "module_id"),
+            uniqueConstraints = @UniqueConstraint(columnNames = {"module_id", "related_module_code"}))
+    @OrderColumn(name = "relationship_order")
+    @Column(name = "related_module_code", nullable = false, length = 64)
+    private List<String> coRequisiteModuleCodes = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "module_mutex", joinColumns = @JoinColumn(name = "module_id"),
+            uniqueConstraints = @UniqueConstraint(columnNames = {"module_id", "related_module_code"}))
+    @OrderColumn(name = "relationship_order")
+    @Column(name = "related_module_code", nullable = false, length = 64)
+    private List<String> mutexModuleCodes = new ArrayList<>();
 
     // Weighting factor for aggregation (optional, defaults to 1.0)
     @Column(nullable = false)

@@ -17,7 +17,7 @@ function load(path: string): any {
   if (cache.has(filename)) return cache.get(filename);
   const exports = {}; cache.set(filename, exports);
   const localRequire = (id: string): any => id === "@/components" ? { AgentChatModal: () => null } : id === "next/navigation" ? { redirect: (url: string) => { throw new Error(`redirect:${url}`); } } : id.startsWith("@/") ? load(resolve(sourceRoot, id.slice(2))) : id.startsWith(".") ? load(resolve(dirname(filename), id)) : require(id);
-  const { outputText } = ts.transpileModule(readFileSync(filename, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } });
+  const { outputText } = ts.transpileModule(readFileSync(filename, "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2015, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } });
   new Function("require", "exports", outputText)(localRequire, exports);
   return exports;
 }
@@ -270,14 +270,21 @@ test("a locked module landing page explains the lock and disables its practice l
 });
 
 
-test("module Details offers only earlier sibling modules as prerequisites", () => {
+test("module Relationships provides all three controls, with prerequisites restricted to earlier siblings", () => {
   const ModuleEditor = load(resolve(sourceRoot, "app/maturity-models/editor/steps/structure/ModuleEditor.tsx")).default;
+  const Relationships = load(resolve(sourceRoot, "app/maturity-models/editor/steps/structure/ModuleRelationshipsField.tsx")).default;
   const { emptyModule } = load(resolve(sourceRoot, "app/maturity-models/editor/model/editorDocument.ts"));
-  const modules = ["Foundation", "Current", "Later"].map((name, index) => ({ ...emptyModule(index + 1, 1, 1), name }));
+  const modules = ["Foundation", "Current", "Later"].map((name, index) => ({ ...emptyModule(index + 1, 1, 1), name, code: `M0${index + 1}_${name.toUpperCase()}`, visible: false }));
   modules[1].prerequisiteModuleCodes = [modules[0].code];
-  const html = renderToStaticMarkup(createElement(ModuleEditor, { dimension: { clientKey: "dimension", name: "Dimension", modules, gatingRules: [] }, module: modules[1], onSelect: noOp, commands: {} }));
-  assert.match(html, /Prerequisite modules/);
-  assert.match(html, /Foundation/);
-  assert.doesNotMatch(html, /Later/);
-  assert.match(html, /Only earlier modules in this dimension/);
+  const dimension = { clientKey: "dimension", name: "Dimension", modules, gatingRules: [] };
+  const editor = renderToStaticMarkup(createElement(ModuleEditor, { dimension, module: modules[1], onSelect: noOp, commands: {} }));
+  assert.match(editor, /Relationships/);
+  const html = renderToStaticMarkup(createElement(Relationships, { dimension, module: modules[1], onChange: noOp }));
+  const prerequisites = html.slice(html.indexOf("Prerequisites"), html.indexOf("Co-requisites"));
+  assert.match(prerequisites, /Foundation/);
+  assert.doesNotMatch(prerequisites, /Later/);
+  assert.match(html, /Co-requisites/);
+  assert.match(html, /Mutually exclusive/);
+  assert.match(html, /Both modules may be hidden/);
+  assert.match(html, /Visibility paths/);
 });

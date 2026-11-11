@@ -55,7 +55,7 @@ or question configuration.
 
 ## Module prerequisites
 
-- In Details, select zero or more earlier modules in the same dimension; later
+- In Relationships, select zero or more earlier modules in the same dimension; later
   modules and modules from other dimensions are unavailable.
 - Reject duplicate, missing, self and forward references through the API/import.
 - Arrow moves, drag reorders and change-review reverts cannot violate dependency
@@ -73,6 +73,26 @@ or question configuration.
   and evidence. Recompletion restores access; submission remains blocked until
   prerequisites are satisfied. Check individual and campaign assessments.
 - Locked modules cannot be edited through feedback review or direct API writes.
+
+## Co-requisites and mutually exclusive modules
+
+- Relationships lists prerequisites, co-requisites and mutex in one tab. Only
+  modules from the same dimension are selectable; invalid options explain why.
+- Setting/removing a co-requisite or mutex pair from either module updates both
+  endpoints. Sidebar badges summarize co-requisite groups and excluded modules.
+- Showing/hiding a module changes its whole co-requisite group. Mutex switches
+  preview all modules to show/hide and affected gates before applying; cancelling
+  leaves the document unchanged. Both mutex alternatives may be hidden.
+- Block switches that hide prerequisites needed by other visible modules. Repair
+  explicit gating references to hidden modules before saving.
+- Reject mutex with direct or indirect prerequisites, mutex within co-requisite
+  groups, mixed visibility implication conflicts, and modules requiring both
+  alternatives. Permit alternatives sharing a prerequisite. Mutex is pairwise.
+- Preserve both arrays through rename, reorder, drafts, review/revert, versions and
+  Excel round trips. Legacy workbooks default to empty arrays. Deletion removes
+  reciprocal edges, while prerequisite references still prevent deletion.
+- Co-requisites/mutex add no completion locks or score operations during assessment;
+  only visible modules appear and contribute to evaluation.
 
 ## Review and save
 

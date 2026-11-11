@@ -323,6 +323,20 @@ The model service validates target scope, order, uniqueness and visibility.
 References use sibling public codes, as gating rules do. Version creation copies
 the configuration into the new version's module rows.
 
+Modules also own `module_corequisites` and `module_mutex`. Both have the same
+ordered collection structure:
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| module_id | BIGINT | FK → modules(id), ON DELETE CASCADE | Owning module in this version |
+| relationship_order | INTEGER | Composite PK with module_id | Array order |
+| related_module_code | VARCHAR(64) | NOT NULL; UNIQUE with module_id | Other sibling module's public code |
+
+The model service stores reciprocal edges and validates scope, visibility and
+conflicts across prerequisite/co-requisite paths. Co-requisites form visibility
+groups; mutex remains pairwise. These collections are copied into each new model
+version; existing versions and their assessments retain their configurations.
+
 ### 8. practices
 
 Represents practices within modules. Practices contain questions.

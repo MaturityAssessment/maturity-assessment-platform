@@ -181,6 +181,7 @@ public class MaturityModelService {
                 validateDimensionMappingRules(maturityModelDTO);
                 validateGatingRules(maturityModelDTO);
                 validateModulePrerequisites(maturityModelDTO);
+                ModuleRelationships.validate(maturityModelDTO.getDimensions());
                 validateMaturityModelQuestions(maturityModelDTO);
 
                 MaturityModel model = convertFromDTO(maturityModelDTO);
@@ -213,6 +214,7 @@ public class MaturityModelService {
                 validateDimensionMappingRules(source);
                 validateGatingRules(source);
                 validateModulePrerequisites(source);
+                ModuleRelationships.validate(source.getDimensions());
                 validateMaturityModelQuestions(source);
                 return toEditorDocument(source);
         }
@@ -475,6 +477,8 @@ public class MaturityModelService {
                 dto.setCode(module.getCode());
                 dto.setVisible(!Boolean.FALSE.equals(module.getVisible()));
                 dto.setPrerequisiteModuleCodes(module.getPrerequisiteModuleCodes() == null ? List.of() : new ArrayList<>(module.getPrerequisiteModuleCodes()));
+                dto.setCoRequisiteModuleCodes(module.getCoRequisiteModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(module.getCoRequisiteModuleCodes()));
+                dto.setMutexModuleCodes(module.getMutexModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(module.getMutexModuleCodes()));
                 dto.setName(module.getName());
                 dto.setDescription(module.getDescription());
                 dto.setWeight(module.getWeight());
@@ -503,6 +507,8 @@ public class MaturityModelService {
                 module.setName(dto.getName());
                 module.setVisible(!Boolean.FALSE.equals(dto.getVisible()));
                 module.setPrerequisiteModuleCodes(dto.getPrerequisiteModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(dto.getPrerequisiteModuleCodes()));
+                module.setCoRequisiteModuleCodes(dto.getCoRequisiteModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(dto.getCoRequisiteModuleCodes()));
+                module.setMutexModuleCodes(dto.getMutexModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(dto.getMutexModuleCodes()));
                 module.setDescription(dto.getDescription());
                 module.setWeight(dto.getWeight() != null ? dto.getWeight() : 1.0);
                 module.setAggregationRule(resolveAggregationRule(dto.getAggregationRule()));
@@ -754,6 +760,8 @@ public class MaturityModelService {
                                 editorModule.setCode(module.getCode());
                                 editorModule.setVisible(!Boolean.FALSE.equals(module.getVisible()));
                                 editorModule.setPrerequisiteModuleCodes(module.getPrerequisiteModuleCodes());
+                                editorModule.setCoRequisiteModuleCodes(module.getCoRequisiteModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(module.getCoRequisiteModuleCodes()));
+                                editorModule.setMutexModuleCodes(module.getMutexModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(module.getMutexModuleCodes()));
                                 editorModule.setName(module.getName());
                                 editorModule.setDescription(module.getDescription());
                                 editorModule.setWeight(module.getWeight());
@@ -837,6 +845,8 @@ public class MaturityModelService {
                                 module.setCode(editorModule.getCode());
                                 module.setVisible(!Boolean.FALSE.equals(editorModule.getVisible()));
                                 module.setPrerequisiteModuleCodes(editorModule.getPrerequisiteModuleCodes());
+                                module.setCoRequisiteModuleCodes(editorModule.getCoRequisiteModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(editorModule.getCoRequisiteModuleCodes()));
+                                module.setMutexModuleCodes(editorModule.getMutexModuleCodes() == null ? new ArrayList<>() : new ArrayList<>(editorModule.getMutexModuleCodes()));
                                 module.setName(editorModule.getName());
                                 module.setDescription(editorModule.getDescription());
                                 module.setWeight(editorModule.getWeight());
@@ -1665,6 +1675,7 @@ public class MaturityModelService {
                 validateDimensionMappingRules(maturityModelDTO);
                 validateGatingRules(maturityModelDTO);
                 validateModulePrerequisites(maturityModelDTO);
+                ModuleRelationships.validate(maturityModelDTO.getDimensions());
                 validateMaturityModelQuestions(maturityModelDTO);
 
                 int assessmentUsageCount = assessmentRepository.findByMaturityModelId(id).size();

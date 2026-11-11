@@ -2,7 +2,7 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import {
   ArrowDown, ArrowUp, Box, ChevronRight, ClipboardList, Layers,
-  MoreHorizontal, Plus, Trash2, TriangleAlert, Eye, EyeOff,
+  MoreHorizontal, Plus, Trash2, TriangleAlert, Eye, EyeOff, Link2, Ban,
 } from "lucide-react";
 import type { OutlineNode } from "../../model/outlineTree";
 
@@ -84,6 +84,8 @@ export default function OutlineRow({
           {query.trim() && <span className="block truncate text-[11px] text-gray-400"><Highlight text={node.code} query={query} /></span>}
         </span>
       </button>
+      {!!node.coRequisites?.length && <span tabIndex={0} title={`Visible together: ${node.coRequisites.join(", ")}`} aria-label={`Visible together: ${node.coRequisites.join(", ")}`} className="ml-1 shrink-0 rounded text-blue-500 focus-visible:outline-blue-500"><Link2 className="h-3.5 w-3.5" aria-hidden="true" /></span>}
+      {!!node.mutuallyExclusive?.length && <span tabIndex={0} title={`Mutually exclusive: ${node.mutuallyExclusive.join(", ")}`} aria-label={`Mutually exclusive: ${node.mutuallyExclusive.join(", ")}`} className="ml-1 shrink-0 rounded text-amber-600 focus-visible:outline-blue-500"><Ban className="h-3.5 w-3.5" aria-hidden="true" /></span>}
       {node.visible === false && <span title="Hidden from assessments" aria-label="Hidden from assessments" className="ml-1 text-gray-400"><EyeOff className="h-3.5 w-3.5" aria-hidden="true" /></span>}
       {(empty || issues.length > 0) && (
         <span tabIndex={0} title={warning} aria-label={warning} className="ml-1 shrink-0 rounded p-0.5 focus-visible:outline-blue-500">

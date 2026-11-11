@@ -7,6 +7,7 @@ import type {
 import { countItems } from "./editorDocument.ts";
 import type { EditorIssue, Selection } from "./editorTypes";
 import { TEXT_LIMITS } from "../../../../config/textLimits.ts";
+import { moduleRelationshipIssues } from "./moduleRelationships.ts";
 import { hasGatingRuleIssues } from "./gatingRules.ts";
 
 function validCode(code: string) {
@@ -230,6 +231,11 @@ export function validateDocument(
       if (hidden) add({ step: "structure", severity: "error",
         message: `Gating rule in ${dimension.name || dimension.code} references hidden module ${hidden.code}. Change the rule or restore module visibility.`,
         selection: dimensionSelection });
+    }
+    for (const issue of moduleRelationshipIssues(dimension.modules)) {
+      const module = dimension.modules.find((candidate) => candidate.code.toLowerCase() === issue.code.toLowerCase());
+      add({ step: "structure", severity: "error", message: issue.message,
+        selection: module ? { type: "module", key: module.clientKey } : dimensionSelection });
     }
     const moduleCodes = new Map<string, string>();
     dimension.modules.forEach((module, moduleIndex) => {

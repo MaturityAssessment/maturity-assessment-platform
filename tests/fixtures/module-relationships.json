@@ -1,0 +1,361 @@
+[
+  {
+    "name": "corequisites may both be hidden",
+    "modules": [
+      {
+        "code": "A",
+        "name": "A",
+        "visible": false,
+        "coRequisiteModuleCodes": [
+          "b"
+        ]
+      },
+      {
+        "code": "B",
+        "name": "B",
+        "visible": false
+      }
+    ],
+    "error": null
+  },
+  {
+    "name": "corequisites must share visibility",
+    "modules": [
+      {
+        "code": "A",
+        "name": "A",
+        "visible": true,
+        "coRequisiteModuleCodes": [
+          "B"
+        ]
+      },
+      {
+        "code": "B",
+        "name": "B",
+        "visible": false
+      }
+    ],
+    "error": "INCONSISTENT_MODULE_VISIBILITY"
+  },
+  {
+    "name": "mutex may both be hidden",
+    "modules": [
+      {
+        "code": "A",
+        "name": "A",
+        "visible": false,
+        "mutexModuleCodes": [
+          "B"
+        ]
+      },
+      {
+        "code": "B",
+        "name": "B",
+        "visible": false
+      }
+    ],
+    "error": null
+  },
+  {
+    "name": "mutex may not both be visible",
+    "modules": [
+      {
+        "code": "A",
+        "name": "A",
+        "visible": true,
+        "mutexModuleCodes": [
+          "B"
+        ]
+      },
+      {
+        "code": "B",
+        "name": "B",
+        "visible": true
+      }
+    ],
+    "error": "INCONSISTENT_MODULE_VISIBILITY"
+  },
+  {
+    "name": "direct prerequisite conflict",
+    "modules": [
+      {
+        "code": "A",
+        "name": "A",
+        "visible": false,
+        "mutexModuleCodes": [
+          "B"
+        ]
+      },
+      {
+        "code": "B",
+        "name": "B",
+        "visible": false,
+        "prerequisiteModuleCodes": [
+          "A"
+        ]
+      }
+    ],
+    "error": "CONFLICTING_MODULE_RELATIONSHIPS"
+  },
+  {
+    "name": "second degree prerequisite conflict",
+    "modules": [
+      {
+        "code": "A",
+        "name": "A",
+        "visible": false,
+        "mutexModuleCodes": [
+          "C"
+        ]
+      },
+      {
+        "code": "B",
+        "name": "B",
+        "visible": false,
+        "prerequisiteModuleCodes": [
+          "A"
+        ]
+      },
+      {
+        "code": "C",
+        "name": "C",
+        "visible": false,
+        "prerequisiteModuleCodes": [
+          "B"
+        ]
+      }
+    ],
+    "error": "CONFLICTING_MODULE_RELATIONSHIPS"
+  },
+  {
+    "name": "third degree prerequisite conflict",
+    "modules": [
+      {
+        "code": "A",
+        "name": "A",
+        "visible": false,
+        "mutexModuleCodes": [
+          "D"
+        ]
+      },
+      {
+        "code": "B",
+        "name": "B",
+        "visible": false,
+        "prerequisiteModuleCodes": [
+          "A"
+        ]
+      },
+      {
+        "code": "C",
+        "name": "C",
+        "visible": false,
+        "prerequisiteModuleCodes": [
+          "B"
+        ]
+      },
+      {
+        "code": "D",
+        "name": "D",
+        "visible": false,
+        "prerequisiteModuleCodes": [
+          "C"
+        ]
+      }
+    ],
+    "error": "CONFLICTING_MODULE_RELATIONSHIPS"
+  },
+  {
+    "name": "alternatives may share prerequisite",
+    "modules": [
+      {
+        "code": "P",
+        "name": "P",
+        "visible": false
+      },
+      {
+        "code": "A",
+        "name": "A",
+        "visible": false,
+        "prerequisiteModuleCodes": [
+          "P"
+        ],
+        "mutexModuleCodes": [
+          "C"
+        ]
+      },
+      {
+        "code": "C",
+        "name": "C",
+        "visible": false,
+        "prerequisiteModuleCodes": [
+          "P"
+        ]
+      }
+    ],
+    "error": null
+  },
+  {
+    "name": "one module cannot require both alternatives",
+    "modules": [
+      {
+        "code": "A",
+        "name": "A",
+        "visible": false,
+        "mutexModuleCodes": [
+          "B"
+        ]
+      },
+      {
+        "code": "B",
+        "name": "B",
+        "visible": false
+      },
+      {
+        "code": "C",
+        "name": "C",
+        "visible": false,
+        "prerequisiteModuleCodes": [
+          "A",
+          "B"
+        ]
+      }
+    ],
+    "error": "CONFLICTING_MODULE_RELATIONSHIPS"
+  },
+  {
+    "name": "corequisite group cannot exclude a member",
+    "modules": [
+      {
+        "code": "A",
+        "name": "A",
+        "visible": false,
+        "coRequisiteModuleCodes": [
+          "B"
+        ],
+        "mutexModuleCodes": [
+          "C"
+        ]
+      },
+      {
+        "code": "B",
+        "name": "B",
+        "visible": false,
+        "coRequisiteModuleCodes": [
+          "C"
+        ]
+      },
+      {
+        "code": "C",
+        "name": "C",
+        "visible": false
+      }
+    ],
+    "error": "CONFLICTING_MODULE_RELATIONSHIPS"
+  },
+  {
+    "name": "mixed prerequisite and corequisite conflict",
+    "modules": [
+      {
+        "code": "A",
+        "name": "A",
+        "visible": false,
+        "mutexModuleCodes": [
+          "C"
+        ]
+      },
+      {
+        "code": "B",
+        "name": "B",
+        "visible": false,
+        "prerequisiteModuleCodes": [
+          "A"
+        ],
+        "coRequisiteModuleCodes": [
+          "C"
+        ]
+      },
+      {
+        "code": "C",
+        "name": "C",
+        "visible": false
+      }
+    ],
+    "error": "CONFLICTING_MODULE_RELATIONSHIPS"
+  },
+  {
+    "name": "mutex remains pairwise",
+    "modules": [
+      {
+        "code": "A",
+        "name": "A",
+        "visible": false,
+        "mutexModuleCodes": [
+          "B"
+        ]
+      },
+      {
+        "code": "B",
+        "name": "B",
+        "visible": false,
+        "mutexModuleCodes": [
+          "C"
+        ]
+      },
+      {
+        "code": "C",
+        "name": "C",
+        "visible": false
+      }
+    ],
+    "error": null
+  },
+  {
+    "name": "self relationships are invalid",
+    "modules": [
+      {
+        "code": "A",
+        "name": "A",
+        "visible": false,
+        "mutexModuleCodes": [
+          "A"
+        ]
+      }
+    ],
+    "error": "INVALID_MODULE_RELATIONSHIPS"
+  },
+  {
+    "name": "unknown module is invalid",
+    "modules": [
+      {
+        "code": "A",
+        "name": "A",
+        "visible": false,
+        "coRequisiteModuleCodes": [
+          "OTHER_DIMENSION_MODULE"
+        ]
+      }
+    ],
+    "error": "INVALID_MODULE_RELATIONSHIPS"
+  },
+  {
+    "name": "duplicate references are invalid",
+    "modules": [
+      {
+        "code": "A",
+        "name": "A",
+        "visible": false,
+        "mutexModuleCodes": [
+          "B",
+          "b"
+        ]
+      },
+      {
+        "code": "B",
+        "name": "B",
+        "visible": false
+      }
+    ],
+    "error": "INVALID_MODULE_RELATIONSHIPS"
+  }
+]

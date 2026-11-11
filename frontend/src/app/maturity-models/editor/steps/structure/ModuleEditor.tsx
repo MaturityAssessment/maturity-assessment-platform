@@ -1,3 +1,4 @@
+import ModuleRelationshipsField from "./ModuleRelationshipsField";
 import { moduleVisibilityDependencies } from "../../model/moduleVisibility";
 import WeightInput from "../../components/WeightInput";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
@@ -162,36 +163,15 @@ export default function ModuleEditor({
                     />
                   </label>
                 </div>
-                <fieldset className="mt-5 rounded-xl border border-gray-200 bg-white p-4 @lg:p-5">
-                  <legend className="px-1 text-sm font-semibold text-gray-900">Prerequisite modules</legend>
-                  <p className="mb-3 text-sm leading-6 text-gray-500">
-                    Complete the required answers and evidence in all selected modules to unlock this module.
-                    Only earlier modules in this dimension are available. Showing this module also shows its prerequisites.
-                  </p>
-                  {dimension.modules.slice(0, moduleIndex).length === 0
-                    ? <p className="text-sm text-gray-500">The first module has no earlier modules to select.</p>
-                    : dimension.modules.slice(0, moduleIndex).map((candidate) => {
-                      const selected = (module.prerequisiteModuleCodes ?? []).some((code) => code.toLowerCase() === candidate.code.toLowerCase());
-                      return <label key={candidate.clientKey} className="flex items-start gap-3 rounded-lg px-2 py-2 hover:bg-gray-50">
-                        <input type="checkbox" checked={selected} className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          onChange={() => update({ ...module, prerequisiteModuleCodes: selected
-                            ? (module.prerequisiteModuleCodes ?? []).filter((code) => code.toLowerCase() !== candidate.code.toLowerCase())
-                            : [...(module.prerequisiteModuleCodes ?? []), candidate.code] })} />
-                        <span className="min-w-0 text-sm"><span className="font-medium text-gray-900">{candidate.name || "Untitled module"}</span>
-                          <span className="ml-2 font-mono text-xs text-gray-500">{candidate.code}</span>
-                          {candidate.visible === false && <span className="ml-2 text-xs text-gray-500">Currently hidden</span>}
-                        </span>
-                      </label>;
-                    })}
-                  {(module.prerequisiteModuleCodes ?? []).filter((code) => !dimension.modules.slice(0, moduleIndex).some((candidate) => candidate.code.toLowerCase() === code.toLowerCase())).map((code) => (
-                    <div key={code} role="alert" className="mt-2 flex items-center justify-between gap-3 rounded-lg bg-red-50 p-3 text-sm text-red-800">
-                      <span>Unavailable prerequisite: {code}. Select an earlier module or remove this reference.</span>
-                      <button type="button" className="font-semibold underline" onClick={() => update({ ...module, prerequisiteModuleCodes: (module.prerequisiteModuleCodes ?? []).filter((reference) => reference !== code) })}>Remove</button>
-                    </div>
-                  ))}
-                </fieldset>
+
               </>
             ),
+          },
+          {
+            id: "relationships",
+            label: "Relationships",
+            count: (module.prerequisiteModuleCodes?.length ?? 0) + (module.coRequisiteModuleCodes?.length ?? 0) + (module.mutexModuleCodes?.length ?? 0),
+            content: <ModuleRelationshipsField dimension={dimension} module={module} onChange={update} />,
           },
           {
             id: "scoring",

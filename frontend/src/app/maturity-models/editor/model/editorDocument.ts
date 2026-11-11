@@ -8,6 +8,7 @@ import type {
   ModelEditorPractice,
   ModelEditorQuestion,
 } from "@/api/types";
+import { normalizeModuleRelationships } from "./moduleRelationships.ts";
 import { codePrefix, renumberSiblingCodes } from "./editorCodes.ts";
 
 export const DEFAULT_AGGREGATION_RULE: AggregationRule = "WEIGHTED_AVERAGE";
@@ -120,6 +121,8 @@ export function emptyModule(
     gatingRules: [],
     visible: true,
     prerequisiteModuleCodes: [],
+    coRequisiteModuleCodes: [],
+    mutexModuleCodes: [],
     practices: [emptyPractice(practiceOrdinal, questionOrdinal)],
   };
 }
@@ -194,6 +197,8 @@ export function hydrateDocument(
         description: module.description ?? "",
         visible: module.visible !== false,
         prerequisiteModuleCodes: [...(module.prerequisiteModuleCodes ?? [])],
+        coRequisiteModuleCodes: [...(module.coRequisiteModuleCodes ?? [])],
+        mutexModuleCodes: [...(module.mutexModuleCodes ?? [])],
         clientKey: module.clientKey || key(),
         codeLocked: false,
         weight: module.weight ?? 1,
@@ -236,7 +241,7 @@ export function hydrateDocument(
   document.dimensions = renumberSiblingCodes(document.dimensions, "D").items;
   for (const dimension of document.dimensions) {
     const modules = renumberSiblingCodes(dimension.modules, "M", dimension.gatingRules);
-    dimension.modules = modules.items;
+    dimension.modules = normalizeModuleRelationships(modules.items);
     dimension.gatingRules = modules.gatingRules;
     for (const modelModule of dimension.modules) {
       const practices = renumberSiblingCodes(modelModule.practices, "P", modelModule.gatingRules);
@@ -282,6 +287,8 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
             ...module,
             visible: module.visible !== false,
             prerequisiteModuleCodes: [...(module.prerequisiteModuleCodes ?? [])],
+            coRequisiteModuleCodes: [...(module.coRequisiteModuleCodes ?? [])],
+            mutexModuleCodes: [...(module.mutexModuleCodes ?? [])],
             code: module.code.trim(),
             name: module.name.trim(),
             description: module.description.trim(),

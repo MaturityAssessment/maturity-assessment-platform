@@ -90,3 +90,16 @@ test("inactive dependent questions do not prevent prerequisite completion", () =
   answer(0);
   assert.equal(states().get(modules[1])?.locked, false);
 });
+
+
+test("co-requisites and mutex introduce no completion gates of their own", () => {
+  const { model, modules, states } = fixture();
+  modules[1].prerequisiteModuleCodes = [];
+  modules[0].coRequisiteModuleCodes = [modules[1].code!];
+  modules[1].coRequisiteModuleCodes = [modules[0].code!];
+  assert.equal(states().get(modules[0])?.complete, false);
+  assert.equal(states().get(modules[1])?.locked, false);
+  modules[0].mutexModuleCodes = [modules[2].code!];
+  modules[2].visible = false;
+  assert.equal(states().get(model.dimensions[0].modules[0])?.locked, false);
+});

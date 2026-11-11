@@ -120,3 +120,11 @@ Deleting a model version is rejected when assessments use it. Domain deletion is
 rejected while models remain. Check the operation's error contract before
 presenting a deletion option; deactivation is the appropriate action when the
 intention is to stop new use while retaining existing results.
+
+Module co-requisites and mutually exclusive modules are configured in the editor's
+Relationships tab. In Excel, `moduleCoRequisites` and `moduleMutex` contain JSON
+arrays of other module codes in the same dimension. Define each pair once or on
+both endpoints; reads return both sides. Co-requisites share visibility; mutex
+pairs may have zero or one visible module. The editor previews visibility changes
+and rejects prerequisite conflicts, including indirect paths. Update relationship
+references when changing codes manually in a workbook.

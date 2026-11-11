@@ -454,6 +454,8 @@ public class CsvParsingService {
                 moduleDTO.setWeight(moduleWeight);
                 moduleDTO.setVisible(parseBoolean(row.getModuleVisible(), true));
                 moduleDTO.setPrerequisiteModuleCodes(parseRules(row.getModulePrerequisites(), String.class, "modulePrerequisites", rowNumber, errors));
+                moduleDTO.setCoRequisiteModuleCodes(parseRules(row.getModuleCoRequisites(), String.class, "moduleCoRequisites", rowNumber, errors));
+                moduleDTO.setMutexModuleCodes(parseRules(row.getModuleMutex(), String.class, "moduleMutex", rowNumber, errors));
                 moduleDTO.setAggregationRule(parseAggregationRule(row.getModuleAggregationRule(), "moduleAggregationRule", rowNumber, errors));
                 moduleDTO.setGatingRules(parseRules(row.getModuleGatingRules(), GatingRuleDTO.class, "moduleGatingRules", rowNumber, errors));
                 module = new ModuleAccumulator(moduleDTO);

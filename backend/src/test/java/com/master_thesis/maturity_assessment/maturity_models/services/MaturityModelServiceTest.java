@@ -597,6 +597,48 @@ class MaturityModelServiceTest {
     }
 
     @Test
+    void visibilityRelationshipsSurvivePersistenceEditorConversionAndVersionCreation() {
+        Domain domain = domain();
+        var dto = updateDto(domain.getId(), null);
+        var dimension = dto.getDimensions().getFirst();
+        var first = dimension.getModules().getFirst();
+        var second = new ModuleDTO(); second.setCode("SECOND"); second.setName("Second"); second.setPractices(first.getPractices());
+        var third = new ModuleDTO(); third.setCode("THIRD"); third.setName("Third"); third.setPractices(first.getPractices()); third.setVisible(false);
+        first.setCoRequisiteModuleCodes(List.of("second")); second.setMutexModuleCodes(List.of("THIRD"));
+        dimension.setModules(List.of(first, second, third));
+        when(domainRepository.findById(domain.getId())).thenReturn(Optional.of(domain));
+        List<MaturityModel> saved = new ArrayList<>();
+        when(maturityModelRepository.saveAndFlush(any(MaturityModel.class))).thenAnswer(invocation -> {
+            MaturityModel model = invocation.getArgument(0); assignGeneratedIds(model); saved.add(model); return model;
+        });
+        when(maturityModelRepository.save(any(MaturityModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        var original = service.createMaturityModel(dto);
+        assertEquals(List.of("SECOND"), saved.getFirst().getDimensions().getFirst().getModules().getFirst().getCoRequisiteModuleCodes());
+        assertEquals(List.of(first.getCode()), original.getDimensions().getFirst().getModules().get(1).getCoRequisiteModuleCodes());
+        assertEquals(List.of("SECOND"), original.getDimensions().getFirst().getModules().get(2).getMutexModuleCodes());
+        var editor = service.prepareEditorDocument(original);
+        assertEquals(List.of("THIRD"), editor.getDimensions().getFirst().getModules().get(1).getMutexModuleCodes());
+        MaturityModel source = saved.getFirst();
+        when(maturityModelRepository.findById(source.getId())).thenReturn(Optional.of(source));
+        when(maturityModelRepository.findByBaseModelIdOrderByVersionAsc(source.getId())).thenReturn(List.of(source));
+        var version = service.createVersionFromEditor(source.getId(), editor);
+        assertEquals(2, version.getVersion());
+        assertEquals(List.of("SECOND"), version.getDimensions().getFirst().getModules().getFirst().getCoRequisiteModuleCodes());
+        assertEquals(List.of("THIRD"), version.getDimensions().getFirst().getModules().get(1).getMutexModuleCodes());
+        assertTrue(original.getDimensions().getFirst().getModules().getFirst().getVisible());
+    }
+
+    @Test
+    void invalidVisibilityRelationshipsAreRejectedByTheWriteContract() {
+        var dto = updateDto(domain().getId(), null);
+        var module = dto.getDimensions().getFirst().getModules().getFirst();
+        module.setMutexModuleCodes(List.of("UNKNOWN"));
+        assertEquals("INVALID_MODULE_RELATIONSHIPS", assertThrows(IllegalOperationException.class,
+                () -> service.createMaturityModel(dto)).getErrorCode());
+        verify(maturityModelRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
     void hiddenModuleReferencesAreRejectedBeforeSaving() {
         MaturityModelDTO dto = updateDto(domain().getId(), null);
         var dimension = dto.getDimensions().getFirst();

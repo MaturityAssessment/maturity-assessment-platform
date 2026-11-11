@@ -1,3 +1,4 @@
+import { moduleRelationshipIssues, normalizeModuleRelationships, synchronizeModuleRelationships, SYMMETRIC_RELATION_FIELDS } from "./moduleRelationships.ts";
 import { hasValidModulePrerequisiteOrder, MODULE_PREREQUISITE_ORDER_MESSAGE, visibleModuleDependents } from "./modulePrerequisites.ts";
 import type { MaturityModelEditorDocument, ModelEditorDimension, ModelEditorModule, ModelEditorPractice, ModelEditorQuestion } from "@/api/types";
 import { compareDocuments, type ChangeEntry } from "./editorChanges.ts";
@@ -31,7 +32,10 @@ function encodeReferences(items: Item[]) {
     return matches[0] ? token(matches[0].clientKey) : code;
   };
   for (const item of items) {
-    if ("practices" in item) item.prerequisiteModuleCodes = (item.prerequisiteModuleCodes ?? []).map(code => resolve(code, items)!);
+    if ("practices" in item) {
+      item.prerequisiteModuleCodes = (item.prerequisiteModuleCodes ?? []).map(code => resolve(code, items)!);
+      for (const field of SYMMETRIC_RELATION_FIELDS) item[field] = (item[field] ?? []).map(code => resolve(code, items)!);
+    }
     if ("dependsOnQuestionCode" in item && item.dependsOnQuestionCode) item.dependsOnQuestionCode = resolve(item.dependsOnQuestionCode, items);
     if ("gatingRules" in item) item.gatingRules = item.gatingRules.map(rule => rule.selection === "specificChild" ? { ...rule, childCode: resolve(rule.childCode, children(item)) } : rule);
     encodeReferences(children(item));
@@ -50,7 +54,10 @@ function finishReferences(items: Item[], deleted: Set<string>, depth = 0) {
   };
   for (const item of items) {
     finishReferences(children(item), deleted, depth + 1);
-    if ("practices" in item) item.prerequisiteModuleCodes = (item.prerequisiteModuleCodes ?? []).map(code => resolve(code, items) ?? code);
+    if ("practices" in item) {
+      item.prerequisiteModuleCodes = (item.prerequisiteModuleCodes ?? []).map(code => resolve(code, items) ?? code);
+      for (const field of SYMMETRIC_RELATION_FIELDS) item[field] = (item[field] ?? []).flatMap(code => { const target = resolve(code, items); return target ? [target] : []; });
+    }
     if ("dependsOnQuestionCode" in item && item.dependsOnQuestionCode) {
       item.dependsOnQuestionCode = resolve(item.dependsOnQuestionCode, items);
       if (!item.dependsOnQuestionCode) item.dependencyCondition = undefined;
@@ -152,6 +159,10 @@ export function revertEditorChange(current: MaturityModelEditorDocument, baselin
   }
   finishReferences(next.dimensions, deleted);
   for (const dimension of next.dimensions) {
+    const edited = dimension.modules.find((module) => module.clientKey === entry.item?.key);
+    dimension.modules = edited ? synchronizeModuleRelationships(dimension.modules, edited.code) : normalizeModuleRelationships(dimension.modules);
+    const relationshipIssue = moduleRelationshipIssues(dimension.modules)[0];
+    if (relationshipIssue) throw new Error(relationshipIssue.message);
     if (!hasValidModulePrerequisiteOrder(dimension.modules)) throw new Error(MODULE_PREREQUISITE_ORDER_MESSAGE);
     if (dimension.modules.some((module) => module.visible === false && visibleModuleDependents(dimension.modules, module.code).length)) {
       throw new Error("Visible modules require visible prerequisites. Hide dependent modules before reverting this visibility change.");

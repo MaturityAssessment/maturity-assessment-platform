@@ -1,3 +1,4 @@
+import { moduleVisibilityClosure } from "./moduleRelationships.ts";
 import type { MaturityModelEditorDocument } from "@/api/types";
 import type { Selection } from "./editorTypes";
 
@@ -11,6 +12,8 @@ export type OutlineNode = {
   childLabel: "module" | "practice" | "question";
   childCount: number;
   visible?: boolean;
+  coRequisites?: string[];
+  mutuallyExclusive?: string[];
   children: OutlineNode[];
 };
 
@@ -33,6 +36,9 @@ export function buildOutlineTree(document: MaturityModelEditorDocument): Outline
           id: moduleId, selection: moduleSelection, parentId: id, parentKey: dimension.clientKey,
           label: module.name || "Untitled module",
           visible: module.visible !== false,
+          coRequisites: [...moduleVisibilityClosure(dimension.modules, module.code, true).keys()]
+            .filter((code) => code !== module.code.toLowerCase()).map((code) => dimension.modules.find((item) => item.code.toLowerCase() === code)?.name || code),
+          mutuallyExclusive: (module.mutexModuleCodes ?? []).map((code) => dimension.modules.find((item) => item.code.toLowerCase() === code.toLowerCase())?.name || code),
           code: module.code, childLabel: "practice", childCount: module.practices.length,
           children: module.practices.map((practice) => {
             const practiceSelection: Selection = { type: "practice", key: practice.clientKey };

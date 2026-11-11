@@ -12,7 +12,8 @@ import {
   emptyPractice,
   emptyQuestion,
 } from "./editorDocument.ts";
-import { hasValidModulePrerequisiteOrder, showModulePrerequisites } from "./modulePrerequisites.ts";
+import { hasValidModulePrerequisiteOrder } from "./modulePrerequisites.ts";
+import { MODULE_RELATION_FIELDS, planModuleVisibility, synchronizeModuleRelationships } from "./moduleRelationships.ts";
 import { renumberSiblingCodes } from "./editorCodes.ts";
 
 function replaceByKey<T extends { clientKey: string }>(
@@ -263,6 +264,16 @@ export function updateModule(
   const previous = dimension.modules.find(
     (candidate) => candidate.clientKey === moduleKey
   );
+  if (!previous) return document;
+  const relationsChanged = MODULE_RELATION_FIELDS.some((field) =>
+    JSON.stringify(previous[field] ?? []) !== JSON.stringify(module[field] ?? []));
+  let modules = replaceByKey(dimension.modules, moduleKey, module).map((candidate) => ({
+    ...candidate,
+    ...Object.fromEntries(MODULE_RELATION_FIELDS.map((field) => [field, (candidate[field] ?? []).map((code) =>
+      previous.code !== module.code && code.toLowerCase() === previous.code.toLowerCase() ? module.code : code)])),
+  }));
+  modules = synchronizeModuleRelationships(modules, module.code);
+  if (relationsChanged || module.visible !== previous.visible) modules = planModuleVisibility(modules, module.code, module.visible !== false);
   return updateDimension(document, dimensionKey, {
     ...dimension,
     gatingRules: previous
@@ -274,11 +285,7 @@ export function updateModule(
             : rule
         )
       : dimension.gatingRules,
-    modules: showModulePrerequisites(replaceByKey(dimension.modules, moduleKey, module).map((candidate) => ({
-      ...candidate,
-      prerequisiteModuleCodes: (candidate.prerequisiteModuleCodes ?? []).map((code) =>
-        previous && previous.code !== module.code && code.toLowerCase() === previous.code.toLowerCase() ? module.code : code),
-    }))),
+    modules,
   });
 }
 
@@ -329,9 +336,11 @@ export function deleteModule(
         rule.selection !== "specificChild" ||
         rule.childCode?.toLowerCase() !== removed.code.toLowerCase()
     ),
-    modules: dimension.modules.filter(
-      (module) => module.clientKey !== moduleKey
-    ),
+    modules: dimension.modules.filter((module) => module.clientKey !== moduleKey).map((module) => ({
+      ...module,
+      coRequisiteModuleCodes: (module.coRequisiteModuleCodes ?? []).filter((code) => code.toLowerCase() !== removed.code.toLowerCase()),
+      mutexModuleCodes: (module.mutexModuleCodes ?? []).filter((code) => code.toLowerCase() !== removed.code.toLowerCase()),
+    })),
   }, true);
 }
 

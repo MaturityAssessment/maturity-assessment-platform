@@ -1,6 +1,6 @@
 "use client";
 
-import { MODULE_PREREQUISITE_ORDER_MESSAGE, visibleModuleDependents } from "../model/modulePrerequisites";
+import { MODULE_PREREQUISITE_ORDER_MESSAGE } from "../model/modulePrerequisites";
 import { moduleVisibilityDependencies } from "../model/moduleVisibility";
 
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
@@ -246,6 +246,24 @@ export function useMaturityModelEditor(
     []
   );
 
+  const commitStructureChange = useCallback((next: MaturityModelEditorDocument, selection?: Selection | null, previewSingle = false) => {
+    if (!state.document) return;
+    const changes = next.dimensions.flatMap((dimension) => dimension.modules.flatMap((module) => {
+      const previous = findModule(state.document!, module.clientKey)?.module;
+      return previous && (previous.visible !== false) !== (module.visible !== false)
+        ? [{ dimension, module, visible: module.visible !== false }] : [];
+    }));
+    const warnings = [...new Set(changes.filter((change) => !change.visible)
+      .flatMap(({ dimension, module }) => moduleVisibilityDependencies(dimension, module)))];
+    if ((changes.length > 1 || (previewSingle && changes.length > 0)) && !window.confirm([
+      "Apply these visibility changes?",
+      ...changes.map(({ module, visible }) => `${visible ? "Show" : "Hide"}: ${module.name || module.code} (${module.code})`),
+      ...warnings,
+    ].join("\n\n"))) return;
+    replaceDocument(next, selection);
+    dispatch({ type: "notice", notice: warnings.length ? { type: "warning", message: warnings.join(" ") } : null });
+  }, [replaceDocument, state.document]);
+
   const withDocument = useCallback(
     (
       mutation: (
@@ -255,14 +273,18 @@ export function useMaturityModelEditor(
       blockedMessage?: string
     ) => {
       if (!state.document) return;
-      const next = mutation(state.document);
-      if (next === state.document && blockedMessage) {
-        dispatch({ type: "notice", notice: { type: "error", message: blockedMessage } });
-        return;
+      try {
+        const next = mutation(state.document);
+        if (next === state.document && blockedMessage) {
+          dispatch({ type: "notice", notice: { type: "error", message: blockedMessage } });
+          return;
+        }
+        commitStructureChange(next, selection, true);
+      } catch (error) {
+        dispatch({ type: "notice", notice: { type: "error", message: error instanceof Error ? error.message : "Could not update module relationships." } });
       }
-      replaceDocument(next, selection);
     },
-    [replaceDocument, state.document]
+    [commitStructureChange, state.document]
   );
 
   const structureCommands = useMemo<StructureEditorCommands>(
@@ -311,17 +333,11 @@ export function useMaturityModelEditor(
         const dimension = findDimension(state.document, dimensionKey);
         const module = dimension?.modules.find((item) => item.clientKey === moduleKey);
         if (!dimension || !module) return;
-        const hiding = module.visible !== false;
-        const dependents = visibleModuleDependents(dimension.modules, module.code);
-        if (hiding && dependents.length) {
-          dispatch({ type: "notice", notice: { type: "error", message: `Hide dependent modules first: ${dependents.map((item) => item.name || item.code).join(", ")}. Visible modules require visible prerequisites.` } });
-          return;
+        try {
+          commitStructureChange(updateModule(state.document, dimensionKey, moduleKey, { ...module, visible: module.visible === false }));
+        } catch (error) {
+          dispatch({ type: "notice", notice: { type: "error", message: error instanceof Error ? error.message : "Could not change module visibility." } });
         }
-        const dependencies = hiding ? moduleVisibilityDependencies(dimension, module) : [];
-        replaceDocument(updateModule(state.document, dimensionKey, moduleKey, { ...module, visible: !hiding }));
-        dispatch({ type: "notice", notice: dependencies.length
-          ? { type: "warning", message: dependencies.join(" ") }
-          : null });
       },
       updateModule: (
         dimensionKey: string,
@@ -435,7 +451,7 @@ export function useMaturityModelEditor(
           deleteQuestion(document, practiceKey, questionKey)
         ),
     }),
-    [replaceDocument, state.document, withDocument]
+    [commitStructureChange, replaceDocument, state.document, withDocument]
   );
 
   const importWorkbook = useCallback(
