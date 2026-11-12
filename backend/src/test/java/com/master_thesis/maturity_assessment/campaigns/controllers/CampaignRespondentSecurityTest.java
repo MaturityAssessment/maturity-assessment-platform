@@ -55,7 +55,7 @@ class CampaignRespondentSecurityTest {
         String token = "Bearer " + jwt.generateAccessToken(user);
         mvc.perform(get("/api/v1/campaign-response/1/logs").param("questionId", "42")
                 .header("Authorization", token)).andExpect(status().isOk());
-        verify(service).logs(1L, user, 0, null, null, null, 42L);
+        verify(service).logs(1L, user, 0, null, null, null, 42L, com.master_thesis.maturity_assessment.assessments.services.AssessmentAuditService.Category.ALL);
         clearInvocations(service);
         mvc.perform(get("/api/v1/campaign-response/1/logs").param("questionId", "0")
                 .header("Authorization", token)).andExpect(status().isBadRequest());

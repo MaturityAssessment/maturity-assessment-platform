@@ -92,11 +92,12 @@ public class CampaignRespondentController {
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.master_thesis.maturity_assessment.auth.models.User user,
             @RequestParam(defaultValue = "0") int page, @RequestParam(required = false) Long questionId,
             @RequestParam(required = false) String dimensionId, @RequestParam(required = false) String moduleCode,
-            @RequestParam(required = false) Long practiceId) {
+            @RequestParam(required = false) Long practiceId,
+            @RequestParam(defaultValue = "ALL") AssessmentAuditService.Category category) {
         if (page < 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page must be non-negative.");
         if (questionId != null && questionId <= 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Question ID must be positive.");
         return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore())
-                .body(respondentService.logs(campaignId, user, page, dimensionId, moduleCode, practiceId, questionId));
+                .body(respondentService.logs(campaignId, user, page, dimensionId, moduleCode, practiceId, questionId, category));
     }
 
     @GetMapping("/evidence/{evidenceId}/download")

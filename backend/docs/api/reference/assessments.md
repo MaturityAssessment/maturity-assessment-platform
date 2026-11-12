@@ -453,18 +453,26 @@ Historical scores and completion stay unchanged as time passes. Editing evidence
 or the reference date reevaluates validity, without automatically changing scores;
 the evaluator remains responsible for evidence-based manual score adjustments.
 
-## Respondent activity logs
+## Assessment activity logs
 
 `GET /api/v1/assessments/{id}/logs?page=0` returns `{ "entries": [...], "hasMore": false }`.
 Pages contain up to 50 records, ordered by UTC `occurredAt` and ID, newest first.
 Owners and evaluators use the same access rules as the assessment detail endpoint.
 Campaign respondents use `GET /api/v1/campaign-response/{campaignId}/logs?page=0`,
 which requires an active invitation for the signed-in account. Negative pages return `400`.
-Both endpoints return `Cache-Control: no-store`. Optional filters `dimensionId`
+Both endpoints return `Cache-Control: no-store`. The optional `category` parameter
+accepts `ALL` (default), `LIFECYCLE`, `RESPONDENT`, `EVALUATOR`, or `EVIDENCE`.
+Categories filter before pagination. Lifecycle contains creation, submission,
+resubmission, reset, completion, send-back, and generic status transitions. It
+always covers the whole assessment, independently of hierarchy parameters.
+Respondent/evaluator change views exclude lifecycle and evidence events; Evidence
+contains evidence events. The Logs UI highlights milestones and shows before/after
+status badges, while keeping detailed changes in compact expandable rows.
+ Optional filters `dimensionId`
 (public dimension code), `moduleCode`, `practiceId`, and `questionId` scope history
 **before pagination** to the assessment's exact model. Modules require a dimension;
 practices require a module. Question-only requests remain supported for older clients.
-The UI enables each selector only after its parent is selected, lists only that
+In views other than Lifecycle, the UI enables each selector only after its parent is selected, lists only that
 parent's children, and clears descendants when a parent changes.
 
 Dimension/module/practice filters include descendant question events and evidence
@@ -472,7 +480,8 @@ for those practices. A question filter includes its question events, evidence
 explicitly referencing it, and general practice evidence with no question references.
 Evidence is matched against both before and after snapshots, preserving removals
 and edits that unlink a question. Evidence explicitly linked only to other questions
-is excluded. Assessment lifecycle events appear when all filters are cleared.
+is excluded. Assessment lifecycle events appear in All activity when hierarchy filters are cleared,
+and always in the dedicated Lifecycle view.
 
 Example: `GET /api/v1/assessments/23/logs?dimensionId=D1&moduleCode=M1&practiceId=101&questionId=1001&page=0`.
 The compact Logs view shows the full public code path; question text and before/after
@@ -483,8 +492,9 @@ Each entry includes `assessmentId`, `actorUserId`, optional `actorCampaignPartic
 snapshotted `actorName`/`actorEmail`, `actorRole`, `action`, `targetType`, `targetId`,
 `targetLabel`, `beforeValue`, `afterValue`, and `occurredAt` (ISO 8601 with UTC offset).
 `actorUserId` always identifies a normal platform user. `actorCampaignParticipantId`
-is optional campaign membership context, not a second identity type. The actor role currently identifies the **respondent's role in the action**, independently
-of their platform permissions.
+is optional campaign membership context, not a second identity type. The actor role identifies `RESPONDENT` or `EVALUATOR` as the person's role in the
+action, independently of platform permissions. Evaluator records identify the actual
+signed-in reviewer; they do not inherit the respondent's campaign membership ID.
 
 Logged actions cover assessment creation, submission/resubmission, draft resets,
 reference date changes, answer additions/changes/removals, justification edits,
@@ -496,6 +506,15 @@ history while the assessment exists; deleting the assessment cascades its histor
 
 Entries are append-only through the application, saved in the same transaction as
 the change. Rejected saves create no history, and unchanged autosaves produce no
-entries. Evaluator changes are not logged yet. Existing assessments start collecting
+entries. Evaluator records cover question classifications, manual scores, reviewer
+notes, overall remarks (including clearing text), completion, and returning an
+assessment for corrections. A question save produces one `QUESTION_REVIEW_CHANGED`
+entry with its review fields before/after. Remarks use `EVALUATOR_REMARKS_CHANGED`;
+review transitions use `EVALUATION_COMPLETED` and `CHANGES_REQUESTED`, including
+before/after status and result values. Finishing from saved progress does not
+repeat unchanged question edits. Unsaved agent suggestions are not audit events;
+changes imported and saved by an evaluator follow the same review logging path.
+Question events share the existing hierarchy filters and row shortcuts.
+Existing assessments start collecting
 history with their next change; past activity is not reconstructed. The frontend
 presents these records as readable sentences and before/after details in the Logs tab.

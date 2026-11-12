@@ -107,6 +107,14 @@ public class CampaignRespondentService {
     }
 
     @Transactional(readOnly = true)
+    public AssessmentAuditService.LogPage logs(Long campaignId,
+            com.master_thesis.maturity_assessment.auth.models.User user, int page,
+            String dimensionId, String moduleCode, Long practiceId, Long questionId, AssessmentAuditService.Category category) {
+        return assessmentService.getCampaignLogs(requireActiveParticipant(campaignId, user, false),
+                page, dimensionId, moduleCode, practiceId, questionId, category);
+    }
+
+    @Transactional(readOnly = true)
     public Resource downloadEvidence(Long campaignId, com.master_thesis.maturity_assessment.auth.models.User user, Long evidenceId) throws IOException {
         CampaignParticipant participant = requireActiveParticipant(campaignId, user, false);
         return evidenceService.downloadEvidence(evidenceId, participant);

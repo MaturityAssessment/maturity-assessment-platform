@@ -26,6 +26,8 @@ public class AssessmentAuditService {
     private final QuestionRepository questionRepository;
     private final ObjectMapper mapper;
 
+    public enum Category { ALL, LIFECYCLE, RESPONDENT, EVALUATOR, EVIDENCE }
+
     public record State(boolean created, LocalDate referenceDate, AssessmentStatus status) {}
     public record Item(String label, JsonNode value) {}
     public record LogPage(List<AssessmentLog> entries, boolean hasMore) {}
@@ -34,18 +36,25 @@ public class AssessmentAuditService {
         return new State(assessment.getId() == null, assessment.getReferenceDate(), assessment.getId() == null ? AssessmentStatus.DRAFT : assessment.getStatus());
     }
 
-    public void assessmentChanged(Assessment assessment, User actor, State before, String action) {
+    public void assessmentDetailsChanged(Assessment assessment, User actor, State before) {
         if (before.created()) {
             record(assessment, actor, "ASSESSMENT_CREATED", "ASSESSMENT", assessment.getId(),
-                    "Assessment", null, mapper.valueToTree(Map.of("status", assessment.getStatus().name(),
+                    "Assessment", null, mapper.valueToTree(Map.of("status", before.status().name(),
                             "referenceDate", String.valueOf(assessment.getReferenceDate()))));
         } else if (!Objects.equals(before.referenceDate(), assessment.getReferenceDate())) {
             record(assessment, actor, "REFERENCE_DATE_CHANGED", "ASSESSMENT", assessment.getId(),
                     "Assessment reference date", mapper.valueToTree(before.referenceDate() == null ? null : before.referenceDate().toString()),
                     mapper.valueToTree(assessment.getReferenceDate() == null ? null : assessment.getReferenceDate().toString()));
         }
-        if (action != null) {
-            record(assessment, actor, action, "ASSESSMENT", assessment.getId(), "Assessment",
+    }
+
+    public void assessmentChanged(Assessment assessment, User actor, State before, String action) {
+        assessmentDetailsChanged(assessment, actor, before);
+        String lifecycleAction = action;
+        if (lifecycleAction == null && !before.created() && before.status() != assessment.getStatus())
+            lifecycleAction = "ASSESSMENT_STATUS_CHANGED";
+        if (lifecycleAction != null) {
+            record(assessment, actor, lifecycleAction, "ASSESSMENT", assessment.getId(), "Assessment",
                     mapper.valueToTree(before.status()), mapper.valueToTree(assessment.getStatus()));
         }
     }
@@ -92,6 +101,54 @@ public class AssessmentAuditService {
                 .orElse("Question " + row.getQuestionId());
         record(assessment, assessment.getUser(), "REVIEW_UPDATE_CONFIRMED", "QUESTION", row.getQuestionId(),
                 label, mapper.valueToTree(false), mapper.valueToTree(true));
+    }
+
+    public record EvaluationState(JsonNode assessment, String remarks, Map<Long, Item> reviews) {}
+
+    public EvaluationState evaluationState(Assessment assessment, List<QuestionEvaluation> rows) {
+        ObjectNode state = mapper.createObjectNode();
+        state.set("status", mapper.valueToTree(assessment.getStatus()));
+        state.set("overallAverage", mapper.valueToTree(assessment.getOverallAverage()));
+        state.set("overallPercentageScore", mapper.valueToTree(assessment.getOverallPercentageScore()));
+        state.put("overallMaturityLevel", assessment.getOverallMaturityLevel());
+        Map<Long, Item> reviews = new LinkedHashMap<>();
+        for (QuestionEvaluation row : rows) {
+            ObjectNode value = mapper.createObjectNode();
+            value.set("validationStatus", mapper.valueToTree(row.getValidationStatus()));
+            value.set("manualScore", mapper.valueToTree(row.getManualScore()));
+            value.put("reviewerNote", row.getReviewerNote());
+            value.put("respondentUpdated", Boolean.TRUE.equals(row.getRespondentUpdated()));
+            reviews.put(row.getQuestionId(), new Item(row.getResponseKey(), value));
+        }
+        return new EvaluationState(state, assessment.getEvaluatorInsight(), reviews);
+    }
+
+    public void evaluationChanged(Assessment assessment, User actor, EvaluationState before,
+                                  List<QuestionEvaluation> rows, String action) {
+        EvaluationState after = evaluationState(assessment, rows);
+        for (var entry : after.reviews().entrySet()) {
+            JsonNode old = value(before.reviews().get(entry.getKey()));
+            JsonNode next = entry.getValue().value();
+            if (same(old, next)) continue;
+            // A newly materialized, empty review does not represent an evaluator edit.
+            if (old == null && next.get("validationStatus").isNull() && next.get("manualScore").isNull()
+                    && next.get("reviewerNote").isNull() && !next.get("respondentUpdated").asBoolean()) continue;
+            String label = questionRepository.findById(entry.getKey())
+                    .map(q -> (q.getCode() == null ? "Question " + q.getId() : q.getCode()) + " — " + q.getText())
+                    .orElse("Question " + entry.getKey());
+            record(assessment, actor, "EVALUATOR", "QUESTION_REVIEW_CHANGED", "QUESTION", entry.getKey(), label, old, next);
+        }
+        if (!Objects.equals(before.remarks(), after.remarks())) {
+            record(assessment, actor, "EVALUATOR", "EVALUATOR_REMARKS_CHANGED", "ASSESSMENT", assessment.getId(),
+                    "Overall evaluation remarks", mapper.valueToTree(before.remarks()), mapper.valueToTree(after.remarks()));
+        }
+        String lifecycleAction = action;
+        if (lifecycleAction == null && !same(before.assessment().get("status"), after.assessment().get("status")))
+            lifecycleAction = "ASSESSMENT_STATUS_CHANGED";
+        if (lifecycleAction != null && !same(before.assessment(), after.assessment())) {
+            record(assessment, actor, "EVALUATOR", lifecycleAction, "ASSESSMENT", assessment.getId(), "Assessment",
+                    before.assessment(), after.assessment());
+        }
     }
 
     public Map<Long, Item> evidence(List<Evidence> rows) {
@@ -186,13 +243,18 @@ public class AssessmentAuditService {
 
     private void record(Assessment assessment, User actor, String action, String targetType, Long targetId,
                         String targetLabel, JsonNode before, JsonNode after) {
+        record(assessment, actor, "RESPONDENT", action, targetType, targetId, targetLabel, before, after);
+    }
+
+    private void record(Assessment assessment, User actor, String role, String action, String targetType, Long targetId,
+                        String targetLabel, JsonNode before, JsonNode after) {
         AssessmentLog entry = new AssessmentLog();
         entry.setAssessmentId(assessment.getId());
         entry.setActorUserId(actor.getId());
         entry.setActorName(actor.getName());
         entry.setActorEmail(actor.getEmail());
-        entry.setActorRole("RESPONDENT");
-        entry.setActorCampaignParticipantId(assessment.getCampaignParticipant() == null ? null : assessment.getCampaignParticipant().getId());
+        entry.setActorRole(role);
+        entry.setActorCampaignParticipantId(!"RESPONDENT".equals(role) || assessment.getCampaignParticipant() == null ? null : assessment.getCampaignParticipant().getId());
         entry.setAction(action);
         entry.setTargetType(targetType);
         entry.setTargetId(targetId);
@@ -211,8 +273,21 @@ public class AssessmentAuditService {
 
     @Transactional(readOnly = true)
     public LogPage scopedLogs(Long assessmentId, int page, List<Long> questionIds, List<Long> practiceIds, Long questionId) {
+        return scopedLogs(assessmentId, page, questionIds, practiceIds, questionId, Category.ALL);
+    }
+
+    @Transactional(readOnly = true)
+    public LogPage logs(Long assessmentId, int page, Category category) {
+        if (category == Category.ALL) return logs(assessmentId, page);
+        var slice = repository.findInScope(assessmentId, List.of(-1L), List.of(-1L), null, false,
+                category.name(), PageRequest.of(page, 50));
+        return new LogPage(slice.getContent(), slice.hasNext());
+    }
+
+    @Transactional(readOnly = true)
+    public LogPage scopedLogs(Long assessmentId, int page, List<Long> questionIds, List<Long> practiceIds, Long questionId, Category category) {
         var slice = repository.findInScope(assessmentId, questionIds.isEmpty() ? List.of(-1L) : questionIds,
-                practiceIds.isEmpty() ? List.of(-1L) : practiceIds, questionId, PageRequest.of(page, 50));
+                practiceIds.isEmpty() ? List.of(-1L) : practiceIds, questionId, true, category.name(), PageRequest.of(page, 50));
         return new LogPage(slice.getContent(), slice.hasNext());
     }
 }

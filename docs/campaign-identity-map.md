@@ -29,7 +29,7 @@ this mapping does not change onboarding policy.
 | Assessment ownership | `backend/src/main/java/com/master_thesis/maturity_assessment/assessments/models/Assessment.java`, `services/AssessmentService.java` | User owns the assessment; campaign assessments additionally reference a campaign and membership. Campaign overloads resolve membership scope, not another authentication type. |
 | Evidence | `backend/src/main/java/com/master_thesis/maturity_assessment/assessments/services/EvidenceService.java`, `AssessmentEvidenceWorkflowService.java` | Campaign overloads check membership; uploader is the membership's normal user. |
 | Frontend | `frontend/src/app/assessment/layout.tsx`, `AssessmentFlow.tsx`, `useAssessmentAutosave.ts`, `assessmentRoutes.ts` | Campaign ID selects the assessment context; normal authentication is still required. Campaign management uses membership/progress DTOs named `CampaignParticipant`. |
-| New audit records | `backend/src/main/java/com/master_thesis/maturity_assessment/assessments/services/AssessmentAuditService.java`, `models/AssessmentLog.java` | `actorUserId` is always the person. `actorCampaignParticipantId` is optional membership context. `actorRole=RESPONDENT` describes the action's role, not a platform account type. |
+| New audit records | `backend/src/main/java/com/master_thesis/maturity_assessment/assessments/services/AssessmentAuditService.java`, `models/AssessmentLog.java` | `actorUserId` is always the person. `actorCampaignParticipantId` is optional membership context. `actorRole` identifies `RESPONDENT` or `EVALUATOR` for the action, not a platform account type. Evaluator records use the reviewer's user ID and do not inherit the respondent's membership ID. |
 
 ## Legacy artifacts and their disposition
 

@@ -113,7 +113,7 @@ class AssessmentAuditIntegrationTest {
     }
 
     @Test
-    void evaluatorEditsDoNotGenerateRespondentEventsAndReadersMustBeAuthorized() throws Exception {
+    void evaluatorEditsHaveTheirOwnRoleAndReadersMustBeAuthorized() throws Exception {
         Fixture f = fixture();
         Long id = assessments.ensureDraftForModel(f.modelId(), f.user()).getId();
         var note = note(f);
@@ -123,13 +123,17 @@ class AssessmentAuditIntegrationTest {
         int count = entries(id, f.user()).size();
         var progress = new ManualEvaluationRequest(); progress.setEvaluatorInsight("Evaluator remarks");
         assessments.saveEvaluationProgress(id, progress, f.user());
-        assertEquals(count, entries(id, f.user()).size());
+        assertEquals(count, entries(id, f.user()).stream().filter(log -> log.getActorRole().equals("RESPONDENT")).count());
         var review = new QuestionEvaluationRequest(); review.setQuestionId(f.questionId());
         review.setValidationStatus("FLAGGED"); review.setReviewerNote("Clarify the policy");
         progress.setQuestionEvaluations(Map.of(f.key(), review));
         assessments.saveEvaluationProgress(id, progress, f.user());
         assessments.sendEvaluationBack(id, new ManualEvaluationRequest(), f.user());
-        assertEquals(count, entries(id, f.user()).size());
+        assertEquals(count, entries(id, f.user()).stream().filter(log -> log.getActorRole().equals("RESPONDENT")).count());
+        var returned = entries(id, f.user()).stream().filter(log -> log.getAction().equals("CHANGES_REQUESTED")).findFirst().orElseThrow();
+        assertEquals("EVALUATOR", returned.getActorRole());
+        assertEquals("PENDING_REVIEW", returned.getBeforeValue().get("status").asText());
+        assertEquals("CHANGES_REQUESTED", returned.getAfterValue().get("status").asText());
         var revision = answers(f, "Corrected answer"); revision.setRespondentUpdatedResponseKeys(Set.of(f.key()));
         workflow.submitAssessment(id, revision, f.user(), List.of(note), List.of(), List.of());
         assertTrue(actions(id, f.user()).containsAll(List.of("ANSWER_CHANGED", "REVIEW_UPDATE_CONFIRMED", "ASSESSMENT_RESUBMITTED")));
@@ -157,6 +161,8 @@ class AssessmentAuditIntegrationTest {
         assertTrue(history.stream().allMatch(log -> log.getActorUserId().equals(f.user().getId())
                 && log.getActorCampaignParticipantId() != null));
         assertEquals("ANSWER_ADDED", history.getFirst().getAction());
+        var milestones = campaignResponses.logs(campaignId, f.user(), 0, null, null, null, null, AssessmentAuditService.Category.LIFECYCLE);
+        assertEquals(List.of("ASSESSMENT_CREATED"), milestones.entries().stream().map(AssessmentLog::getAction).toList());
         var filtered = campaignResponses.logs(campaignId, f.user(), 0, f.questionId());
         assertEquals(1, filtered.entries().size()); assertFalse(filtered.hasMore());
         assertEquals(f.questionId(), filtered.entries().getFirst().getTargetId());
@@ -176,6 +182,9 @@ class AssessmentAuditIntegrationTest {
         var second = assessments.getLogs(id, f.user(), 1);
         assertEquals(50, first.entries().size()); assertTrue(first.hasMore());
         assertEquals(2, second.entries().size()); assertFalse(second.hasMore());
+        var milestones = assessments.getLogs(id, f.user(), 0, null, null, null, null, AssessmentAuditService.Category.LIFECYCLE);
+        assertEquals(List.of("ASSESSMENT_CREATED"), milestones.entries().stream().map(AssessmentLog::getAction).toList());
+        assertFalse(milestones.hasMore());
         assertEquals("Revision 50", first.entries().getFirst().getAfterValue().get("response").asText());
         assertEquals("ASSESSMENT_CREATED", second.entries().getLast().getAction());
         assertTrue(first.entries().getLast().getId() > second.entries().getFirst().getId());
@@ -241,6 +250,88 @@ class AssessmentAuditIntegrationTest {
         workflow.saveMultipartDraft(id, request, f.user(), List.of(linked, sibling), List.of(), List.of());
         var removed = assessments.getLogs(id, f.user(), 0, "D", "M", f.practiceId(), f.questionId()).entries();
         assertTrue(removed.stream().anyMatch(log -> log.getAction().equals("EVIDENCE_REMOVED") && log.getTargetId().equals(general.getEvidenceId())));
+    }
+
+    @Test
+    void evaluatorChangesArePersistedDeduplicatedFilteredAndCompletedOnce() throws Exception {
+        Fixture f = fixture();
+        User evaluator = new TransactionTemplate(transactions).execute(status -> {
+            User user = new User(); user.setEmail("reviewer-" + UUID.randomUUID() + "@example.test");
+            user.setName("Evaluator"); user.setRole(UserRole.CURATOR); return users.saveAndFlush(user);
+        });
+        Long id = assessments.ensureDraftForModel(f.modelId(), f.user()).getId();
+        workflow.submitAssessment(id, answers(f, "Original respondent answer"), f.user(), List.of(note(f)), List.of(), List.of());
+        var review = new QuestionEvaluationRequest(); review.setQuestionId(f.questionId());
+        review.setValidationStatus("ADJUSTED"); review.setManualScore(1.0); review.setReviewerNote("Evidence supports this score");
+        var progress = new ManualEvaluationRequest(); progress.setEvaluatorInsight("Overall remarks"); progress.setQuestionEvaluations(Map.of(f.key(), review));
+        assessments.saveEvaluationProgress(id, progress, evaluator);
+        var evaluatorLogs = entries(id, f.user()).stream().filter(log -> log.getActorRole().equals("EVALUATOR")).toList();
+        assertEquals(2, evaluatorLogs.size());
+        assertTrue(evaluatorLogs.stream().allMatch(log -> log.getActorUserId().equals(evaluator.getId())));
+        int count = entries(id, f.user()).size();
+        assessments.saveEvaluationProgress(id, progress, evaluator);
+        assertEquals(count, entries(id, f.user()).size());
+        review.setReviewerNote(null); review.setValidationStatus("UNKNOWN");
+        assertThrows(ResponseStatusException.class, () -> assessments.saveEvaluationProgress(id, progress, evaluator));
+        assertEquals(count, entries(id, f.user()).size());
+        review.setValidationStatus("ACCEPTED"); progress.setEvaluatorInsight(null);
+        assessments.saveEvaluationProgress(id, progress, evaluator);
+        var filtered = assessments.getLogs(id, f.user(), 0, "D", "M", f.practiceId(), f.questionId()).entries();
+        assertTrue(filtered.stream().anyMatch(log -> log.getAction().equals("QUESTION_REVIEW_CHANGED")));
+        assertFalse(filtered.stream().anyMatch(log -> log.getAction().equals("EVALUATOR_REMARKS_CHANGED")));
+        assertEquals("Original respondent answer", assessments.getAssessmentById(id, f.user()).getQuestionEvaluations().get(f.key()).getResponse());
+        long savedReviewCount = entries(id, f.user()).stream().filter(log -> log.getAction().equals("QUESTION_REVIEW_CHANGED")).count();
+        assessments.finishEvaluation(id, new ManualEvaluationRequest(), evaluator);
+        assertEquals(savedReviewCount, entries(id, f.user()).stream().filter(log -> log.getAction().equals("QUESTION_REVIEW_CHANGED")).count());
+        var completed = entries(id, f.user()).stream().filter(log -> log.getAction().equals("EVALUATION_COMPLETED")).toList();
+        assertEquals(1, completed.size()); assertEquals(evaluator.getId(), completed.getFirst().getActorUserId());
+        assertEquals("COMPLETED", completed.getFirst().getAfterValue().get("status").asText());
+        count = entries(id, f.user()).size();
+        assertThrows(ResponseStatusException.class, () -> assessments.finishEvaluation(id, new ManualEvaluationRequest(), evaluator));
+        assertEquals(count, entries(id, f.user()).size());
+    }
+
+    @Test
+    void lifecycleViewsCoverCreationSubmissionReturnResubmissionAndEvaluation() throws Exception {
+        Fixture f = fixture();
+        Long id = assessments.ensureDraftForModel(f.modelId(), f.user()).getId();
+        assessments.ensureDraftForModel(f.modelId(), f.user());
+        var note = note(f);
+        var submitted = workflow.submitAssessment(id, answers(f, "First answer"), f.user(), List.of(note), List.of(), List.of());
+        note.setEvidenceId(submitted.getEvidence().getFirst().getId());
+        var review = new QuestionEvaluationRequest(); review.setQuestionId(f.questionId()); review.setValidationStatus("FLAGGED"); review.setReviewerNote("Clarify");
+        var progress = new ManualEvaluationRequest(); progress.setQuestionEvaluations(Map.of(f.key(), review));
+        assessments.saveEvaluationProgress(id, progress, f.user());
+        assessments.sendEvaluationBack(id, new ManualEvaluationRequest(), f.user());
+        var revision = answers(f, "Corrected answer"); revision.setRespondentUpdatedResponseKeys(Set.of(f.key()));
+        workflow.submitAssessment(id, revision, f.user(), List.of(note), List.of(), List.of());
+        review.setValidationStatus("ACCEPTED"); review.setManualScore(1.0);
+        assessments.saveEvaluationProgress(id, progress, f.user());
+        assessments.finishEvaluation(id, new ManualEvaluationRequest(), f.user());
+        var lifecycle = assessments.getLogs(id, f.user(), 0, "D", "M", f.practiceId(), f.questionId(), AssessmentAuditService.Category.LIFECYCLE);
+        assertEquals(List.of("EVALUATION_COMPLETED", "ASSESSMENT_RESUBMITTED", "CHANGES_REQUESTED", "ASSESSMENT_SUBMITTED", "ASSESSMENT_CREATED"),
+                lifecycle.entries().stream().map(AssessmentLog::getAction).toList());
+        for (var category : List.of(AssessmentAuditService.Category.RESPONDENT, AssessmentAuditService.Category.EVALUATOR, AssessmentAuditService.Category.EVIDENCE)) {
+            var history = assessments.getLogs(id, f.user(), 0, null, null, null, null, category).entries();
+            assertFalse(history.isEmpty());
+            assertTrue(history.stream().noneMatch(log -> lifecycle.entries().stream().anyMatch(event -> event.getId().equals(log.getId()))));
+            if (category == AssessmentAuditService.Category.EVIDENCE) assertTrue(history.stream().allMatch(log -> log.getTargetType().equals("EVIDENCE")));
+            else assertTrue(history.stream().allMatch(log -> log.getActorRole().equals(category.name())));
+        }
+    }
+
+    @Test
+    void immediateAutomaticSubmissionRecordsCreationAndCompletionWithoutDuplicateTransitions() throws Exception {
+        Fixture f = fixture();
+        new TransactionTemplate(transactions).executeWithoutResult(status -> {
+            var model = models.findById(f.modelId()).orElseThrow(); model.setAutoEvaluated(true);
+        });
+        var submitted = workflow.submitAssessment(answers(f, "Answer"), f.user(), List.of(note(f)), List.of(), List.of(), true);
+        assertEquals("COMPLETED", submitted.getStatus());
+        var lifecycle = assessments.getLogs(submitted.getId(), f.user(), 0, null, null, null, null, AssessmentAuditService.Category.LIFECYCLE).entries();
+        assertEquals(List.of("ASSESSMENT_SUBMITTED", "ASSESSMENT_CREATED"), lifecycle.stream().map(AssessmentLog::getAction).toList());
+        assertEquals("DRAFT", lifecycle.getLast().getAfterValue().get("status").asText());
+        assertEquals("COMPLETED", lifecycle.getFirst().getAfterValue().asText());
     }
 
     private List<AssessmentLog> entries(Long id, User user) { return assessments.getLogs(id, user, 0).entries(); }

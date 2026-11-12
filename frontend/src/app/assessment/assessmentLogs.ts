@@ -1,10 +1,11 @@
 import type { AssessmentLog, Question } from "@/api/types";
 
 export function describeAssessmentLog(log: AssessmentLog): string {
-  const actor = log.actorName?.trim() || log.actorEmail || "Respondent";
+  const actor = log.actorName?.trim() || log.actorEmail || (log.actorRole === "EVALUATOR" ? "Evaluator" : "Respondent");
   const target = `“${log.targetLabel}”`;
   switch (log.action) {
-    case "ASSESSMENT_CREATED": return `${actor} started the assessment.`;
+    case "ASSESSMENT_STATUS_CHANGED": return `${actor} changed the assessment status.`;
+    case "ASSESSMENT_CREATED": return `${actor} created the assessment.`;
     case "ASSESSMENT_SUBMITTED": return `${actor} submitted the assessment.`;
     case "ASSESSMENT_RESUBMITTED": return `${actor} resubmitted the assessment after making the requested changes.`;
     case "ASSESSMENT_RESET": return `${actor} reset the draft assessment.`;
@@ -14,6 +15,10 @@ export function describeAssessmentLog(log: AssessmentLog): string {
     case "ANSWER_REMOVED": return `${actor} cleared the answer to ${target}.`;
     case "JUSTIFICATION_CHANGED": return `${actor} changed the justification for ${target}.`;
     case "REVIEW_UPDATE_CONFIRMED": return `${actor} marked the requested changes to ${target} as addressed.`;
+    case "QUESTION_REVIEW_CHANGED": return `${actor} updated the review of ${target}.`;
+    case "EVALUATOR_REMARKS_CHANGED": return `${actor} changed the overall evaluation remarks.`;
+    case "EVALUATION_COMPLETED": return `${actor} completed the evaluation.`;
+    case "CHANGES_REQUESTED": return `${actor} returned the assessment for corrections.`;
     case "EVIDENCE_ADDED": return `${actor} added evidence for ${target}.`;
     case "EVIDENCE_CHANGED": return `${actor} updated evidence for ${target}.`;
     case "EVIDENCE_REMOVED": return `${actor} removed evidence from ${target}.`;
@@ -41,6 +46,17 @@ function displayAnswer(value: Record<string, unknown>, question?: Question): str
 /** Display saved values without exposing the audit storage schema in the UI. */
 export function formatLogValue(log: AssessmentLog, value: unknown, question?: Question): string {
   if (value == null) return "None";
+  if (log.action === "EVALUATOR_REMARKS_CHANGED") return String(value);
+  if (log.action === "QUESTION_REVIEW_CHANGED" && typeof value === "object") {
+    const review = value as Record<string, unknown>;
+    const labels: Record<string, string> = { ACCEPTED: "Accepted", ADJUSTED: "Adjusted", FLAGGED: "Changes requested" };
+    return [
+      `Review: ${labels[String(review.validationStatus)] || "Not reviewed"}`,
+      review.manualScore == null ? "No manual score" : `Manual score: ${review.manualScore}`,
+      review.reviewerNote ? `Reviewer note: ${review.reviewerNote}` : "No reviewer note",
+      review.respondentUpdated ? "Respondent marked correction as addressed" : null,
+    ].filter(Boolean).join("\n");
+  }
   if (log.action === "REVIEW_UPDATE_CONFIRMED") return value ? "Marked as addressed" : "Awaiting respondent update";
   if (log.targetType === "QUESTION" && typeof value === "object") {
     const response = value as Record<string, unknown>;
@@ -67,14 +83,19 @@ export function formatLogValue(log: AssessmentLog, value: unknown, question?: Qu
   if (typeof value === "object") {
     const state = value as Record<string, unknown>;
     return [state.status && (statusLabels[String(state.status)] || String(state.status)),
-      state.referenceDate && `Reference date: ${state.referenceDate}`].filter(Boolean).join("\n");
+      state.referenceDate && `Reference date: ${state.referenceDate}`,
+      state.overallPercentageScore != null && `Overall score: ${state.overallPercentageScore}%`,
+      state.overallMaturityLevel && `Maturity level: ${state.overallMaturityLevel}`].filter(Boolean).join("\n");
   }
   return String(value);
 }
 
 export function assessmentLogAction(action: string): string {
   const labels: Record<string, string> = {
-    ASSESSMENT_CREATED: "Assessment started", ASSESSMENT_SUBMITTED: "Assessment submitted",
+    ASSESSMENT_STATUS_CHANGED: "Status changed",
+    QUESTION_REVIEW_CHANGED: "Question review updated", EVALUATOR_REMARKS_CHANGED: "Evaluation remarks changed",
+    EVALUATION_COMPLETED: "Evaluation completed", CHANGES_REQUESTED: "Corrections requested",
+    ASSESSMENT_CREATED: "Assessment created", ASSESSMENT_SUBMITTED: "Assessment submitted",
     ASSESSMENT_RESUBMITTED: "Assessment resubmitted", ASSESSMENT_RESET: "Draft reset",
     REFERENCE_DATE_CHANGED: "Reference date changed", ANSWER_ADDED: "Answer added",
     ANSWER_CHANGED: "Answer changed", ANSWER_REMOVED: "Answer cleared",
@@ -143,4 +164,25 @@ export function logEntryFilters(log: AssessmentLog, model: import("@/api/types")
     }
   }
   return null;
+}
+
+export const logActivityViews = [
+  { value: "ALL", label: "All activity" }, { value: "LIFECYCLE", label: "Lifecycle" },
+  { value: "RESPONDENT", label: "Respondent changes" }, { value: "EVALUATOR", label: "Evaluator changes" },
+  { value: "EVIDENCE", label: "Evidence" },
+] as const;
+export type LogActivityView = typeof logActivityViews[number]["value"];
+const lifecycleActions = new Set(["ASSESSMENT_CREATED", "ASSESSMENT_SUBMITTED", "ASSESSMENT_RESUBMITTED",
+  "ASSESSMENT_RESET", "EVALUATION_COMPLETED", "CHANGES_REQUESTED", "ASSESSMENT_STATUS_CHANGED"]);
+export function isLifecycleLog(log: AssessmentLog): boolean { return lifecycleActions.has(log.action); }
+
+export function logStatusTransition(log: AssessmentLog): string {
+  const labels: Record<string, string> = { DRAFT: "Draft", PENDING_REVIEW: "Pending review", COMPLETED: "Completed", CHANGES_REQUESTED: "Changes requested" };
+  const status = (value: unknown): string => {
+    const code = typeof value === "string" ? value : value && typeof value === "object" && "status" in value ? String(value.status) : "";
+    return labels[code] || code;
+  };
+  const before = status(log.beforeValue), after = status(log.afterValue);
+  if (log.action === "ASSESSMENT_CREATED") return after ? `Created · ${after}` : "Created";
+  return before && after && before !== after ? `${before} → ${after}` : after || before || "Lifecycle";
 }

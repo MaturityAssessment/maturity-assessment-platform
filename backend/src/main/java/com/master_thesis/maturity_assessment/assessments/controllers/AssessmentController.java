@@ -53,11 +53,12 @@ public class AssessmentController {
     public ResponseEntity<AssessmentAuditService.LogPage> getLogs(
             @PathVariable Long id, @RequestParam(defaultValue = "0") int page, @RequestParam(required = false) Long questionId,
             @RequestParam(required = false) String dimensionId, @RequestParam(required = false) String moduleCode,
-            @RequestParam(required = false) Long practiceId) {
+            @RequestParam(required = false) Long practiceId,
+            @RequestParam(defaultValue = "ALL") AssessmentAuditService.Category category) {
         if (page < 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page must be non-negative.");
         if (questionId != null && questionId <= 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Question ID must be positive.");
         return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore())
-                .body(assessmentService.getLogs(id, getCurrentUser(), page, dimensionId, moduleCode, practiceId, questionId));
+                .body(assessmentService.getLogs(id, getCurrentUser(), page, dimensionId, moduleCode, practiceId, questionId, category));
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

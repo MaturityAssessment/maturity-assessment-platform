@@ -145,6 +145,56 @@ class AssessmentAuditServiceTest {
         assertEquals("DRAFT", entry().getBeforeValue().asText()); assertEquals("PENDING_REVIEW", entry().getAfterValue().asText());
     }
 
+    @Test
+    void evaluatorReviewUsesActualActorAndKeepsIndependentSnapshots() {
+        var row = row(1); row.setValidationStatus(QuestionEvaluationStatus.ACCEPTED);
+        row.setManualScore(0.5); row.setReviewerNote("Original note");
+        var before = audit.evaluationState(assessment, List.of(row));
+        row.setValidationStatus(QuestionEvaluationStatus.ADJUSTED); row.setManualScore(0.75); row.setReviewerNote("Revised note");
+        User evaluator = new User(); evaluator.setId(99L); evaluator.setName("Reviewer");
+        CampaignParticipant membership = new CampaignParticipant(); membership.setId(41L); assessment.setCampaignParticipant(membership);
+        audit.evaluationChanged(assessment, evaluator, before, List.of(row), null);
+        var log = entry();
+        assertEquals("EVALUATOR", log.getActorRole()); assertEquals(99L, log.getActorUserId());
+        assertNull(log.getActorCampaignParticipantId()); assertEquals("QUESTION_REVIEW_CHANGED", log.getAction());
+        assertEquals("ACCEPTED", log.getBeforeValue().get("validationStatus").asText());
+        assertEquals("Original note", log.getBeforeValue().get("reviewerNote").asText());
+        assertEquals(0.75, log.getAfterValue().get("manualScore").asDouble());
+        clearInvocations(logs);
+        before = audit.evaluationState(assessment, List.of(row));
+        audit.evaluationChanged(assessment, evaluator, before, List.of(row), null);
+        verifyNoInteractions(logs);
+    }
+
+    @Test
+    void evaluatorRemarksCanBeClearedAndCompletionRecordsResultState() {
+        assessment.setStatus(AssessmentStatus.PENDING_REVIEW); assessment.setEvaluatorInsight("Previous remarks");
+        var before = audit.evaluationState(assessment, List.of());
+        assessment.setEvaluatorInsight(null); assessment.setStatus(AssessmentStatus.COMPLETED); assessment.setOverallPercentageScore(80.0);
+        audit.evaluationChanged(assessment, assessment.getUser(), before, List.of(), "EVALUATION_COMPLETED");
+        var captor = ArgumentCaptor.forClass(AssessmentLog.class);
+        verify(logs, times(2)).save(captor.capture());
+        var remarks = captor.getAllValues().get(0);
+        assertEquals("EVALUATOR_REMARKS_CHANGED", remarks.getAction()); assertTrue(remarks.getAfterValue().isNull());
+        var completed = captor.getAllValues().get(1);
+        assertEquals("EVALUATION_COMPLETED", completed.getAction());
+        assertEquals("PENDING_REVIEW", completed.getBeforeValue().get("status").asText());
+        assertEquals(80.0, completed.getAfterValue().get("overallPercentageScore").asDouble());
+    }
+
+    @Test
+    void unlabelledStatusTransitionsAreRecordedAndNoOpSavesAreQuiet() {
+        var before = audit.state(assessment);
+        assessment.setStatus(AssessmentStatus.PENDING_REVIEW);
+        audit.assessmentChanged(assessment, assessment.getUser(), before, null);
+        assertEquals("ASSESSMENT_STATUS_CHANGED", entry().getAction());
+        assertEquals("DRAFT", entry().getBeforeValue().asText());
+        assertEquals("PENDING_REVIEW", entry().getAfterValue().asText());
+        clearInvocations(logs);
+        audit.assessmentChanged(assessment, assessment.getUser(), audit.state(assessment), null);
+        verifyNoInteractions(logs);
+    }
+
     private QuestionEvaluation row(Object answer) {
         QuestionEvaluation row = new QuestionEvaluation(); row.setQuestionId(1001L); row.setResponseKey("D1_M1_101_1001");
         row.setResponse(mapper.valueToTree(answer)); return row;

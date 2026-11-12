@@ -87,3 +87,30 @@ test("row shortcuts select the full question hierarchy or the evidence practice"
   assert.equal(logEntryFilters(log, null), null);
   assert.equal(logEntryFilters({ ...log, targetId: 9999 }, model), null);
 });
+
+test("evaluator events and before/after reviews use readable descriptions", async () => {
+  const { assessmentLogAction } = await import("../../../../src/app/assessment/assessmentLogs.ts");
+  const review = { ...log, actorRole: "EVALUATOR", action: "QUESTION_REVIEW_CHANGED" };
+  assert.equal(describeAssessmentLog(review), "Maria updated the review of “Q1 — Is a policy in place?”.");
+  assert.equal(formatLogValue(review, { validationStatus: "FLAGGED", manualScore: null, reviewerNote: "Clarify the policy" }),
+    "Review: Changes requested\nNo manual score\nReviewer note: Clarify the policy");
+  assert.equal(formatLogValue(review, { validationStatus: "ACCEPTED", manualScore: 1, reviewerNote: null }),
+    "Review: Accepted\nManual score: 1\nNo reviewer note");
+  for (const action of ["QUESTION_REVIEW_CHANGED", "EVALUATOR_REMARKS_CHANGED", "EVALUATION_COMPLETED", "CHANGES_REQUESTED"]) {
+    assert.ok(!describeAssessmentLog({ ...review, action }).includes("updated “"));
+    assert.notEqual(assessmentLogAction(action), "Item updated");
+  }
+});
+
+test("lifecycle milestones distinguish creation, status changes, and ordinary edits", async () => {
+  const { isLifecycleLog, logStatusTransition, logActivityViews } = await import("../../../../src/app/assessment/assessmentLogs.ts");
+  assert.equal(isLifecycleLog(log), false);
+  const created = { ...log, action: "ASSESSMENT_CREATED", beforeValue: null, afterValue: { status: "DRAFT" } };
+  assert.equal(isLifecycleLog(created), true);
+  assert.equal(logStatusTransition(created), "Created · Draft");
+  assert.equal(logStatusTransition({ ...log, beforeValue: "DRAFT", afterValue: "PENDING_REVIEW" }), "Draft → Pending review");
+  assert.equal(logStatusTransition({ ...log, beforeValue: { status: "PENDING_REVIEW" }, afterValue: { status: "CHANGES_REQUESTED" } }), "Pending review → Changes requested");
+  assert.equal(logStatusTransition({ ...log, action: "ASSESSMENT_RESET", beforeValue: "DRAFT", afterValue: "DRAFT" }), "Draft");
+  assert.equal(isLifecycleLog({ ...log, action: "ASSESSMENT_STATUS_CHANGED" }), true);
+  assert.equal(logActivityViews.length, 5);
+});

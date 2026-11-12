@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronRight, FileClock, Filter, Loader2 } from "lucide-react";
 import apiClient from "@/api/axios";
 import type { AssessmentLog, AssessmentLogPage, MaturityModel } from "@/api/types";
-import { assessmentLogAction, assessmentLogTarget, buildLogQuestions, describeAssessmentLog, formatLogValue, changeLogFilter, logEntryFilters, emptyLogFilters, logFilterOptions, type LogFilters, type LogQuestion } from "./assessmentLogs";
+import { assessmentLogAction, assessmentLogTarget, buildLogQuestions, describeAssessmentLog, formatLogValue, changeLogFilter, logEntryFilters, emptyLogFilters, logFilterOptions, type LogFilters, type LogQuestion, logActivityViews, isLifecycleLog, logStatusTransition, type LogActivityView } from "./assessmentLogs";
 
 type Props = { assessmentId?: number; campaignId?: string; model: MaturityModel | null };
 
 export default function AssessmentLogsTab({ assessmentId, campaignId, model }: Props) {
+  const [category, setCategory] = useState<LogActivityView>("ALL");
   const [filters, setFilters] = useState<LogFilters>(emptyLogFilters);
   const options = logFilterOptions(model, filters);
   const filterFields = [
@@ -28,6 +29,16 @@ export default function AssessmentLogsTab({ assessmentId, campaignId, model }: P
             <p className="mt-1 text-xs text-slate-500">Newest first · Local time · Expand a row for details</p>
           </div>
         </div>
+        <nav aria-label="Activity type" className="flex flex-wrap gap-1 border-b border-slate-200 px-4 py-2 sm:px-6">
+          {logActivityViews.map(view => <button key={view.value} type="button" aria-pressed={category === view.value}
+            onClick={() => setCategory(view.value)}
+            className={`rounded-lg px-3 py-2 text-xs font-semibold ${category === view.value ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-50"}`}>
+            {view.label}
+          </button>)}
+        </nav>
+        {category === "LIFECYCLE" ? <p className="border-b border-slate-200 bg-indigo-50/40 px-4 py-3 text-xs text-slate-600 sm:px-6">
+          Creation and status milestones for the whole assessment. Question filters apply in the other activity views.
+        </p> : (
         <div className="grid gap-3 border-b border-slate-200 bg-slate-50/60 px-4 py-3 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
           {filterFields.map(field => <div key={field.key} className="min-w-0">
             <label htmlFor={`log-filter-${field.key}`} className="mb-1 block text-xs font-medium text-slate-600">{field.label}</label>
@@ -40,16 +51,18 @@ export default function AssessmentLogsTab({ assessmentId, campaignId, model }: P
           </div>)}
           {filters.dimensionId && <button type="button" onClick={() => setFilters(emptyLogFilters)} className="w-fit text-xs font-semibold text-indigo-700 hover:underline">Clear filters</button>}
         </div>
-        <LogEntries key={`${assessmentId}-${campaignId}-${JSON.stringify(filters)}`} assessmentId={assessmentId} campaignId={campaignId}
-          filters={filters} questions={questions} model={model} onFilter={setFilters} />
+        )}
+        <LogEntries key={`${assessmentId}-${campaignId}-${category}-${JSON.stringify(filters)}`} assessmentId={assessmentId} campaignId={campaignId}
+          category={category} filters={category === "LIFECYCLE" ? emptyLogFilters : filters} questions={questions} model={model}
+          onFilter={next => { setFilters(next); }} />
       </section>
     </main>
   );
 }
 
-function LogEntries({ assessmentId, campaignId, filters, questions, model, onFilter }: {
+function LogEntries({ assessmentId, campaignId, filters, questions, model, onFilter, category }: {
   assessmentId?: number; campaignId?: string; filters: LogFilters; questions: Map<number, LogQuestion>;
-  model: MaturityModel | null; onFilter: (filters: LogFilters) => void;
+  category: LogActivityView; model: MaturityModel | null; onFilter: (filters: LogFilters) => void;
 }) {
   const { dimensionId, moduleCode, practiceId, questionId } = filters;
   const [entries, setEntries] = useState<AssessmentLog[]>([]);
@@ -65,7 +78,7 @@ function LogEntries({ assessmentId, campaignId, filters, questions, model, onFil
     setLoading(true);
     setError(false);
     const url = campaignId ? `/api/v1/campaign-response/${campaignId}/logs` : `/api/v1/assessments/${assessmentId}/logs`;
-    apiClient.get<AssessmentLogPage>(url, { params: { page, dimensionId: dimensionId || undefined, moduleCode: moduleCode || undefined, practiceId: practiceId || undefined, questionId: questionId || undefined }, signal: controller.signal })
+    apiClient.get<AssessmentLogPage>(url, { params: { page, category, dimensionId: dimensionId || undefined, moduleCode: moduleCode || undefined, practiceId: practiceId || undefined, questionId: questionId || undefined }, signal: controller.signal })
       .then(({ data }) => {
         if (controller.signal.aborted) return;
         setEntries(current => page === 0 ? data.entries :
@@ -75,7 +88,7 @@ function LogEntries({ assessmentId, campaignId, filters, questions, model, onFil
       .catch(() => { if (!controller.signal.aborted) setError(true); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [assessmentId, campaignId, dimensionId, moduleCode, practiceId, questionId, page, retry]);
+  }, [assessmentId, campaignId, category, dimensionId, moduleCode, practiceId, questionId, page, retry]);
 
   return <div aria-busy={loading}>
     {!loading && !error && entries.length === 0 && (
@@ -85,26 +98,30 @@ function LogEntries({ assessmentId, campaignId, filters, questions, model, onFil
     )}
     <ol className="divide-y divide-slate-100">
       {entries.map(entry => {
-        const target = assessmentLogTarget(entry, questions);
-        const actor = entry.actorName?.trim() || entry.actorEmail || "Respondent";
+        const milestone = isLifecycleLog(entry);
+        const target = milestone ? logStatusTransition(entry) : assessmentLogTarget(entry, questions);
+        const actor = entry.actorName?.trim() || entry.actorEmail || (entry.actorRole === "EVALUATOR" ? "Evaluator" : "Respondent");
+        const role = entry.actorRole === "EVALUATOR" ? "Evaluator" : "Respondent";
         const fullTime = new Date(entry.occurredAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "long" });
         const shortcut = logEntryFilters(entry, model);
         const filterLabel = entry.targetType === "QUESTION" ? "Filter by this question" : "Filter by this practice";
-        return <li key={entry.id} className="relative">
+        return <li key={entry.id} className={`relative ${milestone ? "border-l-2 border-indigo-400 bg-indigo-50/40" : ""}`}>
           <details className="group">
-            <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto_16px] items-center gap-x-3 gap-y-1 pl-4 pr-14 py-2.5 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600 lg:grid-cols-[150px_minmax(130px,1fr)_minmax(180px,1.5fr)_minmax(80px,0.7fr)_16px] sm:pl-6 sm:pr-16 xl:pr-52 [&::-webkit-details-marker]:hidden">
+            <summary className={`grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto_16px] items-center gap-x-3 gap-y-1 pl-4 pr-14 py-2.5 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600 sm:pl-6 sm:pr-16 [&::-webkit-details-marker]:hidden ${milestone
+              ? "lg:grid-cols-[150px_minmax(220px,1.5fr)_minmax(120px,1fr)_minmax(80px,0.7fr)_16px] xl:pr-6"
+              : "lg:grid-cols-[150px_minmax(130px,1fr)_minmax(180px,1.5fr)_minmax(80px,0.7fr)_16px] xl:pr-52"}`}>
               <time dateTime={entry.occurredAt} title={fullTime} className="text-xs tabular-nums text-slate-500 lg:col-start-1 lg:row-start-1">
                 {new Date(entry.occurredAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
               </time>
-              <span title={target} className="col-start-1 row-start-2 truncate font-mono text-xs font-medium text-indigo-700 lg:col-start-2 lg:row-start-1">{target}</span>
+              <span title={target} className={`col-start-1 row-start-2 text-xs font-medium text-indigo-700 lg:col-start-2 lg:row-start-1 ${milestone ? "w-fit max-w-full rounded bg-indigo-100 px-1.5 py-0.5" : "truncate font-mono"}`}>{target}</span>
               <span title={assessmentLogAction(entry.action)} className="col-start-2 row-start-2 max-w-36 lg:max-w-none truncate text-xs font-medium text-slate-800 lg:col-start-3 lg:row-start-1">{assessmentLogAction(entry.action)}</span>
-              <span title={actor} className="col-start-2 row-start-1 max-w-32 truncate text-xs text-slate-500 lg:col-start-4 lg:row-start-1 lg:max-w-none">{actor}</span>
+              <span title={`${actor} · ${role}`} className="col-start-2 row-start-1 max-w-32 truncate text-xs text-slate-500 lg:col-start-4 lg:row-start-1 lg:max-w-none">{actor}</span>
               <ChevronRight className="col-start-3 row-start-1 h-4 w-4 justify-self-end text-slate-400 transition-transform group-open:rotate-90 lg:col-start-5" aria-hidden="true" />
             </summary>
             <div className="border-t border-slate-100 bg-slate-50 px-4 py-4 sm:px-6">
               <p className="mb-1 break-words font-mono text-xs font-medium text-indigo-700">{target}</p>
               <p className="break-words text-sm leading-6 text-slate-800">{describeAssessmentLog(entry)}</p>
-              <p className="mt-1 text-xs text-slate-500">{fullTime}{entry.actorEmail ? ` · ${entry.actorEmail}` : ""}</p>
+              <p className="mt-1 text-xs text-slate-500">{fullTime} · {role}{entry.actorEmail ? ` · ${entry.actorEmail}` : ""}</p>
               <dl className="mt-3 grid gap-4 sm:grid-cols-2">
                 {([['Before', entry.beforeValue], ['After', entry.afterValue]] as const).map(([label, value]) => (
                   <div key={label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-3">
