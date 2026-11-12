@@ -84,6 +84,7 @@ public class AssessmentService {
     private final MaturityScoringService maturityScoringService;
     private final ObjectMapper objectMapper;
     private final EvidenceLifecycleService evidenceLifecycleService;
+    private final AssessmentAuditService auditService;
 
     // Inner class to store question metadata
     private static class QuestionInfo {
@@ -636,6 +637,7 @@ public class AssessmentService {
         Assessment assessment = targetDraft != null
                 ? targetDraft
                 : getOrCreateDraftAssessment(user, request.getMaturityModelId());
+        var auditBefore = auditService.state(assessment);
         assessment.setOverallAverage(overallAverage);
         assessment.setOverallPercentageScore(overallPercentage);
         assessment.setOverallMaturityLevel(overallMaturityLevelName);
@@ -646,6 +648,7 @@ public class AssessmentService {
         populateAssessmentRequestFields(assessment, request, user, campaignParticipant);
 
         Assessment savedAssessment = assessmentRepository.save(assessment);
+        auditService.assessmentChanged(savedAssessment, savedAssessment.getUser(), auditBefore, null);
         synchronizeQuestionResponses(
                 savedAssessment,
                 request,
@@ -665,6 +668,9 @@ public class AssessmentService {
         dimensionResults.forEach(result -> result.setAssessment(savedAssessment));
         dimensionResultRepository.saveAll(dimensionResults);
 
+        auditService.assessmentChanged(savedAssessment, savedAssessment.getUser(),
+                new AssessmentAuditService.State(false, savedAssessment.getReferenceDate(), auditBefore.status()),
+                resubmission ? "ASSESSMENT_RESUBMITTED" : "ASSESSMENT_SUBMITTED");
         AssessmentResponse created = convertToResponse(savedAssessment, dimensionResults);
         enrichModelMetadata(created);
         return created;
@@ -675,10 +681,12 @@ public class AssessmentService {
         validateDraftRequest(request);
 
         Assessment assessment = getOrCreateDraftAssessment(user, request.getMaturityModelId());
+        var auditBefore = auditService.state(assessment);
         populateAssessmentRequestFields(assessment, request, user, null);
         initializeDraftState(assessment);
 
         Assessment savedAssessment = assessmentRepository.save(assessment);
+        auditService.assessmentChanged(savedAssessment, savedAssessment.getUser(), auditBefore, null);
         synchronizeQuestionResponses(savedAssessment, request, false, false);
         AssessmentResponse response = convertToResponse(savedAssessment, List.of());
         enrichModelMetadata(response);
@@ -707,7 +715,10 @@ public class AssessmentService {
             created.setUser(lockedUser);
             created.setMaturityModelId(maturityModelId);
             initializeDraftState(created);
-            return assessmentRepository.saveAndFlush(created);
+            var auditBefore = auditService.state(created);
+            Assessment saved = assessmentRepository.saveAndFlush(created);
+            auditService.assessmentChanged(saved, lockedUser, auditBefore, null);
+            return saved;
         });
 
         AssessmentResponse response = convertToResponse(assessment, List.of());
@@ -731,7 +742,9 @@ public class AssessmentService {
             assessment.setCampaignParticipant(participant);
             assessment.setMaturityModelId(participant.getCampaign().getMaturityModel().getId());
             initializeDraftState(assessment);
+            var auditBefore = auditService.state(assessment);
             assessment = assessmentRepository.saveAndFlush(assessment);
+            auditService.assessmentChanged(assessment, participant.getUser(), auditBefore, null);
             participant.setAssessment(assessment);
         }
 
@@ -759,11 +772,13 @@ public class AssessmentService {
             validateAcceptedResponsesUnchanged(assessment, request);
         }
 
+        var auditBefore = auditService.state(assessment);
         populateAssessmentRequestFields(assessment, request, assessment.getUser(), null);
         if (!changesRequested) {
             initializeDraftState(assessment);
         }
         Assessment savedAssessment = assessmentRepository.save(assessment);
+        auditService.assessmentChanged(savedAssessment, savedAssessment.getUser(), auditBefore, null);
         synchronizeQuestionResponses(
                 savedAssessment,
                 request,
@@ -803,11 +818,13 @@ public class AssessmentService {
             validateAcceptedResponsesUnchanged(assessment, request);
         }
 
+        var auditBefore = auditService.state(assessment);
         populateAssessmentRequestFields(assessment, request, null, participant);
         if (!changesRequested) {
             initializeDraftState(assessment);
         }
         Assessment savedAssessment = assessmentRepository.save(assessment);
+        auditService.assessmentChanged(savedAssessment, savedAssessment.getUser(), auditBefore, null);
         synchronizeQuestionResponses(savedAssessment, request, false, changesRequested);
         if (changesRequested) {
             applyRespondentUpdateMarkers(savedAssessment, request, false);
@@ -820,6 +837,8 @@ public class AssessmentService {
     @Transactional
     public AssessmentResponse resetDraft(Long draftId, User user) {
         Assessment assessment = requireOwnedDraftForUpdate(draftId, user);
+        var auditBefore = auditService.state(assessment);
+        var previousResponses = auditService.responses(questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(draftId));
         dimensionResultRepository.deleteByAssessmentId(draftId);
         questionEvaluationRepository.deleteByAssessmentId(draftId);
 
@@ -827,6 +846,8 @@ public class AssessmentService {
         initializeDraftState(assessment);
 
         Assessment savedAssessment = assessmentRepository.save(assessment);
+        auditService.responsesChanged(savedAssessment, previousResponses, List.of());
+        auditService.assessmentChanged(savedAssessment, user, auditBefore, "ASSESSMENT_RESET");
         AssessmentResponse response = convertToResponse(savedAssessment, List.of());
         enrichModelMetadata(response);
         return response;
@@ -977,6 +998,7 @@ public class AssessmentService {
         Map<String, QuestionInfo> metadata = loadQuestionMetadata(request.getMaturityModelId());
         List<QuestionEvaluation> existingRows =
                 questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(assessment.getId());
+        var previousResponses = auditService.responses(existingRows);
         Map<String, QuestionEvaluation> existingByKey = existingRows.stream()
                 .collect(Collectors.toMap(
                         QuestionEvaluation::getResponseKey,
@@ -1054,6 +1076,12 @@ public class AssessmentService {
         if (!synchronizedRows.isEmpty()) {
             questionEvaluationRepository.saveAll(synchronizedRows);
         }
+        List<QuestionEvaluation> remaining = new ArrayList<>(existingRows);
+        remaining.removeAll(removedRows);
+        for (QuestionEvaluation row : synchronizedRows) {
+            if (!remaining.contains(row)) remaining.add(row);
+        }
+        auditService.responsesChanged(assessment, previousResponses, remaining);
     }
 
     private String normalizeRespondentJustification(String justification) {
@@ -1193,6 +1221,7 @@ public class AssessmentService {
         for (QuestionEvaluation row : rows) {
             if (updatedKeys.contains(row.getResponseKey())
                     && row.getValidationStatus() != QuestionEvaluationStatus.ACCEPTED) {
+                auditService.respondentUpdateMarked(assessment, row);
                 row.setRespondentUpdated(true);
             }
             if (finalizeResubmission
@@ -1384,6 +1413,22 @@ public class AssessmentService {
         // Allow CURATOR and ADMIN to access any assessment, regular users can only access their own
         boolean isCuratorOrAdmin = RoleUtils.hasRequiredRole(user.getRole(), UserRole.CURATOR);
         
+        Assessment assessment = requireReadableAssessment(id, user);
+
+        // Include user info if accessed by CURATOR/ADMIN
+        if (isCuratorOrAdmin) {
+            AssessmentResponse response = convertToResponseWithUserInfo(assessment);
+            enrichModelMetadata(response);
+            return response;
+        }
+
+        AssessmentResponse response = convertToResponse(assessment);
+        enrichModelMetadata(response);
+        return response;
+    }
+
+    private Assessment requireReadableAssessment(Long id, User user) {
+        boolean isCuratorOrAdmin = RoleUtils.hasRequiredRole(user.getRole(), UserRole.CURATOR);
         Assessment assessment;
         if (isCuratorOrAdmin) {
             // Load with user info for CURATOR/ADMIN
@@ -1400,16 +1445,68 @@ public class AssessmentService {
             }
         }
 
-        // Include user info if accessed by CURATOR/ADMIN
-        if (isCuratorOrAdmin) {
-            AssessmentResponse response = convertToResponseWithUserInfo(assessment);
-            enrichModelMetadata(response);
-            return response;
-        }
+        return assessment;
+    }
 
-        AssessmentResponse response = convertToResponse(assessment);
-        enrichModelMetadata(response);
-        return response;
+    @Transactional(readOnly = true)
+    public AssessmentAuditService.LogPage getLogs(Long id, User user, int page) {
+        return getLogs(id, user, page, null);
+    }
+
+    @Transactional(readOnly = true)
+    public AssessmentAuditService.LogPage getLogs(Long id, User user, int page, Long questionId) {
+        return filteredLogs(requireReadableAssessment(id, user), page, null, null, null, questionId);
+    }
+
+    @Transactional(readOnly = true)
+    public AssessmentAuditService.LogPage getCampaignLogs(CampaignParticipant participant, int page) {
+        return getCampaignLogs(participant, page, null);
+    }
+
+    @Transactional(readOnly = true)
+    public AssessmentAuditService.LogPage getCampaignLogs(CampaignParticipant participant, int page, Long questionId) {
+        if (participant.getAssessment() == null) return new AssessmentAuditService.LogPage(List.of(), false);
+        return filteredLogs(participant.getAssessment(), page, null, null, null, questionId);
+    }
+
+    @Transactional(readOnly = true)
+    public AssessmentAuditService.LogPage getLogs(Long id, User user, int page,
+            String dimensionId, String moduleCode, Long practiceId, Long questionId) {
+        return filteredLogs(requireReadableAssessment(id, user), page, dimensionId, moduleCode, practiceId, questionId);
+    }
+
+    @Transactional(readOnly = true)
+    public AssessmentAuditService.LogPage getCampaignLogs(CampaignParticipant participant, int page,
+            String dimensionId, String moduleCode, Long practiceId, Long questionId) {
+        if (participant.getAssessment() == null) return new AssessmentAuditService.LogPage(List.of(), false);
+        return filteredLogs(participant.getAssessment(), page, dimensionId, moduleCode, practiceId, questionId);
+    }
+
+    private AssessmentAuditService.LogPage filteredLogs(Assessment assessment, int page,
+            String dimensionId, String moduleCode, Long practiceId, Long questionId) {
+        if (dimensionId == null && moduleCode == null && practiceId == null && questionId == null)
+            return auditService.logs(assessment.getId(), page);
+        if ((moduleCode != null && dimensionId == null) || (practiceId != null && moduleCode == null))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select the parent dimension and module first.");
+        MaturityModel model = maturityModelRepository.findById(assessment.getMaturityModelId())
+                .orElseThrow(() -> new ResourceNotFoundException("Maturity model not found"));
+        List<Long> questions = new ArrayList<>();
+        List<Long> practices = new ArrayList<>();
+        for (Dimension dimension : Optional.ofNullable(model.getDimensions()).orElse(List.of())) {
+            if (dimensionId != null && !dimensionId.equals(dimension.getDimensionId())) continue;
+            for (Module module : Optional.ofNullable(dimension.getModules()).orElse(List.of())) {
+                if (moduleCode != null && !moduleCode.equals(module.getCode())) continue;
+                for (Practice practice : Optional.ofNullable(module.getPractices()).orElse(List.of())) {
+                    if (practiceId != null && !practiceId.equals(practice.getId())) continue;
+                    var matching = Optional.ofNullable(practice.getQuestions()).orElse(List.of()).stream()
+                            .filter(q -> questionId == null || questionId.equals(q.getId())).toList();
+                    if (questionId != null && matching.isEmpty()) continue;
+                    practices.add(practice.getId());
+                    matching.forEach(q -> questions.add(q.getId()));
+                }
+            }
+        }
+        return auditService.scopedLogs(assessment.getId(), page, questions, practices, questionId);
     }
 
     public List<AssessmentResponse> getPendingReviewAssessments() {

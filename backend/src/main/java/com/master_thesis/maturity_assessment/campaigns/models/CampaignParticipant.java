@@ -25,6 +25,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.Instant;
 import java.util.Locale;
 
+/** Campaign membership for an existing User; this entity is not an authentication identity or user role. */
 @Entity
 @Table(name = "campaign_participants")
 @Data

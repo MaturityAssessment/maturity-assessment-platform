@@ -172,9 +172,12 @@ limitation. Do not use Hibernate `update` to upgrade a populated database.
 
 Campaign creation automatically queues one personalized invitation email per
 participant after the database transaction commits. Each message contains the
-respondent's `/assessment?campaignToken=...` link. The raw token exists only
-while that event is being delivered; the database continues to store only its
-SHA-256 hash.
+respondent's `/assessment?campaignId=...` link. The recipient signs in with
+normal bearer authentication; the campaign ID grants no access on its own.
+Existing accounts are reused. New accounts await approval, then receive temporary
+credentials and complete password/profile setup. `CampaignParticipant` represents
+campaign membership linked to a `User`, rather than a separate account type.
+See the [identity and legacy-code map](../docs/campaign-identity-map.md).
 
 Copy the credential placeholders and fill in the custom Gmail account:
 

@@ -16,7 +16,9 @@ function load(path: string): any {
   assert.ok(filename, path);
   if (cache.has(filename)) return cache.get(filename);
   const exports = {}; cache.set(filename, exports);
-  const localRequire = (id: string): any => id === "@/components" ? { AgentChatModal: () => null } : id === "next/navigation" ? { redirect: (url: string) => { throw new Error(`redirect:${url}`); } } : id.startsWith("@/") ? load(resolve(sourceRoot, id.slice(2))) : id.startsWith(".") ? load(resolve(dirname(filename), id)) : require(id);
+  const localRequire = (id: string): any => id === "@/components/navigation/TopNavbarWithTabs" ||
+    (id === "./AssessmentResultsTab" && filename.endsWith("AssessmentDashboard.tsx"))
+    ? { __esModule: true, default: () => null } : id === "@/components" ? { AgentChatModal: () => null } : id === "next/navigation" ? { redirect: (url: string) => { throw new Error(`redirect:${url}`); } } : id.startsWith("@/") ? load(resolve(sourceRoot, id.slice(2))) : id.startsWith(".") ? load(resolve(dirname(filename), id)) : require(id);
   const { outputText } = ts.transpileModule(readFileSync(filename, "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2015, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } });
   new Function("require", "exports", outputText)(localRequire, exports);
   return exports;
@@ -327,4 +329,33 @@ test("named evidence requirements remain compact and visible in read-only review
   assert.match(html, /Additional supporting evidence/);
   assert.doesNotMatch(html, /type="file"|Edit evidence|Add secure link/);
   assert.equal((html.match(/<details/g) || []).length, 3);
+});
+
+test("lifecycle warnings appear below the chart only on overview with outdated evidence", () => {
+  const Dashboard = load(resolve(sourceRoot, "app/assessment/AssessmentDashboard.tsx")).default;
+  const freshness = { evaluatedOn: "2026-11-12", calculatedAt: "2026-11-12T10:00:00Z", nextRefreshAt: null,
+    requiredIndicatorCount: 1, outdatedIndicatorCount: 1, unknownDateIndicatorCount: 0, missingIndicatorCount: 0, indicators: [] };
+  const props = { model, practiceSteps: [], formData: {}, evidenceFiles: new Map(), activeTab: "overview", readOnly: true,
+    completed: true, assessment: { ...assessment, referenceDate: "2026-11-01", currentEvidenceFreshness: freshness },
+    isLeaving: false, isPreparingReview: false, canReview: false, error: null, saveStatus: "saved", saveError: null,
+    changesRequested: false, respondentUpdatedResponseKeys: new Set(), tourInvitation: null,
+    onStartTour: noOp, onDismissTourInvitation: noOp, onTabChange: noOp, onDimensionSelect: noOp,
+    onLeave: noOp, onReview: noOp, onRetrySave: noOp, onInputChange: noOp, onClearAnswer: noOp, onEvidenceItemsChange: noOp };
+  const render = (patch = {}) => renderToStaticMarkup(createElement(Dashboard, { ...props, ...patch }));
+  const html = render();
+  const sidebar = html.slice(html.indexOf("<aside"), html.indexOf("</aside>") + 8);
+  assert.match(sidebar, /aria-label="Evidence lifecycle"/);
+  assert.ok(sidebar.indexOf("Overall progress") < sidebar.indexOf('aria-label="Evidence lifecycle"'));
+  assert.equal((html.match(/aria-label="Evidence lifecycle"/g) || []).length, 1);
+  for (const activeTab of ["results", "review", "evaluation", "discussion", "logs"]) {
+    assert.doesNotMatch(render({ activeTab }), /aria-label="Evidence lifecycle"/);
+  }
+  for (const currentEvidenceFreshness of [undefined, { ...freshness, outdatedIndicatorCount: 0 },
+    { ...freshness, outdatedIndicatorCount: 0, unknownDateIndicatorCount: 1 }]) {
+    assert.doesNotMatch(render({ assessment: { ...props.assessment, currentEvidenceFreshness } }), /aria-label="Evidence lifecycle"/);
+  }
+  const evaluator = render({ evaluationActive: true, evaluation, onEvaluationQuestion: noOp });
+  const evaluatorSidebar = evaluator.slice(evaluator.indexOf("<aside"), evaluator.indexOf("</aside>") + 8);
+  assert.match(evaluatorSidebar, /aria-label="Evidence lifecycle"/);
+  assert.ok(evaluatorSidebar.indexOf("Overall review progress") < evaluatorSidebar.indexOf('aria-label="Evidence lifecycle"'));
 });

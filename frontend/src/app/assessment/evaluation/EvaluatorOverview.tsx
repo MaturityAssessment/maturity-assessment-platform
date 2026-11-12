@@ -1,10 +1,12 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { ArrowRight, CheckCircle2, ClipboardCheck, Flag, Layers3 } from "lucide-react";
 import type { MaturityModel } from "@/api/types";
 import type { EvaluationController } from "./useEvaluation";
 
-export default function EvaluatorOverview({ model, evaluation, onQuestion }: {
+export default function EvaluatorOverview({ model, evaluation, onQuestion, sidebarContent }: {
+  sidebarContent?: ReactNode;
   model: MaturityModel;
   evaluation: EvaluationController;
   onQuestion: (responseKey: string) => void;
@@ -51,7 +53,7 @@ export default function EvaluatorOverview({ model, evaluation, onQuestion }: {
             {!model.dimensions.length && <p className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">No dimensions available</p>}
           </div>
         </section>
-        <aside className="lg:sticky lg:top-6 lg:self-start">
+        <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
           <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate-900">Review progress</h2>
             <p className="mt-5 text-3xl font-semibold tabular-nums text-slate-950">{percent}<span className="text-lg">%</span></p>
@@ -64,6 +66,7 @@ export default function EvaluatorOverview({ model, evaluation, onQuestion }: {
             </dl>
             <p className="mt-4 text-xs leading-5 text-slate-500">Reviewed questions have an evaluation status. Flagged questions and incomplete scores or notes still need attention.</p>
           </section>
+          {sidebarContent}
         </aside>
       </div>
     </main>

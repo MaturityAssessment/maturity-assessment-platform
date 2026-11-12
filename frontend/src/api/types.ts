@@ -231,6 +231,29 @@ export interface EvidenceFreshnessSummary {
   }>;
 }
 
+export interface AssessmentLog {
+  id: number;
+  assessmentId: number;
+  actorUserId: number;
+  /** Optional campaign membership context; the actor is always actorUserId. */
+  actorCampaignParticipantId?: number | null;
+  actorName?: string | null;
+  actorEmail?: string | null;
+  actorRole: string;
+  action: string;
+  targetType: string;
+  targetId: number;
+  targetLabel: string;
+  beforeValue: unknown;
+  afterValue: unknown;
+  occurredAt: string;
+}
+
+export interface AssessmentLogPage {
+  entries: AssessmentLog[];
+  hasMore: boolean;
+}
+
 export interface AssessmentResponse {
   id: number;
   referenceDate?: string;
@@ -421,6 +444,7 @@ export type CampaignAssessmentStatus =
   | "CHANGES_REQUESTED"
   | "COMPLETED";
 
+/** Campaign membership/progress view for a regular platform user; not a separate user type. */
 export interface CampaignParticipant {
   id: number;
   email: string;

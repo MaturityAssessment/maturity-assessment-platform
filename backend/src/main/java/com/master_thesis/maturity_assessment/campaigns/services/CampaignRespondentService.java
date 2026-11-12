@@ -10,6 +10,7 @@ import com.master_thesis.maturity_assessment.campaigns.dto.CampaignAssessmentSes
 import com.master_thesis.maturity_assessment.campaigns.models.CampaignParticipant;
 import com.master_thesis.maturity_assessment.campaigns.repository.CampaignParticipantRepository;
 import com.master_thesis.maturity_assessment.config.ResourceNotFoundException;
+import com.master_thesis.maturity_assessment.assessments.services.AssessmentAuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
@@ -83,6 +84,26 @@ public class CampaignRespondentService {
                 evidenceFiles,
                 evidenceFileKeys
         );
+    }
+
+    @Transactional(readOnly = true)
+    public AssessmentAuditService.LogPage logs(
+            Long campaignId, com.master_thesis.maturity_assessment.auth.models.User user, int page) {
+        return logs(campaignId, user, page, null);
+    }
+
+    @Transactional(readOnly = true)
+    public AssessmentAuditService.LogPage logs(
+            Long campaignId, com.master_thesis.maturity_assessment.auth.models.User user, int page, Long questionId) {
+        return assessmentService.getCampaignLogs(requireActiveParticipant(campaignId, user, false), page, questionId);
+    }
+
+    @Transactional(readOnly = true)
+    public AssessmentAuditService.LogPage logs(Long campaignId,
+            com.master_thesis.maturity_assessment.auth.models.User user, int page,
+            String dimensionId, String moduleCode, Long practiceId, Long questionId) {
+        return assessmentService.getCampaignLogs(requireActiveParticipant(campaignId, user, false),
+                page, dimensionId, moduleCode, practiceId, questionId);
     }
 
     @Transactional(readOnly = true)

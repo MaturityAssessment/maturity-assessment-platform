@@ -124,9 +124,9 @@ See [manual review](./backend/docs/api/workflows/assessments.md#review-a-manual-
 
 Any authenticated user can create a campaign using an active model version, a campaign name, a future deadline, and participant email addresses. Management is restricted to the campaign creator.
 
-- Participants receive individual invitation access and do not need platform accounts.
+- Invitees sign in with normal platform accounts. Existing accounts are reused; missing accounts are provisioned as permanent `USER` accounts awaiting approval and onboarding.
 - Initial invitation emails are queued when mail delivery is configured and enabled.
-- Organizers can generate replacement invitation tokens; replacement generation does not itself send email and invalidates the previous token.
+- Organizers can copy a stable campaign link and reactivate a revoked membership. This does not send email, rotate a token, or change account credentials.
 - Participants save and submit responses against the campaign's selected version.
 - Organizers monitor participant progress and aggregate results. Submission counts include assessments awaiting review; evaluated counts distinguish finished evaluations.
 - Curators and administrators review campaign submissions through the assessment review workflow.

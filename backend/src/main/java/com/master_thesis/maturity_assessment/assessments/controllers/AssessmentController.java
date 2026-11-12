@@ -12,6 +12,7 @@ import com.master_thesis.maturity_assessment.assessments.services.AssessmentServ
 import com.master_thesis.maturity_assessment.assessments.services.EvidenceService;
 import com.master_thesis.maturity_assessment.assessments.services.LocalAgentEvaluationService;
 import com.master_thesis.maturity_assessment.auth.models.User;
+import com.master_thesis.maturity_assessment.assessments.services.AssessmentAuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -47,6 +48,17 @@ public class AssessmentController {
     private final AssessmentEvidenceWorkflowService evidenceWorkflowService;
     private final LocalAgentEvaluationService localAgentEvaluationService;
     private final ObjectMapper objectMapper;
+
+    @GetMapping("/{id}/logs")
+    public ResponseEntity<AssessmentAuditService.LogPage> getLogs(
+            @PathVariable Long id, @RequestParam(defaultValue = "0") int page, @RequestParam(required = false) Long questionId,
+            @RequestParam(required = false) String dimensionId, @RequestParam(required = false) String moduleCode,
+            @RequestParam(required = false) Long practiceId) {
+        if (page < 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page must be non-negative.");
+        if (questionId != null && questionId <= 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Question ID must be positive.");
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore())
+                .body(assessmentService.getLogs(id, getCurrentUser(), page, dimensionId, moduleCode, practiceId, questionId));
+    }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<AssessmentResponse> createAssessment(

@@ -446,21 +446,24 @@ restricted while the campaign exists.
 
 ### 11. campaign_participants
 
-Stores one unauthenticated invitation identity per email and campaign.
+Stores campaign memberships for authenticated platform users. `CampaignParticipant`
+is the entity name for this relationship, rather than a separate user type.
 
 | Column                | Type         | Constraints           | Description |
 | --------------------- | ------------ | --------------------- | ----------- |
 | id                    | BIGSERIAL    | PRIMARY KEY           | Participant ID |
 | campaign_id           | BIGINT       | FOREIGN KEY, NOT NULL | Owning campaign |
 | email                 | VARCHAR(255) | NOT NULL, trimmed     | Normalized invitation email |
-| invitation_token_hash | VARCHAR(64)  | UNIQUE, NOT NULL      | Lowercase SHA-256 token hash |
+| user_id               | BIGINT       | FOREIGN KEY, NOT NULL | Existing platform user account |
 | revoked_at            | TIMESTAMPTZ  |                       | Optional invitation revocation |
 | created_at            | TIMESTAMPTZ  | NOT NULL              | Creation instant |
 | updated_at            | TIMESTAMPTZ  | NOT NULL              | Last update instant |
 
 Email is unique case-insensitively within a campaign, but the same address may
 participate in different campaigns. Deleting an unused campaign cascades its
-participants. Raw invitation tokens and full URLs are never stored.
+memberships. `(campaign_id, user_id)` is unique; `user_id` references `users(id)`
+with deletion restricted. V43 removed `invitation_token_hash` and the former
+accountless access model. See the [identity map](docs/campaign-identity-map.md).
 
 ---
 
@@ -478,9 +481,9 @@ Stores saved drafts and submitted maturity assessments.
 | overall_maturity_level   | VARCHAR(255) | NOT NULL               | Overall maturity level name          |
 | is_completed             | BOOLEAN      | NOT NULL, DEFAULT true | Assessment completion status         |
 | status                   | VARCHAR(50)  | NOT NULL               | `DRAFT`, `PENDING_REVIEW`, `CHANGES_REQUESTED`, or `COMPLETED` |
-| user_id                  | BIGINT       | FOREIGN KEY            | Reference to users                   |
+| user_id                  | BIGINT       | FOREIGN KEY, NOT NULL   | Authenticated respondent account, including campaign assessments |
 | campaign_id              | BIGINT       | FOREIGN KEY            | Campaign context for invited respondents |
-| campaign_participant_id  | BIGINT       | FOREIGN KEY, UNIQUE    | Invited respondent; at most one assessment |
+| campaign_participant_id  | BIGINT       | FOREIGN KEY, UNIQUE    | Campaign membership; at most one assessment per membership |
 | maturity_model_id        | BIGINT       | FOREIGN KEY            | Reference to the maturity model used |
 | evaluator_insight        | TEXT         |                        | Overall curator guidance             |
 | created_at               | TIMESTAMP    | NOT NULL               | Creation timestamp                   |

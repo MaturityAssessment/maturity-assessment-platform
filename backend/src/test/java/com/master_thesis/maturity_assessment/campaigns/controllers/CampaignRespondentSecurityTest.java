@@ -48,6 +48,20 @@ class CampaignRespondentSecurityTest {
         verify(service).openAssessment(1L, user);
     }
 
+    @Test
+    void logsForwardQuestionFilterAndRejectInvalidQuestionIds() throws Exception {
+        User user = user();
+        when(users.loadUserByUsername(user.getEmail())).thenReturn(user);
+        String token = "Bearer " + jwt.generateAccessToken(user);
+        mvc.perform(get("/api/v1/campaign-response/1/logs").param("questionId", "42")
+                .header("Authorization", token)).andExpect(status().isOk());
+        verify(service).logs(1L, user, 0, null, null, null, 42L);
+        clearInvocations(service);
+        mvc.perform(get("/api/v1/campaign-response/1/logs").param("questionId", "0")
+                .header("Authorization", token)).andExpect(status().isBadRequest());
+        verifyNoInteractions(service);
+    }
+
     private User user() {
         User user = new User(); user.setId(3L); user.setEmail("invited@example.com"); user.setRole(UserRole.USER); return user;
     }

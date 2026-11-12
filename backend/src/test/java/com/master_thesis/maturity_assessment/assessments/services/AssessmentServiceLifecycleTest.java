@@ -86,6 +86,9 @@ class AssessmentServiceLifecycleTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private com.master_thesis.maturity_assessment.assessments.repository.AssessmentLogRepository auditLogs;
+
     private AssessmentService assessmentService;
     private User user;
 
@@ -100,7 +103,10 @@ class AssessmentServiceLifecycleTest {
                 userRepository,
                 new MaturityScoringService(),
                 new ObjectMapper(),
-                org.mockito.Mockito.mock(EvidenceLifecycleService.class)
+                org.mockito.Mockito.mock(EvidenceLifecycleService.class),
+                new AssessmentAuditService(auditLogs,
+                        org.mockito.Mockito.mock(com.master_thesis.maturity_assessment.maturity_models.repository.QuestionRepository.class),
+                        new ObjectMapper())
         );
 
         user = new User();
@@ -122,6 +128,37 @@ class AssessmentServiceLifecycleTest {
                 .thenReturn(List.of());
         lenient().when(questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(any()))
                 .thenReturn(List.of());
+    }
+
+    @Test
+    void auditCapturesAnswerBeforeManagedRowIsOverwrittenAndSkipsRepeatedAutosave() {
+        Assessment draft = draftAssessment();
+        draft.setReferenceDate(java.time.LocalDate.now(java.time.ZoneOffset.UTC));
+        when(assessmentRepository.findByIdForUpdate(ASSESSMENT_ID)).thenReturn(Optional.of(draft));
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(manualModelWithOpenQuestion()));
+        QuestionEvaluation row = questionRow(draft, "D1_M1_101_1001", 1, null);
+        when(questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of(row));
+        assessmentService.saveDraft(ASSESSMENT_ID, request(Map.of("D1_M1_101_1001", 2)), user);
+        verify(auditLogs).save(argThat(log -> "ANSWER_CHANGED".equals(log.getAction())
+                && log.getActorUserId().equals(USER_ID)
+                && log.getBeforeValue().get("response").asInt() == 1
+                && log.getAfterValue().get("response").asInt() == 2));
+        org.mockito.Mockito.clearInvocations(auditLogs);
+        assessmentService.saveDraft(ASSESSMENT_ID, request(Map.of("D1_M1_101_1001", 2)), user);
+        org.mockito.Mockito.verifyNoInteractions(auditLogs);
+    }
+
+    @Test
+    void ordinaryLogsRejectAnotherRespondentAndCampaignAssessment() {
+        user.setRole(com.master_thesis.maturity_assessment.auth.models.UserRole.USER);
+        Assessment other = draftAssessment(); User owner = new User(); owner.setId(USER_ID + 1); other.setUser(owner);
+        when(assessmentRepository.findById(ASSESSMENT_ID)).thenReturn(Optional.of(other));
+        assertEquals(HttpStatus.FORBIDDEN, assertThrows(ResponseStatusException.class,
+                () -> assessmentService.getLogs(ASSESSMENT_ID, user, 0)).getStatusCode());
+        other.setUser(user); other.setCampaign(new Campaign());
+        assertEquals(HttpStatus.FORBIDDEN, assertThrows(ResponseStatusException.class,
+                () -> assessmentService.getLogs(ASSESSMENT_ID, user, 0)).getStatusCode());
+        org.mockito.Mockito.verifyNoInteractions(auditLogs);
     }
 
     @Test

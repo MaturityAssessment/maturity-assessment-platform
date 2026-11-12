@@ -1,7 +1,8 @@
 "use client";
 
+import AssessmentLogsTab from "./AssessmentLogsTab";
 import EvidenceLifecyclePanel from "@/components/assessment/EvidenceLifecyclePanel";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import {
   ArrowRight,
   BadgeCheck,
@@ -179,6 +180,13 @@ export default function AssessmentDashboard({
     ]
   );
   const feedbackItemCount = summary.flaggedCount + summary.adjustedCount;
+  const freshness = assessment.currentEvidenceFreshness;
+  const hasOutdatedEvidence = (freshness?.outdatedIndicatorCount ?? 0) > 0 ||
+    Boolean(freshness?.indicators.some(indicator => indicator.status === "OUTDATED"));
+  const evidenceLifecycle = hasOutdatedEvidence ? (
+    <EvidenceLifecyclePanel assessment={assessment} referenceDate={referenceDate} onReferenceDateChange={onReferenceDateChange}
+      readOnly={readOnly} practiceSteps={practiceSteps} routeContext={routeContext} refreshingError={freshnessError} pending={saveStatus !== "saved"} />
+  ) : null;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -279,11 +287,6 @@ export default function AssessmentDashboard({
         }
       />
 
-      <div className="mx-auto w-full max-w-[1440px] px-4 pt-5 sm:px-6 lg:px-10">
-        <EvidenceLifecyclePanel assessment={assessment} referenceDate={referenceDate} onReferenceDateChange={onReferenceDateChange}
-          readOnly={readOnly} practiceSteps={practiceSteps} routeContext={routeContext} refreshingError={freshnessError} pending={saveStatus !== "saved"} />
-      </div>
-
       {tourInvitation && (
         <div className="mx-auto w-full max-w-[1440px] px-4 pt-5 sm:px-6 lg:px-10">
           <TourInvitation
@@ -308,8 +311,9 @@ export default function AssessmentDashboard({
 
       {activeTab === "evaluation" ? evaluationPanel : activeTab === "overview" ? (
         evaluationActive && evaluation && onEvaluationQuestion ? (
-          <EvaluatorOverview model={model} evaluation={evaluation} onQuestion={onEvaluationQuestion} />
+          <EvaluatorOverview model={model} evaluation={evaluation} onQuestion={onEvaluationQuestion} sidebarContent={evidenceLifecycle} />
         ) : <OverviewTab
+          sidebarContent={evidenceLifecycle}
           summary={summary}
           evaluationActive={evaluationActive}
           readOnly={readOnly}
@@ -345,6 +349,9 @@ export default function AssessmentDashboard({
             practiceSteps={practiceSteps}
           />
         ) : null
+      ) : activeTab === "logs" ? (
+        <AssessmentLogsTab key={`${assessment?.id}-${assessment?.updatedAt}-${saveStatus}`} assessmentId={assessment?.id}
+          campaignId={routeContext?.campaignId} model={model} />
       ) : (
         <PlaceholderTab tab={activeTab} />
       )}
@@ -402,6 +409,7 @@ function DashboardTab({
 }
 
 function OverviewTab({
+  sidebarContent,
   evaluationActive,
   readOnly,
   summary,
@@ -413,6 +421,7 @@ function OverviewTab({
   onDimensionSelect,
   onReview,
 }: {
+  sidebarContent?: ReactNode;
   evaluationActive: boolean;
   readOnly: boolean;
   summary: ReturnType<typeof buildAssessmentDashboardSummary>;
@@ -604,6 +613,7 @@ function OverviewTab({
             changesRequested={changesRequested}
             evaluatorInsight={evaluatorInsight}
           />
+          {sidebarContent}
           {canReview && !completed && (
             <ReviewReadyCard
               isPreparingReview={isPreparingReview}

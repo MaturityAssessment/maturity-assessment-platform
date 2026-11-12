@@ -30,7 +30,9 @@ The platform supports individual assessments and invitation-based campaigns. Eac
 | Registered user (`USER`) | Complete individual assessments, view results, and create and manage their own campaigns after account approval. |
 | Curator (`CURATOR`) | Manage domains and models; evaluate submissions and request corrections, in addition to user capabilities. |
 | Administrator (`ADMIN`) | Approve and manage accounts, with all curator and user capabilities. |
-| Campaign participant | Respond through an invitation link without needing a platform account. |
+| Invited campaign member (existing `User`) | Sign in with a platform account and respond to campaigns to which that account is invited. |
+
+Campaign membership is a relationship between a campaign and a user, rather than a separate user type. New accounts may require approval, a temporary-password change, and profile completion before application access. See the [identity and legacy-code map](docs/campaign-identity-map.md).
 
 Evaluator is a responsibility performed by curators and administrators, rather than a separate application role. Campaign ownership gives access to campaign management; reviewing submissions requires curator/admin permissions.
 

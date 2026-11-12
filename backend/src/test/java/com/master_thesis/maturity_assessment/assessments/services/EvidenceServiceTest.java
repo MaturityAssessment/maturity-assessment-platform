@@ -79,7 +79,8 @@ class EvidenceServiceTest {
                 assessmentRepository,
                 practiceRepository,
                 questionRepository,
-                assessmentService
+                assessmentService,
+                org.mockito.Mockito.mock(AssessmentAuditService.class)
         );
         ReflectionTestUtils.setField(evidenceService, "maxRequestFileSize", 250L * 1024 * 1024);
 

@@ -452,3 +452,50 @@ it stops timers while hidden and displays refresh errors without discarding resu
 Historical scores and completion stay unchanged as time passes. Editing evidence
 or the reference date reevaluates validity, without automatically changing scores;
 the evaluator remains responsible for evidence-based manual score adjustments.
+
+## Respondent activity logs
+
+`GET /api/v1/assessments/{id}/logs?page=0` returns `{ "entries": [...], "hasMore": false }`.
+Pages contain up to 50 records, ordered by UTC `occurredAt` and ID, newest first.
+Owners and evaluators use the same access rules as the assessment detail endpoint.
+Campaign respondents use `GET /api/v1/campaign-response/{campaignId}/logs?page=0`,
+which requires an active invitation for the signed-in account. Negative pages return `400`.
+Both endpoints return `Cache-Control: no-store`. Optional filters `dimensionId`
+(public dimension code), `moduleCode`, `practiceId`, and `questionId` scope history
+**before pagination** to the assessment's exact model. Modules require a dimension;
+practices require a module. Question-only requests remain supported for older clients.
+The UI enables each selector only after its parent is selected, lists only that
+parent's children, and clears descendants when a parent changes.
+
+Dimension/module/practice filters include descendant question events and evidence
+for those practices. A question filter includes its question events, evidence
+explicitly referencing it, and general practice evidence with no question references.
+Evidence is matched against both before and after snapshots, preserving removals
+and edits that unlink a question. Evidence explicitly linked only to other questions
+is excluded. Assessment lifecycle events appear when all filters are cleared.
+
+Example: `GET /api/v1/assessments/23/logs?dimensionId=D1&moduleCode=M1&practiceId=101&questionId=1001&page=0`.
+The compact Logs view shows the full public code path; question text and before/after
+values expand inline. V52 indexes target history reads; these filters require no
+additional migration.
+
+Each entry includes `assessmentId`, `actorUserId`, optional `actorCampaignParticipantId`,
+snapshotted `actorName`/`actorEmail`, `actorRole`, `action`, `targetType`, `targetId`,
+`targetLabel`, `beforeValue`, `afterValue`, and `occurredAt` (ISO 8601 with UTC offset).
+`actorUserId` always identifies a normal platform user. `actorCampaignParticipantId`
+is optional campaign membership context, not a second identity type. The actor role currently identifies the **respondent's role in the action**, independently
+of their platform permissions.
+
+Logged actions cover assessment creation, submission/resubmission, draft resets,
+reference date changes, answer additions/changes/removals, justification edits,
+evidence additions/updates/removals, and confirmations that requested changes were
+addressed. Evidence snapshots retain metadata and question references; file contents
+and private storage paths are excluded. Historical answer labels are stored alongside
+raw values and selected option indexes. Removed answers and evidence retain their
+history while the assessment exists; deleting the assessment cascades its history.
+
+Entries are append-only through the application, saved in the same transaction as
+the change. Rejected saves create no history, and unchanged autosaves produce no
+entries. Evaluator changes are not logged yet. Existing assessments start collecting
+history with their next change; past activity is not reconstructed. The frontend
+presents these records as readable sentences and before/after details in the Logs tab.

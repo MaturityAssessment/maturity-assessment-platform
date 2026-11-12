@@ -57,6 +57,7 @@ public class EvidenceService {
     private final PracticeRepository practiceRepository;
     private final QuestionRepository questionRepository;
     private final AssessmentService assessmentService;
+    private final AssessmentAuditService auditService;
 
     @Value("${app.evidence.max-request-file-size:262144000}")
     private long maxRequestFileSize;
@@ -84,7 +85,9 @@ public class EvidenceService {
         requireRoomForEvidence(assessmentId, practiceId);
         Evidence evidence = createFileEntity(file, assessment, practice, user, description);
         evidence.setCollectedAt(collectedAt);
-        return toDTO(evidenceRepository.saveAndFlush(evidence));
+        Evidence saved = evidenceRepository.saveAndFlush(evidence);
+        auditService.evidenceChanged(assessment, user, Map.of(), List.of(saved));
+        return toDTO(saved);
     }
 
     @Transactional
@@ -105,7 +108,9 @@ public class EvidenceService {
         requireRoomForEvidence(assessmentId, practiceId);
         Evidence evidence = createUrlEntity(assessment, practice, user, description, url);
         evidence.setCollectedAt(collectedAt);
-        return toDTO(evidenceRepository.saveAndFlush(evidence));
+        Evidence saved = evidenceRepository.saveAndFlush(evidence);
+        auditService.evidenceChanged(assessment, user, Map.of(), List.of(saved));
+        return toDTO(saved);
     }
 
     /**
@@ -180,6 +185,7 @@ public class EvidenceService {
         List<EvidenceSubmissionItemRequest> items = metadata == null ? List.of() : metadata;
         Map<String, MultipartFile> filesByKey = mapAndValidateFiles(evidenceFiles, evidenceFileKeys);
         List<Evidence> existing = evidenceRepository.findByAssessmentIdOrderByIdAsc(assessmentId);
+        var auditBefore = auditService.evidence(existing);
         Map<Long, Evidence> existingById = existing.stream()
                 .collect(Collectors.toMap(Evidence::getId, evidence -> evidence));
 
@@ -326,6 +332,7 @@ public class EvidenceService {
         }
 
         evidenceRepository.flush();
+        auditService.evidenceChanged(assessment, campaignParticipant == null ? user : campaignParticipant.getUser(), auditBefore, desired);
         return desired.stream()
                 .sorted(Comparator.comparing(Evidence::getId))
                 .map(evidence -> toDTO(evidence, clientKeysByEvidence.get(evidence)))
@@ -460,7 +467,9 @@ public class EvidenceService {
         if (effectiveType(evidence) == EvidenceType.FILE) {
             scheduleDeleteAfterCommit(evidence.getFilePath());
         }
+        var auditBefore = auditService.evidence(List.of(evidence));
         evidenceRepository.delete(evidence);
+        auditService.evidenceChanged(evidence.getAssessment(), user, auditBefore, List.of());
     }
 
     @Transactional
@@ -490,8 +499,10 @@ public class EvidenceService {
                 scheduleDeleteAfterCommit(evidence.getFilePath());
             }
         }
+        var auditBefore = auditService.evidence(evidenceItems);
         evidenceRepository.deleteAll(evidenceItems);
         evidenceRepository.flush();
+        auditService.evidenceChanged(assessment, user, auditBefore, List.of());
     }
 
     private Map<String, MultipartFile> mapAndValidateFiles(
