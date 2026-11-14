@@ -229,20 +229,21 @@ export default function AssessmentQuestionCard({
       anchors={anchors}
     >
       {question.allowNotApplicable ? (
-        <div className="space-y-4">
+        <div className="flex flex-col gap-2">
           {input}
-          <label className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold ${
-            notApplicable ? "border-indigo-500 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-500" : "border-slate-200 bg-white text-slate-700"
-          } ${interactionDisabled ? "cursor-not-allowed opacity-60" : "hover:border-indigo-300"}`}>
+          <label className={`inline-flex min-h-9 items-center gap-2 self-end rounded-md px-2 text-xs font-medium transition-colors focus-within:ring-2 focus-within:ring-indigo-400 focus-within:ring-offset-2 ${
+            notApplicable ? "bg-indigo-50/60 text-indigo-700" : "text-slate-500"
+          } ${interactionDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-slate-50 hover:text-slate-700"}`}>
             <input
               type="checkbox"
               name={`${fieldName}_not_applicable`}
               checked={notApplicable}
               disabled={interactionDisabled}
               onChange={(event) => onInputChange(fieldName, event.target.checked ? NOT_APPLICABLE_ANSWER : undefined)}
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              aria-label="N/A (Not applicable)"
+              className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-0 focus:ring-offset-0"
             />
-            N/A (Not applicable)
+            Not applicable
           </label>
         </div>
       ) : input}
