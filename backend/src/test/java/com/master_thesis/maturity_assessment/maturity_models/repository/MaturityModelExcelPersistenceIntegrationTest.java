@@ -1,7 +1,6 @@
 package com.master_thesis.maturity_assessment.maturity_models.repository;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.master_thesis.maturity_assessment.maturity_models.dto.GatingRuleDTO;
 import com.master_thesis.maturity_assessment.maturity_models.models.*;
 import com.master_thesis.maturity_assessment.maturity_models.services.CsvParsingService;
 import com.master_thesis.maturity_assessment.maturity_models.services.MaturityModelExcelService;
@@ -64,16 +63,19 @@ class MaturityModelExcelPersistenceIntegrationTest {
         var dimension = editor.getDimensions().getFirst();
         dimension.setWeight(2.5);
         dimension.setAggregationRule(AggregationRule.MINIMUM);
-        dimension.setGatingRules(List.of(gate(dimension.getModules().getFirst().getCode())));
+        dimension.setMinimumCoverage(80.0);
+        dimension.setMinimumIncludedCount(65.5);
         var module = dimension.getModules().getFirst();
         module.setWeight(3.5);
-        module.setGatingRules(List.of(gate(module.getPractices().getFirst().getCode())));
+        module.setMinimumCoverage(80.0);
+        module.setMinimumIncludedCount(65.5);
         var practice = module.getPractices().getFirst();
         practice.setRequiresEvidence(true);
         practice.setEvidenceRequirements(List.of(new EvidenceRequirement("report", "Monthly incident report",
                 "Use reporting-period end", true, EvidenceRequirement.Format.FILE_OR_URL, EvidenceRequirement.Frequency.monthly, 45)));
         practice.setWeight(4.5);
-        practice.setGatingRules(List.of(gate(practice.getQuestions().getFirst().getCode())));
+        practice.setMinimumCoverage(80.0);
+        practice.setMinimumIncludedCount(65.5);
         practice.getQuestions().getFirst().setType("likert");
         practice.getQuestions().getFirst().setScalePointCount(5);
         var dependent = practice.getQuestions().get(1);
@@ -114,15 +116,15 @@ class MaturityModelExcelPersistenceIntegrationTest {
         var savedDimension = reloaded.getDimensions().getFirst();
         assertEquals(2.5, savedDimension.getWeight());
         assertEquals(AggregationRule.MINIMUM, savedDimension.getAggregationRule());
-        assertEquals(dimension.getGatingRules(), savedDimension.getGatingRules());
+        assertEquals(dimension.getMinimumCoverage(), savedDimension.getMinimumCoverage());
         var savedModule = savedDimension.getModules().getFirst();
         assertEquals(3.5, savedModule.getWeight());
-        assertEquals(module.getGatingRules(), savedModule.getGatingRules());
+        assertEquals(module.getMinimumCoverage(), savedModule.getMinimumCoverage());
         var savedPractice = savedModule.getPractices().getFirst();
         assertEquals(4.5, savedPractice.getWeight());
         assertTrue(savedPractice.getRequiresEvidence());
         assertEquals(practice.getEvidenceRequirements(), savedPractice.getEvidenceRequirements());
-        assertEquals(practice.getGatingRules(), savedPractice.getGatingRules());
+        assertEquals(practice.getMinimumCoverage(), savedPractice.getMinimumCoverage());
         assertEquals("Edited question from Excel", savedPractice.getQuestions().getFirst().getText());
         assertEquals(condition, savedPractice.getQuestions().get(1).getDependencyCondition());
         assertEquals(savedPractice.getQuestions().getFirst().getCode(), savedPractice.getQuestions().getLast().getDependsOnQuestionCode());
@@ -133,15 +135,5 @@ class MaturityModelExcelPersistenceIntegrationTest {
         assertEquals(List.of(2.0, 3.0), quality.getLast().getChoices().stream().map(choice -> choice.getRawValue()).toList());
     }
 
-    private static GatingRuleDTO gate(String child) {
-        GatingRuleDTO rule = new GatingRuleDTO();
-        rule.setOrder(0);
-        rule.setSelection(GatingSelection.SPECIFIC_CHILD);
-        rule.setChildCode(child);
-        rule.setOperator(GatingComparisonOperator.BELOW);
-        rule.setThreshold(new BigDecimal("0.50"));
-        rule.setOperation(GatingScoreOperation.SET);
-        rule.setValue(new BigDecimal("0.00"));
-        return rule;
-    }
+
 }

@@ -35,7 +35,7 @@ import com.master_thesis.maturity_assessment.maturity_models.models.Module;
 import com.master_thesis.maturity_assessment.maturity_models.models.Practice;
 import com.master_thesis.maturity_assessment.maturity_models.models.Question;
 import com.master_thesis.maturity_assessment.maturity_models.models.AggregationRule;
-import com.master_thesis.maturity_assessment.maturity_models.models.GatingRule;
+import com.master_thesis.maturity_assessment.assessments.models.AssessmentElementResult;
 import com.master_thesis.maturity_assessment.maturity_models.services.MaturityScoringService;
 
 import lombok.RequiredArgsConstructor;
@@ -52,7 +52,6 @@ import com.master_thesis.maturity_assessment.maturity_models.services.QuestionDe
 import com.master_thesis.maturity_assessment.maturity_models.services.NotApplicableAnswers;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -95,22 +94,10 @@ public class AssessmentService {
         private List<QuestionChoiceDTO> selectionOptions;
         private List<QuestionChoiceDTO> choiceOptions;
         private final String type;
-        private final Double weight;
-        private final Double practiceWeight;
-        private final Double moduleWeight;
-        private final Double dimensionWeight;
-        private final AggregationRule practiceAggregationRule;
-        private final AggregationRule moduleAggregationRule;
-        private final AggregationRule dimensionAggregationRule;
         private final Long questionId;
         private final String dimensionId;
         private final String moduleCode;
         private final String practiceId;
-        private final String practiceCode;
-        private final String questionCode;
-        private final List<GatingRule> practiceGatingRules;
-        private final List<GatingRule> moduleGatingRules;
-        private final List<GatingRule> dimensionGatingRules;
         private final Boolean booleanCorrectAnswer;
         /** Non-null for multiple_choice: valid normalized response scores. */
         private final Set<Double> multipleChoiceAllowedScores;
@@ -123,22 +110,10 @@ public class AssessmentService {
 
         public QuestionInfo(
                 String type,
-                Double weight,
-                Double practiceWeight,
-                Double moduleWeight,
-                Double dimensionWeight,
-                AggregationRule practiceAggregationRule,
-                AggregationRule moduleAggregationRule,
-                AggregationRule dimensionAggregationRule,
                 Long questionId,
                 String dimensionId,
                 String moduleCode,
                 String practiceId,
-                String practiceCode,
-                String questionCode,
-                List<GatingRule> practiceGatingRules,
-                List<GatingRule> moduleGatingRules,
-                List<GatingRule> dimensionGatingRules,
                 Boolean booleanCorrectAnswer,
                 Set<Double> multipleChoiceAllowedScores,
                 int maxLevelNumber,
@@ -149,22 +124,10 @@ public class AssessmentService {
                 boolean rangeHighValueIsMaximum
         ) {
             this.type = type;
-            this.weight = weight;
-            this.practiceWeight = practiceWeight;
-            this.moduleWeight = moduleWeight;
-            this.dimensionWeight = dimensionWeight;
-            this.practiceAggregationRule = practiceAggregationRule;
-            this.moduleAggregationRule = moduleAggregationRule;
-            this.dimensionAggregationRule = dimensionAggregationRule;
             this.questionId = questionId;
             this.dimensionId = dimensionId;
             this.moduleCode = moduleCode;
             this.practiceId = practiceId;
-            this.practiceCode = practiceCode;
-            this.questionCode = questionCode;
-            this.practiceGatingRules = practiceGatingRules;
-            this.moduleGatingRules = moduleGatingRules;
-            this.dimensionGatingRules = dimensionGatingRules;
             this.booleanCorrectAnswer = booleanCorrectAnswer;
             this.multipleChoiceAllowedScores = multipleChoiceAllowedScores;
             this.maxLevelNumber = maxLevelNumber;
@@ -179,69 +142,12 @@ public class AssessmentService {
             return type;
         }
 
-        public Double getWeight() {
-            return weight;
-        }
-
-        public Double getPracticeWeight() {
-            return practiceWeight;
-        }
-
-        public Double getModuleWeight() {
-            return moduleWeight;
-        }
-
-        public Double getDimensionWeight() {
-            return dimensionWeight;
-        }
-
-        public AggregationRule getPracticeAggregationRule() {
-            return practiceAggregationRule;
-        }
-
-        public AggregationRule getModuleAggregationRule() {
-            return moduleAggregationRule;
-        }
-
-        public AggregationRule getDimensionAggregationRule() {
-            return dimensionAggregationRule;
-        }
-
-        /**
-         * Returns the effective weight: question weight * practice weight.
-         */
-        public double getEffectiveWeight() {
-            double qw = (weight != null) ? weight : 1.0;
-            double pw = (practiceWeight != null) ? practiceWeight : 1.0;
-            return qw * pw;
-        }
-
         public Long getQuestionId() {
             return questionId;
         }
 
         public String getDimensionId() {
             return dimensionId;
-        }
-
-        public String getPracticeCode() {
-            return practiceCode;
-        }
-
-        public String getQuestionCode() {
-            return questionCode;
-        }
-
-        public List<GatingRule> getPracticeGatingRules() {
-            return practiceGatingRules;
-        }
-
-        public List<GatingRule> getModuleGatingRules() {
-            return moduleGatingRules;
-        }
-
-        public List<GatingRule> getDimensionGatingRules() {
-            return dimensionGatingRules;
         }
 
         public String getModuleCode() {
@@ -251,7 +157,6 @@ public class AssessmentService {
         public String getPracticeId() {
             return practiceId;
         }
-
 
         public boolean getBooleanCorrectAnswer() {
             return booleanCorrectAnswer == null || booleanCorrectAnswer;
@@ -316,11 +221,9 @@ public class AssessmentService {
                             for (Practice practice : module.getPractices()) {
                                 // Handle practiceId: could be ID (number) or name (string)
                                 // Frontend sends: practice.id || practice.name
-                                String practiceId = practice.getId() != null 
-                                        ? String.valueOf(practice.getId()) 
+                                String practiceId = practice.getId() != null
+                                        ? String.valueOf(practice.getId())
                                         : (practice.getName() != null ? practice.getName() : "");
-
-                                Double practiceWeight = practice.getWeight();
 
                                 if (practice.getQuestions() != null) {
                                     for (Question question : practice.getQuestions()) {
@@ -334,22 +237,11 @@ public class AssessmentService {
                                         int scalePointCount = resolveScalePointCount(question);
                                         QuestionInfo info = new QuestionInfo(
                                                 question.getType(),
-                                                question.getWeight(),
-                                                practiceWeight,
-                                                module.getWeight(),
-                                                dimension.getWeight(),
-                                                practice.getAggregationRule(),
-                                                module.getAggregationRule(),
-                                                dimension.getAggregationRule(),
                                                 question.getId(),
                                                 dimensionId,
                                                 moduleCode,
                                                 practiceId,
-                                                practice.getCode(),
-                                                question.getCode(),
-                                                practice.getGatingRules(),
-                                                module.getGatingRules(),
-                                                dimension.getGatingRules(),
+
                                                 question.getBooleanCorrectAnswer(),
                                                 mcqScores,
                                                 maxLevelNumber,
@@ -624,10 +516,12 @@ public class AssessmentService {
         boolean isAutoEvaluated = checkIfMaturityModelIsAutoEvaluated(request.getMaturityModelId());
 
         // Calculate dimension results from the responses map
-        List<DimensionResult> dimensionResults = calculateDimensionResults(
+        EvaluationCalculation calculation = calculateScoring(
                 responseValues(request),
                 request.getMaturityModelId()
         );
+
+        List<DimensionResult> dimensionResults = calculation.dimensions();
 
         // Load model for scoring
         MaturityModel model = request.getMaturityModelId() != null
@@ -653,6 +547,7 @@ public class AssessmentService {
         assessment.setOverallAverage(overallAverage);
         assessment.setOverallPercentageScore(overallPercentage);
         assessment.setOverallMaturityLevel(overallMaturityLevelName);
+        applyScoringSnapshot(assessment, calculation);
         transitionTo(
                 assessment,
                 isAutoEvaluated ? AssessmentStatus.COMPLETED : AssessmentStatus.PENDING_REVIEW
@@ -1431,7 +1326,7 @@ public class AssessmentService {
     public AssessmentResponse getAssessmentById(Long id, User user) {
         // Allow CURATOR and ADMIN to access any assessment, regular users can only access their own
         boolean isCuratorOrAdmin = RoleUtils.hasRequiredRole(user.getRole(), UserRole.CURATOR);
-        
+
         Assessment assessment = requireReadableAssessment(id, user);
 
         // Include user info if accessed by CURATOR/ADMIN
@@ -1457,7 +1352,7 @@ public class AssessmentService {
             // Regular users - check ownership
             assessment = assessmentRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Assessment not found"));
-            
+
             if (assessment.getCampaign() != null || assessment.getUser() == null
                     || !assessment.getUser().getId().equals(user.getId())) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
@@ -1669,8 +1564,8 @@ public class AssessmentService {
                 ));
         effectiveScores.putAll(evaluationSubmission.scoreOverrides);
 
-        List<DimensionResult> recalculatedDimensionResults =
-                calculateDimensionResultsFromScores(effectiveScores, maturityModelId, responses);
+        EvaluationCalculation calculation = calculateScoringFromScores(effectiveScores, maturityModelId, responses);
+        List<DimensionResult> recalculatedDimensionResults = calculation.dimensions();
 
         MaturityModel evalModel = maturityModelRepository.findById(maturityModelId).orElse(null);
         int maxLevelNumber = evalModel != null
@@ -1687,6 +1582,7 @@ public class AssessmentService {
         assessment.setOverallAverage(overallAverage);
         assessment.setOverallPercentageScore(overallPercentage);
         assessment.setOverallMaturityLevel(overallMaturityLevelName);
+        applyScoringSnapshot(assessment, calculation);
         transitionTo(assessment, AssessmentStatus.COMPLETED);
         assessment.setEvaluatorInsight(evaluatorInsight);
 
@@ -2243,10 +2139,9 @@ public class AssessmentService {
     }
 
     @Transactional(readOnly = true)
-    private List<DimensionResult> calculateDimensionResults(Map<String, Object> responses, Long maturityModelId) {
+    private EvaluationCalculation calculateScoring(Map<String, Object> responses, Long maturityModelId) {
         Map<String, QuestionInfo> questionMetadata = loadQuestionMetadata(maturityModelId);
         Map<String, Double> scoredResponses = new HashMap<>();
-        Map<String, QuestionInfo> dimensionMetadata = new HashMap<>();
 
         for (Map.Entry<String, Object> entry : Optional.ofNullable(responses).orElse(Map.of()).entrySet()) {
             String responseKey = entry.getKey();
@@ -2257,237 +2152,170 @@ public class AssessmentService {
             Double score = convertResponseToScore(entry.getValue(), questionInfo);
             if (score != null) {
                 scoredResponses.put(responseKey, score);
-                dimensionMetadata.put(responseKey, questionInfo);
             }
         }
-        return aggregateDimensionResults(scoredResponses, dimensionMetadata, maturityModelId, responses);
+        return aggregateEvaluation(scoredResponses, questionMetadata, maturityModelId, responses);
     }
 
     @Transactional(readOnly = true)
-    private List<DimensionResult> calculateDimensionResultsFromScores(
+    private EvaluationCalculation calculateScoringFromScores(
             Map<String, Double> scores,
             Long maturityModelId,
             Map<String, Object> responses
     ) {
         Map<String, QuestionInfo> questionMetadata = loadQuestionMetadata(maturityModelId);
         Map<String, Double> validScores = new LinkedHashMap<>();
-        Map<String, QuestionInfo> dimensionMetadata = new HashMap<>();
         Optional.ofNullable(scores).orElse(Map.of()).forEach((responseKey, score) -> {
             QuestionInfo questionInfo = questionMetadata.get(responseKey);
             if (questionInfo != null && score != null) {
                 validScores.put(responseKey, score);
-                dimensionMetadata.put(responseKey, questionInfo);
             }
         });
-        return aggregateDimensionResults(validScores, dimensionMetadata, maturityModelId, responses);
+        return aggregateEvaluation(validScores, questionMetadata, maturityModelId, responses);
     }
 
-    private List<DimensionResult> aggregateDimensionResults(
+    private record EvaluationCalculation(List<DimensionResult> dimensions, List<AssessmentElementResult> elements) {}
+
+    private EvaluationCalculation aggregateEvaluation(
             Map<String, Double> scoredResponses,
-            Map<String, QuestionInfo> dimensionMetadata,
+            Map<String, QuestionInfo> metadata,
             Long maturityModelId,
-            Map<String, Object> responses
-    ) {
-        MaturityModel model = maturityModelId != null
-                ? maturityModelRepository.findById(maturityModelId).orElse(null)
-                : null;
-        int finalMaxLevel = model != null
-                ? maturityScoringService.resolveMaxLevelNumber(model.getLevels())
-                : maturityScoringService.getMaxLevelNumber();
-        List<MaturityLevel> modelLevelsForNames = model != null ? model.getLevels() : null;
-
-        Map<PracticeKey, List<ScoreNode>> questionNodes = new LinkedHashMap<>();
-        Map<PracticeKey, Double> practiceWeights = new HashMap<>();
-        Map<PracticeKey, AggregationRule> practiceRules = new HashMap<>();
-        Map<PracticeKey, String> practiceCodes = new HashMap<>();
-        Map<PracticeKey, List<GatingRule>> practiceGatingRules = new HashMap<>();
-        Map<ModuleKey, Double> moduleWeights = new HashMap<>();
-        Map<ModuleKey, AggregationRule> moduleRules = new HashMap<>();
-        Map<ModuleKey, List<GatingRule>> moduleGatingRules = new HashMap<>();
-        Map<String, Double> dimensionWeights = new HashMap<>();
-        Map<String, AggregationRule> dimensionRules = new HashMap<>();
-        Map<String, List<GatingRule>> dimensionGatingRules = new HashMap<>();
-
-        scoredResponses.forEach((responseKey, score) -> {
-            QuestionInfo info = dimensionMetadata.get(responseKey);
-            if (info == null || score == null) {
-                return;
+            Map<String, Object> responses) {
+        MaturityModel model = maturityModelId == null ? null : maturityModelRepository.findById(maturityModelId).orElse(null);
+        if (model == null || model.getDimensions() == null) return new EvaluationCalculation(List.of(), List.of());
+        Map<String, Object> answers = responses == null ? Map.of() : responses;
+        int maxLevel = maturityScoringService.resolveMaxLevelNumber(model.getLevels());
+        List<AssessmentElementResult> elements = new ArrayList<>();
+        List<DimensionResult> dimensions = new ArrayList<>();
+        List<ScoreNode> dimensionNodes = new ArrayList<>();
+        for (Dimension dimension : model.getDimensions()) {
+            List<ScoreNode> modules = new ArrayList<>();
+            for (Module module : Optional.ofNullable(dimension.getModules()).orElse(List.of())) {
+                if (Boolean.FALSE.equals(module.getVisible())) continue;
+                List<ScoreNode> practices = new ArrayList<>();
+                for (Practice practice : Optional.ofNullable(module.getPractices()).orElse(List.of())) {
+                    List<ScoreNode> questions = new ArrayList<>();
+                    for (Question question : Optional.ofNullable(practice.getQuestions()).orElse(List.of())) {
+                        if (!isQuestionVisible(question, answers)) continue;
+                        String practiceId = practice.getId() == null ? practice.getName() : String.valueOf(practice.getId());
+                        String key = dimension.getDimensionId() + "_" + module.getCode() + "_" + practiceId + "_" + question.getId();
+                        boolean answered = isAnswered(answers.get(key));
+                        Double score = answered ? scoredResponses.get(key) : null;
+                        QuestionInfo info = metadata.get(key);
+                        if (score != null && Double.isFinite(score) && info != null) {
+                            boolean normalized = NotApplicableAnswers.isAnswer(answers.get(key)) || !"open_answer".equalsIgnoreCase(info.getType());
+                            score = maturityScoringService.roundAndClampNormalized(normalized ? score : maturityScaleScoreToNormalized(score, maxLevel));
+                        } else score = null;
+                        ScoreNode node = new ScoreNode(score, childWeight(question.getWeight()), 1,
+                                score == null ? 0 : score * childWeight(question.getWeight()) * childWeight(practice.getWeight()),
+                                answered ? 100 : 0, answered ? 100 : 0,
+                                !answered ? "unanswered" : score == null ? "unscored" : "computed");
+                        questions.add(node);
+                        elements.add(elementResult("question", dimension.getDimensionId(), module.getCode(), practice.getCode(),
+                                question.getCode(), key, question.getText(), node));
+                    }
+                    ScoreNode node = aggregateNodes(questions, practice.getAggregationRule(), practice.getWeight(),
+                            practice.getMinimumCoverage(), practice.getMinimumIncludedCount());
+                    practices.add(node);
+                    elements.add(elementResult("practice", dimension.getDimensionId(), module.getCode(), practice.getCode(),
+                            null, null, practice.getName(), node));
+                }
+                ScoreNode node = aggregateNodes(practices, module.getAggregationRule(), module.getWeight(),
+                        module.getMinimumCoverage(), module.getMinimumIncludedCount());
+                modules.add(node);
+                elements.add(elementResult("module", dimension.getDimensionId(), module.getCode(), null,
+                        null, null, module.getName(), node));
             }
-            boolean normalizedQuestion = NotApplicableAnswers.isAnswer(responses.get(responseKey))
-                    || "boolean".equalsIgnoreCase(info.getType())
-                    || "likert".equalsIgnoreCase(info.getType())
-                    || "multiple_choice".equalsIgnoreCase(info.getType())
-                    || "multiple_selection".equalsIgnoreCase(info.getType())
-                    || "numeric".equalsIgnoreCase(info.getType())
-                    || "percentage".equalsIgnoreCase(info.getType());
-            double questionScore = maturityScoringService.roundAndClampNormalized(
-                    normalizedQuestion ? score : maturityScaleScoreToNormalized(score, finalMaxLevel));
-            PracticeKey practiceKey = new PracticeKey(
-                    info.getDimensionId(),
-                    info.getModuleCode(),
-                    info.getPracticeId()
-            );
-            ModuleKey moduleKey = new ModuleKey(info.getDimensionId(), info.getModuleCode());
-            questionNodes.computeIfAbsent(practiceKey, ignored -> new ArrayList<>())
-                    .add(new ScoreNode(
-                            info.getQuestionCode(),
-                            questionScore,
-                            info.getWeight() != null && info.getWeight() == 0.0 ? 0.0 : positiveWeight(info.getWeight()),
-                            1,
-                            questionScore * info.getEffectiveWeight(),
-                            true
-                    ));
-            practiceWeights.put(practiceKey, positiveWeight(info.getPracticeWeight()));
-            practiceRules.put(practiceKey, info.getPracticeAggregationRule());
-            practiceCodes.put(practiceKey, info.getPracticeCode());
-            practiceGatingRules.put(practiceKey, info.getPracticeGatingRules());
-            moduleWeights.put(moduleKey, positiveWeight(info.getModuleWeight()));
-            moduleRules.put(moduleKey, info.getModuleAggregationRule());
-            moduleGatingRules.put(moduleKey, info.getModuleGatingRules());
-            dimensionWeights.put(info.getDimensionId(), positiveWeight(info.getDimensionWeight()));
-            dimensionRules.put(info.getDimensionId(), info.getDimensionAggregationRule());
-            dimensionGatingRules.put(info.getDimensionId(), info.getDimensionGatingRules());
-        });
-
-        Map<ModuleKey, List<ScoreNode>> practiceNodes = new LinkedHashMap<>();
-        questionNodes.forEach((practiceKey, children) -> {
-            ScoreNode practiceScore = aggregateNodes(
-                    children,
-                    practiceRules.get(practiceKey),
-                    practiceWeights.get(practiceKey),
-                    finalMaxLevel,
-                    practiceCodes.get(practiceKey),
-                    practiceGatingRules.get(practiceKey)
-            );
-            ModuleKey moduleKey = new ModuleKey(practiceKey.dimensionId(), practiceKey.moduleCode());
-            practiceNodes.computeIfAbsent(moduleKey, ignored -> new ArrayList<>()).add(practiceScore);
-        });
-
-        Map<String, List<ScoreNode>> moduleNodes = new LinkedHashMap<>();
-        practiceNodes.forEach((moduleKey, children) -> {
-            ScoreNode moduleScore = aggregateNodes(
-                    children,
-                    moduleRules.get(moduleKey),
-                    moduleWeights.get(moduleKey),
-                    finalMaxLevel,
-                    moduleKey.moduleCode(),
-                    moduleGatingRules.get(moduleKey)
-            );
-            moduleNodes.computeIfAbsent(moduleKey.dimensionId(), ignored -> new ArrayList<>()).add(moduleScore);
-        });
-
-        Map<String, ScoreNode> dimensionNodes = new LinkedHashMap<>();
-        moduleNodes.forEach((dimensionId, children) -> dimensionNodes.put(
-                dimensionId,
-                aggregateNodes(
-                        children,
-                        dimensionRules.get(dimensionId),
-                        dimensionWeights.get(dimensionId),
-                        finalMaxLevel,
-                        dimensionId,
-                        dimensionGatingRules.get(dimensionId)
-                )
-        ));
-
-        List<String> orderedDimensionIds = model != null && model.getDimensions() != null
-                ? model.getDimensions().stream().map(Dimension::getDimensionId).toList()
-                : new ArrayList<>(dimensionNodes.keySet());
-
-        return orderedDimensionIds.stream()
-                .filter(dimensionNodes::containsKey)
-                .map(dimensionId -> toDimensionResult(
-                        dimensionId,
-                        dimensionNodes.get(dimensionId),
-                        model,
-                        finalMaxLevel,
-                        modelLevelsForNames
-                ))
-                .toList();
+            // A dimension consisting entirely of explicitly hidden modules was not presented.
+            if (modules.isEmpty()) continue;
+            ScoreNode node = aggregateNodes(modules, dimension.getAggregationRule(), dimension.getWeight(),
+                    dimension.getMinimumCoverage(), dimension.getMinimumIncludedCount());
+            dimensionNodes.add(node);
+            elements.add(elementResult("dimension", dimension.getDimensionId(), null, null, null, null, dimension.getName(), node));
+            dimensions.add(toDimensionResult(dimension, node, maxLevel, model.getLevels()));
+        }
+        ScoreNode global = aggregateNodes(dimensionNodes, model.getAggregationRule(), 1.0, 0.0, 0.0);
+        // The existing global mapping aggregates awarded dimension levels rather than normalized child scores.
+        Double globalScore = "withheld".equals(global.state()) ? null
+                : maturityScaleScoreToNormalized(calculateOverallScore(dimensions, model), maxLevel);
+        elements.add(elementResult("global", null, null, null, null, null, model.getName(),
+                new ScoreNode(globalScore, 1, global.totalQuestions(), global.totalScore(), global.includedCount(), global.coverage(), global.state())));
+        return new EvaluationCalculation(dimensions, elements);
     }
 
-    private ScoreNode aggregateNodes(
-            List<ScoreNode> children,
-            AggregationRule rule,
-            Double parentWeight,
-            int maxLevelNumber,
-            String parentCode,
-            List<GatingRule> gatingRules
-    ) {
-        boolean allNormalized = children.stream().allMatch(ScoreNode::normalized);
-        boolean mixedDomains = children.stream().anyMatch(ScoreNode::normalized) && !allNormalized;
-        double score = maturityScoringService.aggregate(
-                children.stream()
-                        .map(child -> mixedDomains && child.normalized()
-                                ? projectNormalizedScoreToMaturityScale(child.score(), maxLevelNumber)
-                                : child.score())
-                        .toList(),
-                children.stream().map(ScoreNode::weight).toList(),
-                rule
-        );
-        double gatedScore = maturityScoringService.applyGatingRules(
-                score,
-                children.stream()
-                        .map(child -> new MaturityScoringService.ChildScore(
-                                child.code(),
-                                child.normalized()
-                                        ? child.score()
-                                        : maturityScaleScoreToNormalized(child.score(), maxLevelNumber)))
-                        .toList(),
-                gatingRules);
-        return new ScoreNode(
-                parentCode,
-                gatedScore,
-                positiveWeight(parentWeight),
+    private ScoreNode aggregateNodes(List<ScoreNode> children, AggregationRule rule, Double weight,
+                                     Double minimumCoverage, Double minimumIncludedCount) {
+        List<ScoreNode> included = children.stream().filter(child -> child.score() != null && "computed".equals(child.state())).toList();
+        double includedCount = children.stream().mapToDouble(child -> "withheld".equals(child.state()) ? 0 : child.includedCount()).average().orElse(0);
+        boolean weightedMean = rule == null || rule == AggregationRule.WEIGHTED_AVERAGE;
+        double totalWeight = children.stream().mapToDouble(ScoreNode::weight).sum();
+        double coverage = weightedMean && totalWeight > 0
+                ? children.stream().mapToDouble(child -> child.weight() * ("withheld".equals(child.state()) ? 0 : child.includedCount())).sum() / totalWeight
+                : includedCount;
+        boolean withheld = included.isEmpty()
+                || includedCount + 1e-7 < threshold(minimumIncludedCount)
+                || (weightedMean && coverage + 1e-7 < threshold(minimumCoverage));
+        Double score = withheld ? null : maturityScoringService.aggregate(
+                included.stream().map(ScoreNode::score).toList(), included.stream().map(ScoreNode::weight).toList(), rule);
+        return new ScoreNode(score == null ? null : maturityScoringService.roundAndClampNormalized(score), childWeight(weight),
                 children.stream().mapToInt(ScoreNode::totalQuestions).sum(),
                 children.stream().mapToDouble(ScoreNode::totalScore).sum(),
-                true
-        );
+                includedCount, coverage, withheld ? "withheld" : "computed");
     }
 
-    private DimensionResult toDimensionResult(
-            String dimensionId,
-            ScoreNode dimensionScore,
-            MaturityModel model,
-            int maxLevelNumber,
-            List<MaturityLevel> levels
-    ) {
-        double roundedScore = dimensionScore.normalized()
-                ? projectNormalizedScoreToMaturityScale(dimensionScore.score(), maxLevelNumber)
-                : roundScore(dimensionScore.score());
-        double percentageScore = dimensionScore.normalized()
-                ? normalizedScoreToPercentage(dimensionScore.score())
-                : maturityScoringService.normalizeToPercentage(roundedScore, maxLevelNumber);
-        Dimension dimension = model == null || model.getDimensions() == null
-                ? null
-                : model.getDimensions().stream()
-                        .filter(candidate -> dimensionId.equals(candidate.getDimensionId()))
-                        .findFirst()
-                        .orElse(null);
-        int levelNumber = maturityScoringService.mapNormalizedScoreToLevel(
-                dimensionScore.normalized()
-                        ? clampNormalized(dimensionScore.score())
-                        : clampNormalized((dimensionScore.score() - 1.0) / Math.max(1, maxLevelNumber - 1)),
-                dimension != null ? dimension.getMappingRules() : null,
-                maxLevelNumber
-        );
+    private double threshold(Double percentage) {
+        return percentage == null ? 0 : percentage;
+    }
 
+    private double childWeight(Double weight) {
+        return weight != null && Double.isFinite(weight) && weight >= 0 ? weight : 1;
+    }
+
+    private AssessmentElementResult elementResult(String type, String dimensionId, String moduleCode,
+            String practiceCode, String questionCode, String responseKey, String name, ScoreNode node) {
+        return new AssessmentElementResult(type, dimensionId, moduleCode, practiceCode, questionCode, responseKey,
+                name, node.state(), node.score(), node.includedCount(), node.coverage());
+    }
+
+    private DimensionResult toDimensionResult(Dimension dimension, ScoreNode node, int maxLevel, List<MaturityLevel> levels) {
         DimensionResult result = new DimensionResult();
-        result.setDimensionId(dimensionId);
-        result.setDimensionName(formatDimensionName(dimensionId, model));
-        result.setDimensionDescription(getDimensionDescription(dimensionId, model));
-        result.setAverageScore(roundedScore);
-        result.setPercentageScore(percentageScore);
-        result.setMaturityLevel(maturityScoringService.getLevelName(levelNumber, levels));
-        result.setMaturityLevelNumber(levelNumber);
-        result.setTotalQuestions(dimensionScore.totalQuestions());
-        result.setTotalScore(dimensionScore.totalScore());
+        result.setDimensionId(dimension.getDimensionId());
+        result.setDimensionName(dimension.getName());
+        result.setDimensionDescription(dimension.getDescription() == null ? "" : dimension.getDescription());
+        result.setIncludedCount(node.includedCount());
+        result.setCoverage(node.coverage());
+        result.setScoreState(node.state());
+        if (node.score() != null) {
+            result.setAverageScore(projectNormalizedScoreToMaturityScale(node.score(), maxLevel));
+            result.setPercentageScore(normalizedScoreToPercentage(node.score()));
+            int level = maturityScoringService.mapNormalizedScoreToLevel(node.score(), dimension.getMappingRules(), maxLevel);
+            result.setMaturityLevelNumber(level);
+            result.setMaturityLevel(maturityScoringService.getLevelName(level, levels));
+        }
+        result.setTotalQuestions(node.totalQuestions());
+        result.setTotalScore(node.totalScore());
         return result;
+    }
+
+    private void applyScoringSnapshot(Assessment assessment, EvaluationCalculation calculation) {
+        assessment.setElementResults(calculation.elements());
+        AssessmentElementResult global = calculation.elements().stream().filter(element -> "global".equals(element.elementType())).findFirst().orElse(null);
+        assessment.setCoverage(global == null ? 0 : global.coverage());
+        assessment.setIncludedCount(global == null ? 0 : global.includedCount());
+        assessment.setScoreState(global == null ? "withheld" : global.state());
+        if (global == null || "withheld".equals(global.state())) {
+            assessment.setOverallAverage(null);
+            assessment.setOverallPercentageScore(null);
+            assessment.setOverallMaturityLevel(null);
+        }
     }
 
     private double calculateOverallScore(List<DimensionResult> dimensionResults, MaturityModel model) {
         if (dimensionResults == null || dimensionResults.isEmpty()) {
             return 0.0;
         }
+        dimensionResults = dimensionResults.stream()
+                .filter(result -> !"withheld".equals(result.getScoreState()) && result.getAverageScore() != null).toList();
         Map<String, Double> weightsByDimension = model == null || model.getDimensions() == null
                 ? Map.of()
                 : model.getDimensions().stream().collect(Collectors.toMap(
@@ -2539,52 +2367,9 @@ public class AssessmentService {
         return Math.round(score * 10.0) / 10.0;
     }
 
-    private record PracticeKey(String dimensionId, String moduleCode, String practiceId) {
-    }
+    private record ScoreNode(Double score, double weight, int totalQuestions, double totalScore,
+                             double includedCount, double coverage, String state) {}
 
-    private record ModuleKey(String dimensionId, String moduleCode) {
-    }
-
-    private record ScoreNode(
-            String code,
-            double score,
-            double weight,
-            int totalQuestions,
-            double totalScore,
-            boolean normalized
-    ) {
-    }
-
-    private String formatDimensionName(String dimensionId, MaturityModel model) {
-        if (model != null && model.getDimensions() != null) {
-            Optional<Dimension> dimensionOpt = model.getDimensions().stream()
-                    .filter(d -> d.getDimensionId().equals(dimensionId))
-                    .findFirst();
-            if (dimensionOpt.isPresent()) {
-                return dimensionOpt.get().getName();
-            }
-        }
-        // Fallback to formatted dimensionId
-        return Arrays.stream(dimensionId.replace("_", " ").split(" "))
-                .map(word -> word.length() > 0 ? word.substring(0, 1).toUpperCase() + word.substring(1) : word)
-                .collect(Collectors.joining(" "));
-    }
-
-    private String getDimensionDescription(String dimensionId, MaturityModel model) {
-        if (model != null && model.getDimensions() != null) {
-            Optional<Dimension> dimensionOpt = model.getDimensions().stream()
-                    .filter(d -> d.getDimensionId().equals(dimensionId))
-                    .findFirst();
-            if (dimensionOpt.isPresent()) {
-                String description = dimensionOpt.get().getDescription();
-                if (description != null && !description.isEmpty()) {
-                    return description;
-                }
-            }
-        }
-        // Fallback to default description
-        return "Assessment dimension for " + formatDimensionName(dimensionId, model);
-    }
 
     private boolean isEligibleForManualEvaluation(QuestionInfo questionInfo, Object responseValue) {
         if (questionInfo == null) {
@@ -2678,6 +2463,10 @@ public class AssessmentService {
         AssessmentStatus status = resolveAssessmentStatus(assessment);
         response.setId(assessment.getId());
         response.setOverallAverage(assessment.getOverallAverage());
+        response.setCoverage(assessment.getCoverage());
+        response.setIncludedCount(assessment.getIncludedCount());
+        response.setScoreState(assessment.getScoreState());
+        response.setElementResults(assessment.getElementResults());
         response.setOverallPercentageScore(assessment.getOverallPercentageScore());
         response.setOverallMaturityLevel(assessment.getOverallMaturityLevel());
         response.setStatus(status.name());
@@ -2772,6 +2561,9 @@ public class AssessmentService {
         response.setDimensionName(result.getDimensionName());
         response.setDimensionDescription(result.getDimensionDescription());
         response.setAverageScore(result.getAverageScore());
+        response.setCoverage(result.getCoverage());
+        response.setIncludedCount(result.getIncludedCount());
+        response.setScoreState(result.getScoreState());
         response.setPercentageScore(result.getPercentageScore());
         response.setMaturityLevel(result.getMaturityLevel());
         response.setMaturityLevelNumber(result.getMaturityLevelNumber());

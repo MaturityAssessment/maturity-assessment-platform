@@ -19,8 +19,8 @@ import java.util.ArrayList;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString(exclude = { "dimension", "practices", "gatingRules", "prerequisiteModuleCodes", "coRequisiteModuleCodes", "mutexModuleCodes", "reinforcesModuleCodes", "substitutesModuleCodes" })
-@EqualsAndHashCode(exclude = { "dimension", "practices", "gatingRules", "prerequisiteModuleCodes", "coRequisiteModuleCodes", "mutexModuleCodes", "reinforcesModuleCodes", "substitutesModuleCodes" })
+@ToString(exclude = { "dimension", "practices", "prerequisiteModuleCodes", "coRequisiteModuleCodes", "mutexModuleCodes", "reinforcesModuleCodes", "substitutesModuleCodes" })
+@EqualsAndHashCode(exclude = { "dimension", "practices", "prerequisiteModuleCodes", "coRequisiteModuleCodes", "mutexModuleCodes", "reinforcesModuleCodes", "substitutesModuleCodes" })
 public class Module {
 
     @Id
@@ -97,9 +97,11 @@ public class Module {
     @OneToMany(mappedBy = "module", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<Practice> practices;
 
-    @OneToMany(mappedBy = "module", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
-    @OrderBy("order ASC")
-    private List<GatingRule> gatingRules;
+    @Column(name = "minimum_coverage", nullable = false)
+    private Double minimumCoverage = 0.0;
+
+    @Column(name = "minimum_included_count", nullable = false)
+    private Double minimumIncludedCount = 0.0;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

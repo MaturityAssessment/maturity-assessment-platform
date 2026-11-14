@@ -17,8 +17,8 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString(exclude = { "maturityModel", "modules", "mappingRules", "gatingRules" })
-@EqualsAndHashCode(exclude = { "maturityModel", "modules", "mappingRules", "gatingRules" })
+@ToString(exclude = { "maturityModel", "modules", "mappingRules" })
+@EqualsAndHashCode(exclude = { "maturityModel", "modules", "mappingRules" })
 public class Dimension {
 
     @Id
@@ -56,9 +56,11 @@ public class Dimension {
     @OrderBy("levelNumber ASC")
     private List<DimensionMappingRule> mappingRules;
 
-    @OneToMany(mappedBy = "dimension", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
-    @OrderBy("order ASC")
-    private List<GatingRule> gatingRules;
+    @Column(name = "minimum_coverage", nullable = false)
+    private Double minimumCoverage = 0.0;
+
+    @Column(name = "minimum_included_count", nullable = false)
+    private Double minimumIncludedCount = 0.0;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

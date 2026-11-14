@@ -328,7 +328,7 @@ public class CampaignService {
                 .collect(java.util.stream.Collectors.groupingBy(
                         assessment -> assessment.getOverallMaturityLevel() == null
                                 || assessment.getOverallMaturityLevel().isBlank()
-                                ? "Not available"
+                                ? ("withheld".equals(assessment.getScoreState()) ? "Withheld" : "Not available")
                                 : assessment.getOverallMaturityLevel(),
                         LinkedHashMap::new,
                         java.util.stream.Collectors.counting()
@@ -371,7 +371,7 @@ public class CampaignService {
                     result.setDimensionName(entry.getValue().name);
                     result.setResponseCount(entry.getValue().responseCount);
                     result.setAverageScore(entry.getValue().responseCount == 0
-                            ? 0
+                            ? null
                             : entry.getValue().totalScore / entry.getValue().responseCount);
                     return result;
                 })
@@ -386,10 +386,8 @@ public class CampaignService {
         result.setParticipantId(participant != null ? participant.getId() : null);
         result.setEmail(participant != null ? participant.getEmail() : "Unknown participant");
         result.setAssessmentId(assessment.getId());
-        result.setOverallScore(assessment.getOverallAverage() == null
-                ? 0
-                : assessment.getOverallAverage());
-        result.setOverallMaturityLevel(assessment.getOverallMaturityLevel());
+        result.setOverallScore(assessment.getOverallAverage());
+        result.setOverallMaturityLevel("withheld".equals(assessment.getScoreState()) ? "Withheld" : assessment.getOverallMaturityLevel());
         result.setEvaluatedAt(assessment.getUpdatedAt());
         return result;
     }

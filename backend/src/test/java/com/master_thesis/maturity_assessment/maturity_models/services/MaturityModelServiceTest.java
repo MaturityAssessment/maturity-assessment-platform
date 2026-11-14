@@ -10,7 +10,6 @@ import com.master_thesis.maturity_assessment.maturity_models.dto.MaturityLevelDT
 import com.master_thesis.maturity_assessment.maturity_models.dto.MaturityModelDTO;
 import com.master_thesis.maturity_assessment.maturity_models.dto.MaturityModelEditorDTO;
 import com.master_thesis.maturity_assessment.maturity_models.dto.MappingRuleDTO;
-import com.master_thesis.maturity_assessment.maturity_models.dto.GatingRuleDTO;
 import com.master_thesis.maturity_assessment.maturity_models.dto.ModuleDTO;
 import com.master_thesis.maturity_assessment.maturity_models.dto.PracticeDTO;
 import com.master_thesis.maturity_assessment.maturity_models.dto.QuestionDTO;
@@ -23,9 +22,6 @@ import com.master_thesis.maturity_assessment.maturity_models.models.Practice;
 import com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement;
 import com.master_thesis.maturity_assessment.maturity_models.models.Question;
 import com.master_thesis.maturity_assessment.maturity_models.models.AggregationRule;
-import com.master_thesis.maturity_assessment.maturity_models.models.GatingComparisonOperator;
-import com.master_thesis.maturity_assessment.maturity_models.models.GatingScoreOperation;
-import com.master_thesis.maturity_assessment.maturity_models.models.GatingSelection;
 import com.master_thesis.maturity_assessment.maturity_models.repository.DomainRepository;
 import com.master_thesis.maturity_assessment.maturity_models.repository.MaturityModelRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -406,14 +402,16 @@ class MaturityModelServiceTest {
         practice.setName("Practice");
         practice.setWeight(1.0);
         practice.setAggregationRule(AggregationRule.MINIMUM);
-        practice.setGatingRules(List.of(gatingRule("Q1_PARENT")));
+        practice.setMinimumCoverage(80.0);
+        practice.setMinimumIncludedCount(65.5);
         practice.setQuestions(List.of(parent, child));
         var module = new MaturityModelEditorDTO.EditorModuleDTO();
         module.setCode("M1_TEST");
         module.setName("Module");
         module.setWeight(1.0);
         module.setAggregationRule(AggregationRule.MAXIMUM);
-        module.setGatingRules(List.of(gatingRule("P1_TEST")));
+        module.setMinimumCoverage(80.0);
+        module.setMinimumIncludedCount(65.5);
         module.setPractices(List.of(practice));
         var dimension = new MaturityModelEditorDTO.EditorDimensionDTO();
         dimension.setCode("D1_TEST");
@@ -421,7 +419,8 @@ class MaturityModelServiceTest {
         dimension.setDescription("Dimension description");
         dimension.setWeight(2.5);
         dimension.setAggregationRule(AggregationRule.MEDIAN);
-        dimension.setGatingRules(List.of(gatingRule("M1_TEST")));
+        dimension.setMinimumCoverage(80.0);
+        dimension.setMinimumIncludedCount(65.5);
         MappingRuleDTO mappingLevel1 = new MappingRuleDTO();
         mappingLevel1.setLevelNumber(1);
         mappingLevel1.setMinimumScore(0.0);
@@ -479,24 +478,14 @@ class MaturityModelServiceTest {
                 savedDimension.getModules().get(0).getPractices().get(0).getAggregationRule()
         );
         assertEquals(2.5, savedDimension.getWeight());
-        assertEquals("M1_TEST", savedDimension.getGatingRules().getFirst().getChildCode());
-        assertEquals("P1_TEST", savedDimension.getModules().getFirst()
-                .getGatingRules().getFirst().getChildCode());
-        assertEquals("Q1_PARENT", savedDimension.getModules().getFirst().getPractices().getFirst()
-                .getGatingRules().getFirst().getChildCode());
+        assertEquals(80.0, savedDimension.getMinimumCoverage());
+        assertEquals(80.0, savedDimension.getModules().getFirst()
+                .getMinimumCoverage());
+        assertEquals(80.0, savedDimension.getModules().getFirst().getPractices().getFirst()
+                .getMinimumCoverage());
     }
 
-    private GatingRuleDTO gatingRule(String childCode) {
-        GatingRuleDTO rule = new GatingRuleDTO();
-        rule.setOrder(0);
-        rule.setSelection(GatingSelection.SPECIFIC_CHILD);
-        rule.setChildCode(childCode);
-        rule.setOperator(GatingComparisonOperator.BELOW);
-        rule.setThreshold(new BigDecimal("0.40"));
-        rule.setOperation(GatingScoreOperation.SET);
-        rule.setValue(new BigDecimal("0.40"));
-        return rule;
-    }
+
 
     @Test
     void prepareEditorDocument_startsTheNewVersionWithAnEmptyChangelog() {
@@ -753,19 +742,7 @@ class MaturityModelServiceTest {
         assertEquals(originalModule.getAggregationRule(), copied.getAggregationRule());
     }
 
-    @Test
-    void hiddenModuleReferencesAreRejectedBeforeSaving() {
-        MaturityModelDTO dto = updateDto(domain().getId(), null);
-        var dimension = dto.getDimensions().getFirst();
-        var module = dimension.getModules().getFirst();
-        module.setVisible(false);
-        dimension.setGatingRules(List.of(gatingRule(module.getCode())));
-        IllegalOperationException error = assertThrows(IllegalOperationException.class,
-                () -> service.createMaturityModel(dto));
-        assertEquals("INVALID_GATING_RULES", error.getErrorCode());
-        assertTrue(error.getMessage().contains("visible immediate child"));
-        verify(maturityModelRepository, never()).saveAndFlush(any());
-    }
+
 
     @Test
     void hiddenModuleVisibilitySurvivesPersistenceAndEditorConversion() {
@@ -788,29 +765,21 @@ class MaturityModelServiceTest {
     }
 
     @Test
-    void createMaturityModel_rejectsOutOfScopeAndOverPrecisionGatingRules() {
-        MaturityModelDTO outsideScope = updateDto(domain().getId(), null);
-        PracticeDTO practice = outsideScope.getDimensions().getFirst().getModules().getFirst()
-                .getPractices().getFirst();
-        practice.setGatingRules(List.of(gatingRule("Q_OUTSIDE")));
-
-        IllegalOperationException scopeError = assertThrows(
-                IllegalOperationException.class,
-                () -> service.createMaturityModel(outsideScope));
-        assertEquals("INVALID_GATING_RULES", scopeError.getErrorCode());
-
-        MaturityModelDTO excessivePrecision = updateDto(domain().getId(), null);
-        PracticeDTO secondPractice = excessivePrecision.getDimensions().getFirst().getModules().getFirst()
-                .getPractices().getFirst();
-        String childCode = secondPractice.getQuestions().getFirst().getCode();
-        GatingRuleDTO rule = gatingRule(childCode);
-        rule.setThreshold(new BigDecimal("0.345"));
-        secondPractice.setGatingRules(List.of(rule));
-
-        IllegalOperationException precisionError = assertThrows(
-                IllegalOperationException.class,
-                () -> service.createMaturityModel(excessivePrecision));
-        assertEquals("INVALID_GATING_RULES", precisionError.getErrorCode());
+    void createMaturityModel_rejectsInvalidGatingPercentagesAtEveryLevel() {
+        for (double value : new double[]{-0.01, 100.01, Double.NaN, Double.POSITIVE_INFINITY}) {
+            for (int level = 0; level < 3; level++) {
+                MaturityModelDTO dto = updateDto(domain().getId(), null);
+                var dimension = dto.getDimensions().getFirst();
+                var module = dimension.getModules().getFirst();
+                var practice = module.getPractices().getFirst();
+                if (level == 0) dimension.setMinimumCoverage(value);
+                if (level == 1) module.setMinimumIncludedCount(value);
+                if (level == 2) practice.setMinimumCoverage(value);
+                IllegalOperationException error = assertThrows(IllegalOperationException.class,
+                        () -> service.createMaturityModel(dto));
+                assertEquals("INVALID_GATING_RULES", error.getErrorCode());
+            }
+        }
     }
 
     @Test

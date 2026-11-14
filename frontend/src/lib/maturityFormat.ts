@@ -1,7 +1,7 @@
 import type { MaturityLevel } from "@/api/types";
 
 export function getLevelNumber(
-  levelName: string | undefined,
+  levelName: string | null | undefined,
   levels?: MaturityLevel[] | null
 ): number | null {
   if (!levelName) return null;
@@ -39,7 +39,7 @@ export function getLevelNumber(
 }
 
 export function formatLevelWithNumber(
-  levelName: string | undefined,
+  levelName: string | null | undefined,
   levels: MaturityLevel[] | null | undefined,
   scaleN: number
 ): string {
@@ -54,6 +54,7 @@ export function formatScore1ToN(
   avg: number | null | undefined,
   scaleN: number
 ): string {
+  if (avg == null) return "—";
   const n = Number(avg);
   return Number.isFinite(n) ? `${n.toFixed(1)} / ${scaleN}` : "—";
 }

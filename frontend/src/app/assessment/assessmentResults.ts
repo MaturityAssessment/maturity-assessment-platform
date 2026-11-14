@@ -13,7 +13,7 @@ export type AssessmentDimensionResultMetric = {
   score: number;
   maturityLevel: string;
   questionCount: number;
-  differenceFromOverall: number;
+  differenceFromOverall: number | null;
 };
 
 export type AssessmentScoreDistributionItem = {
@@ -45,7 +45,7 @@ export type AssessmentEvaluatorNote = {
 };
 
 export type AssessmentResultMetrics = {
-  overallScore: number;
+  overallScore: number | null;
   finalLevelNumber: number | null;
   dimensions: AssessmentDimensionResultMetric[];
   scoreDistribution: AssessmentScoreDistributionItem[];
@@ -82,8 +82,8 @@ export function buildAssessmentResultMetrics(
     1,
     scaleLevels.at(-1)?.number ?? model.levels?.length ?? 5
   );
-  const overallScore = finiteNumber(assessment.overallAverage) ?? 0;
-  const finalLevelNumber =
+  const overallScore = assessment.scoreState === "withheld" ? null : finiteNumber(assessment.overallAverage);
+  const finalLevelNumber = overallScore == null ? null :
     scaleLevels.find(
       (level) =>
         level.name.trim().toLowerCase() ===
@@ -97,15 +97,15 @@ export function buildAssessmentResultMetrics(
     model
   ).flatMap((result) => {
     const score = finiteNumber(result.averageScore);
-    if (score == null) return [];
+    if (score == null || result.scoreState === "withheld") return [];
     return [
       {
         dimensionId: result.dimensionId,
         name: result.dimensionName,
         score,
-        maturityLevel: result.maturityLevel,
+        maturityLevel: result.maturityLevel ?? "",
         questionCount: result.totalQuestions,
-        differenceFromOverall: score - overallScore,
+        differenceFromOverall: overallScore == null ? null : score - overallScore,
       },
     ];
   });

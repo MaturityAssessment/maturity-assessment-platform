@@ -64,25 +64,25 @@ public class MaturityModelExcelService {
     private static final List<String> LEVELS_OPTIONAL_HEADERS = List.of("description");
 
     private static final List<String> DIMENSION_HEADERS = List.of("dimensionId", "dimensionName");
-    private static final List<String> DIMENSION_OPTIONAL_HEADERS = List.of("dimensionDescription", "dimensionWeight", "dimensionAggregationRule", "dimensionMappingRules", "dimensionGatingRules");
+    private static final List<String> DIMENSION_OPTIONAL_HEADERS = List.of("dimensionDescription", "dimensionWeight", "dimensionAggregationRule", "dimensionMappingRules", "dimensionMinimumCoverage", "dimensionMinimumIncludedCount");
     private static final List<String> DIMENSION_EXPORT_HEADERS = Stream.concat(DIMENSION_HEADERS.stream(), DIMENSION_OPTIONAL_HEADERS.stream()).toList();
 
     private static final List<String> MODULE_HEADERS = List.of(
             "dimensionId", "moduleCode", "moduleName", "moduleDescription"
     );
     private static final List<String> MODULE_OPTIONAL_HEADERS = List.of(
-            "dimensionName", "moduleWeight", "moduleAggregationRule", "moduleGatingRules", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes"
+            "dimensionName", "moduleWeight", "moduleAggregationRule", "moduleMinimumCoverage", "moduleMinimumIncludedCount", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes"
     );
-    private static final List<String> MODULE_EXPORT_HEADERS = Stream.concat(MODULE_HEADERS.stream(), Stream.of("moduleWeight", "moduleAggregationRule", "moduleGatingRules", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes")).toList();
+    private static final List<String> MODULE_EXPORT_HEADERS = Stream.concat(MODULE_HEADERS.stream(), Stream.of("moduleWeight", "moduleAggregationRule", "moduleMinimumCoverage", "moduleMinimumIncludedCount", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes")).toList();
 
     private static final List<String> PRACTICE_HEADERS = List.of(
             "dimensionId", "moduleCode", "practiceName", "practiceDescription"
     );
     private static final List<String> PRACTICE_OPTIONAL_HEADERS = List.of(
-            "practiceCode", "practiceId", "dimensionName", "moduleName", "practiceWeight", "practiceRequiresEvidence", "practiceAggregationRule", "practiceGatingRules", "practiceEvidenceRequirements"
+            "practiceCode", "practiceId", "dimensionName", "moduleName", "practiceWeight", "practiceRequiresEvidence", "practiceAggregationRule", "practiceMinimumCoverage", "practiceMinimumIncludedCount", "practiceEvidenceRequirements"
     );
     private static final List<String> PRACTICE_EXPORT_HEADERS = List.of(
-            "dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceGatingRules", "practiceEvidenceRequirements"
+            "dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceMinimumCoverage", "practiceMinimumIncludedCount", "practiceEvidenceRequirements"
     );
 
     private static final List<String> QUESTION_HEADERS = List.of(
@@ -246,7 +246,8 @@ public class MaturityModelExcelService {
                 m.setDimensionWeight(dim.get("dimensionWeight"));
                 m.setDimensionAggregationRule(dim.get("dimensionAggregationRule"));
                 m.setDimensionMappingRules(dim.get("dimensionMappingRules"));
-                m.setDimensionGatingRules(dim.get("dimensionGatingRules"));
+                m.setDimensionMinimumCoverage(dim.get("dimensionMinimumCoverage"));
+                m.setDimensionMinimumIncludedCount(dim.get("dimensionMinimumIncludedCount"));
 
                 m.setModuleCode(mod.get("moduleCode"));
                 m.setModuleName(mod.get("moduleName"));
@@ -260,7 +261,8 @@ public class MaturityModelExcelService {
                 m.setModuleReinforces(mod.get("moduleReinforces"));
                 m.setModuleSubstitutes(mod.get("moduleSubstitutes"));
                 m.setModuleAggregationRule(mod.get("moduleAggregationRule"));
-                m.setModuleGatingRules(mod.get("moduleGatingRules"));
+                m.setModuleMinimumCoverage(mod.get("moduleMinimumCoverage"));
+                m.setModuleMinimumIncludedCount(mod.get("moduleMinimumIncludedCount"));
 
                 m.setPracticeId(pr.get("practiceId"));
                 m.setPracticeCode(pr.get("practiceCode"));
@@ -268,7 +270,8 @@ public class MaturityModelExcelService {
                 m.setPracticeDescription(pr.get("practiceDescription"));
                 m.setPracticeWeight(pr.get("practiceWeight"));
                 m.setPracticeAggregationRule(pr.get("practiceAggregationRule"));
-                m.setPracticeGatingRules(pr.get("practiceGatingRules"));
+                m.setPracticeMinimumCoverage(pr.get("practiceMinimumCoverage"));
+                m.setPracticeMinimumIncludedCount(pr.get("practiceMinimumIncludedCount"));
 
                 m.setQuestionWeight(q.get("questionWeight"));
                 m.setQuestionCode(q.get("questionCode"));
@@ -703,7 +706,8 @@ public class MaturityModelExcelService {
             row.createCell(3).setCellValue(dim.getWeight() == null ? 1.0 : dim.getWeight());
             row.createCell(4).setCellValue(dim.getAggregationRule() == null ? "" : dim.getAggregationRule().name());
             row.createCell(5).setCellValue(writeJson(dim.getMappingRules()));
-            row.createCell(6).setCellValue(writeJson(dim.getGatingRules()));
+            row.createCell(6).setCellValue(dim.getMinimumCoverage() == null ? 0.0 : dim.getMinimumCoverage());
+            row.createCell(7).setCellValue(dim.getMinimumIncludedCount() == null ? 0.0 : dim.getMinimumIncludedCount());
         }
     }
 
@@ -726,14 +730,15 @@ public class MaturityModelExcelService {
                 row.createCell(3).setCellValue(nullToEmpty(mod.getDescription()));
                 row.createCell(4).setCellValue(mod.getWeight() == null ? 1.0 : mod.getWeight());
                 row.createCell(5).setCellValue(mod.getAggregationRule() == null ? "" : mod.getAggregationRule().name());
-                row.createCell(6).setCellValue(writeJson(mod.getGatingRules()));
-                row.createCell(7).setCellValue(!Boolean.FALSE.equals(mod.getVisible()));
-                row.createCell(8).setCellValue(writeJson(mod.getPrerequisiteModuleCodes()));
-                row.createCell(9).setCellValue(writeJson(mod.getCoRequisiteModuleCodes()));
-                row.createCell(10).setCellValue(writeJson(mod.getMutexModuleCodes()));
-                row.createCell(11).setCellValue(Boolean.TRUE.equals(mod.getMandatoryBadge()));
-                row.createCell(12).setCellValue(writeJson(mod.getReinforcesModuleCodes()));
-                row.createCell(13).setCellValue(writeJson(mod.getSubstitutesModuleCodes()));
+                row.createCell(6).setCellValue(mod.getMinimumCoverage() == null ? 0.0 : mod.getMinimumCoverage());
+                row.createCell(7).setCellValue(mod.getMinimumIncludedCount() == null ? 0.0 : mod.getMinimumIncludedCount());
+                row.createCell(8).setCellValue(!Boolean.FALSE.equals(mod.getVisible()));
+                row.createCell(9).setCellValue(writeJson(mod.getPrerequisiteModuleCodes()));
+                row.createCell(10).setCellValue(writeJson(mod.getCoRequisiteModuleCodes()));
+                row.createCell(11).setCellValue(writeJson(mod.getMutexModuleCodes()));
+                row.createCell(12).setCellValue(Boolean.TRUE.equals(mod.getMandatoryBadge()));
+                row.createCell(13).setCellValue(writeJson(mod.getReinforcesModuleCodes()));
+                row.createCell(14).setCellValue(writeJson(mod.getSubstitutesModuleCodes()));
             }
         }
     }
@@ -763,8 +768,9 @@ public class MaturityModelExcelService {
                     row.createCell(5).setCellValue(Boolean.TRUE.equals(pr.getRequiresEvidence()));
                     row.createCell(6).setCellValue(pr.getWeight() == null ? 1.0 : pr.getWeight());
                     row.createCell(7).setCellValue(pr.getAggregationRule() == null ? "" : pr.getAggregationRule().name());
-                    row.createCell(8).setCellValue(writeJson(pr.getGatingRules()));
-                    row.createCell(9).setCellValue(writeJson(pr.getEvidenceRequirements()));
+                    row.createCell(8).setCellValue(pr.getMinimumCoverage() == null ? 0.0 : pr.getMinimumCoverage());
+                    row.createCell(9).setCellValue(pr.getMinimumIncludedCount() == null ? 0.0 : pr.getMinimumIncludedCount());
+                    row.createCell(10).setCellValue(writeJson(pr.getEvidenceRequirements()));
                 }
             }
         }
@@ -870,14 +876,14 @@ public class MaturityModelExcelService {
                 "Edit data on the six model sheets; keep their names and column headers. Optional newer columns may be omitted in older workbooks.",
                 "Use one row on Model. Imported models are inactive; choose a domain in the editor and review before saving as a new model or version.",
                 "Levels: define 2 to 12 levels numbered 1..N. Description is optional.",
-                "Join items using dimensionId, moduleCode and practiceCode. Codes must be unique among siblings. If changing a code, update all child references, dependencies and gating rules.",
+                "Join items using dimensionId, moduleCode and practiceCode. Codes must be unique among siblings. If changing a code, update all child references and dependencies.",
                 "moduleCoRequisites and moduleMutex are optional JSON arrays of other module codes in the same dimension. Co-requisites share visibility; mutex modules cannot both be visible. Define a pair once or on both modules.",
                 "Informational editor badges: moduleMandatoryBadge is true/false; moduleReinforces and moduleSubstitutes are JSON arrays of sibling module codes. These notes add no visibility, completion, or scoring constraints.",
                 "modulePrerequisites is an optional JSON array of earlier module codes in the same dimension. Visible modules require visible prerequisites.",
                 "Sheet row order determines dimension, module, practice and question order. Every dimension/module/practice must lead to a question. Remove child rows when deleting an item.",
                 "Aggregation rules: AVERAGE, WEIGHTED_AVERAGE, MINIMUM, MAXIMUM, SUM, MEDIAN. Empty values use the application defaults. Weights must be positive; optional questions may have zero weight.",
                 "dimensionMappingRules: JSON array, one threshold per level, starting at zero, strictly increasing within 0..1. Example: [{\"levelNumber\":1,\"minimumScore\":0},{\"levelNumber\":2,\"minimumScore\":0.5}].",
-                "Gating rules: JSON array. Example: [{\"order\":0,\"selection\":\"specificChild\",\"childCode\":\"Q1\",\"operator\":\"<\",\"threshold\":0.5,\"operation\":\"set\",\"value\":0}]. Reference immediate child codes. selection: specificChild/anyChild/allChildren; operator: <, <=, ==, >=, >; operation: set/add/subtract.",
+                "Gating thresholds: minimumCoverage and minimumIncludedCount are percentages from 0 to 100 (default 0, disabled). Coverage gates only weighted mean. A failed minimum withholds the element from parent aggregation.",
                 "Question types: boolean, likert, open_answer, multiple_choice, multiple_selection, numeric, percentage. Leave type-specific columns empty for other types.",
                 "All question types: questionAllowNotApplicable enables N/A; questionNotApplicableScore is required when enabled and must be between 0 and 1.",
                 "boolean: questionBooleanCorrectAnswer is true or false (default true). practiceRequiresEvidence and questionRequired also use true/false.",

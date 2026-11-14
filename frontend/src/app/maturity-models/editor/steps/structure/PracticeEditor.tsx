@@ -64,25 +64,9 @@ export default function PracticeEditor({
         candidate.dependsOnQuestionCode?.toLowerCase() ===
         question.code.toLowerCase()
     );
-    const referencedByGating = practice.gatingRules.some(
-      (rule) =>
-        rule.selection === "specificChild" &&
-        rule.childCode?.toLowerCase() === question.code.toLowerCase()
-    );
-    if (
-      (dependents.length || referencedByGating) &&
-      !window.confirm(
-        `Deleting this question will remove${
-          dependents.length
-            ? ` ${dependents.length} dependency link${dependents.length === 1 ? "" : "s"}`
-            : ""
-        }${dependents.length && referencedByGating ? " and" : ""}${
-          referencedByGating ? " its specific-child gating rules" : ""
-        }. Continue?`
-      )
-    ) {
-      return;
-    }
+    if (dependents.length && !window.confirm(
+      `Deleting this question will remove ${dependents.length} dependency link${dependents.length === 1 ? "" : "s"}. Continue?`
+    )) return;
     commands.deleteQuestion(practice.clientKey, question.clientKey);
     setSelectedQuestionKey(null);
   };
@@ -112,14 +96,7 @@ export default function PracticeEditor({
           commands.movePractice(module.clientKey, practice.clientKey, 1)
         }
         onDelete={() => {
-          const referenced = module.gatingRules.some(
-            (rule) =>
-              rule.selection === "specificChild" &&
-              rule.childCode?.toLowerCase() === practice.code.toLowerCase()
-          );
-          const message = referenced
-            ? "Delete this practice and all of its questions? Gating rules that reference it will also be removed."
-            : "Delete this practice and all of its questions?";
+          const message = "Delete this practice and all of its questions?";
           if (!window.confirm(message))
             return;
           commands.deletePractice(module.clientKey, practice.clientKey);
@@ -221,17 +198,15 @@ export default function PracticeEditor({
           {
             id: "gating",
             label: "Gating rules",
-            count: practice.gatingRules.length,
+            count: Number(practice.minimumCoverage > 0) + Number(practice.minimumIncludedCount > 0),
             content: (
               <GatingRuleField
                 idPrefix={`practice-${practice.clientKey}`}
-                childLabel="Questions"
-                childOptions={practice.questions.map((question) => ({
-                  code: question.code,
-                  name: question.text,
-                }))}
-                value={practice.gatingRules}
-                onChange={(gatingRules) => update({ ...practice, gatingRules })}
+                aggregationRule={practice.aggregationRule}
+                isPractice={true}
+                minimumCoverage={practice.minimumCoverage}
+                minimumIncludedCount={practice.minimumIncludedCount}
+                onChange={(thresholds) => update({ ...practice, ...thresholds })}
               />
             ),
           },

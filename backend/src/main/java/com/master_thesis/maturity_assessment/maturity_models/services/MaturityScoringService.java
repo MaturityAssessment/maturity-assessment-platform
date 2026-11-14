@@ -3,8 +3,6 @@ package com.master_thesis.maturity_assessment.maturity_models.services;
 import com.master_thesis.maturity_assessment.maturity_models.models.MaturityLevel;
 import com.master_thesis.maturity_assessment.maturity_models.models.AggregationRule;
 import com.master_thesis.maturity_assessment.maturity_models.models.DimensionMappingRule;
-import com.master_thesis.maturity_assessment.maturity_models.models.GatingRule;
-import com.master_thesis.maturity_assessment.maturity_models.models.GatingSelection;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -19,75 +17,12 @@ public class MaturityScoringService {
 
     private static final int DEFAULT_MAX_LEVEL_NUMBER = 5;
 
-    public record ChildScore(String code, double score) {
-    }
-
     public double roundAndClampNormalized(double score) {
         if (!Double.isFinite(score)) {
             return 0.0;
         }
         double clamped = Math.max(0.0, Math.min(1.0, score));
         return BigDecimal.valueOf(clamped).setScale(2, RoundingMode.HALF_UP).doubleValue();
-    }
-
-    public double applyGatingRules(
-            double aggregatedScore,
-            List<ChildScore> childScores,
-            List<GatingRule> rules) {
-        double current = roundAndClampNormalized(aggregatedScore);
-        if (rules == null || rules.isEmpty()) {
-            return current;
-        }
-        List<ChildScore> scoredChildren = childScores == null ? List.of() : childScores.stream()
-                .filter(child -> child != null && child.code() != null && Double.isFinite(child.score()))
-                .map(child -> new ChildScore(child.code(), roundAndClampNormalized(child.score())))
-                .toList();
-        for (GatingRule rule : rules.stream()
-                .filter(java.util.Objects::nonNull)
-                .sorted(Comparator.comparing(GatingRule::getOrder))
-                .toList()) {
-            if (!matches(rule, scoredChildren)) {
-                continue;
-            }
-            double value = rule.getValue().doubleValue();
-            current = switch (rule.getOperation()) {
-                case SET -> value;
-                case ADD -> current + value;
-                case SUBTRACT -> current - value;
-            };
-            current = roundAndClampNormalized(current);
-        }
-        return current;
-    }
-
-    private boolean matches(GatingRule rule, List<ChildScore> children) {
-        if (children.isEmpty()) {
-            return false;
-        }
-        if (rule.getSelection() == GatingSelection.SPECIFIC_CHILD) {
-            return children.stream()
-                    .filter(child -> child.code().equalsIgnoreCase(rule.getChildCode()))
-                    .findFirst()
-                    .map(child -> compare(child.score(), rule))
-                    .orElse(false);
-        }
-        if (rule.getSelection() == GatingSelection.ANY_CHILD) {
-            return children.stream().anyMatch(child -> compare(child.score(), rule));
-        }
-        return children.stream().allMatch(child -> compare(child.score(), rule));
-    }
-
-    private boolean compare(double score, GatingRule rule) {
-        BigDecimal left = BigDecimal.valueOf(roundAndClampNormalized(score)).setScale(2);
-        BigDecimal right = rule.getThreshold().setScale(2, RoundingMode.HALF_UP);
-        int comparison = left.compareTo(right);
-        return switch (rule.getOperator()) {
-            case BELOW -> comparison < 0;
-            case BELOW_OR_EQUAL -> comparison <= 0;
-            case EQUAL -> comparison == 0;
-            case ABOVE_OR_EQUAL -> comparison >= 0;
-            case ABOVE -> comparison > 0;
-        };
     }
 
     private static final String[] GLOBAL_LEVEL_NAMES = {

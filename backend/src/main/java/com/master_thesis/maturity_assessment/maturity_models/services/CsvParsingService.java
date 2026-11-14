@@ -8,7 +8,6 @@ import com.master_thesis.maturity_assessment.maturity_models.dto.MaturityModelDT
 import com.master_thesis.maturity_assessment.maturity_models.dto.ModuleDTO;
 import com.master_thesis.maturity_assessment.maturity_models.dto.PracticeDTO;
 import com.master_thesis.maturity_assessment.maturity_models.dto.MappingRuleDTO;
-import com.master_thesis.maturity_assessment.maturity_models.dto.GatingRuleDTO;
 import com.master_thesis.maturity_assessment.maturity_models.models.AggregationRule;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -446,7 +445,8 @@ public class CsvParsingService {
                 dimensionDTO.setWeight(parsePositiveDoubleOrDefault(row.getDimensionWeight(), 1.0, "dimensionWeight", rowNumber, errors));
                 dimensionDTO.setAggregationRule(parseAggregationRule(row.getDimensionAggregationRule(), "dimensionAggregationRule", rowNumber, errors));
                 dimensionDTO.setMappingRules(parseRules(row.getDimensionMappingRules(), MappingRuleDTO.class, "dimensionMappingRules", rowNumber, errors));
-                dimensionDTO.setGatingRules(parseRules(row.getDimensionGatingRules(), GatingRuleDTO.class, "dimensionGatingRules", rowNumber, errors));
+                dimensionDTO.setMinimumCoverage(parseGatingPercentage(row.getDimensionMinimumCoverage(), "dimensionMinimumCoverage", rowNumber, errors));
+                dimensionDTO.setMinimumIncludedCount(parseGatingPercentage(row.getDimensionMinimumIncludedCount(), "dimensionMinimumIncludedCount", rowNumber, errors));
                 dimension = new DimensionAccumulator(dimensionDTO);
                 dimensions.put(dimensionKey, dimension);
             }
@@ -470,7 +470,8 @@ public class CsvParsingService {
                 moduleDTO.setReinforcesModuleCodes(parseRules(row.getModuleReinforces(), String.class, "moduleReinforces", rowNumber, errors));
                 moduleDTO.setSubstitutesModuleCodes(parseRules(row.getModuleSubstitutes(), String.class, "moduleSubstitutes", rowNumber, errors));
                 moduleDTO.setAggregationRule(parseAggregationRule(row.getModuleAggregationRule(), "moduleAggregationRule", rowNumber, errors));
-                moduleDTO.setGatingRules(parseRules(row.getModuleGatingRules(), GatingRuleDTO.class, "moduleGatingRules", rowNumber, errors));
+                moduleDTO.setMinimumCoverage(parseGatingPercentage(row.getModuleMinimumCoverage(), "moduleMinimumCoverage", rowNumber, errors));
+                moduleDTO.setMinimumIncludedCount(parseGatingPercentage(row.getModuleMinimumIncludedCount(), "moduleMinimumIncludedCount", rowNumber, errors));
                 module = new ModuleAccumulator(moduleDTO);
                 dimension.modules.put(moduleKey, module);
             }
@@ -492,7 +493,8 @@ public class CsvParsingService {
                         com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement.class,
                         "practiceEvidenceRequirements", rowNumber, errors));
                 practiceDTO.setAggregationRule(parseAggregationRule(row.getPracticeAggregationRule(), "practiceAggregationRule", rowNumber, errors));
-                practiceDTO.setGatingRules(parseRules(row.getPracticeGatingRules(), GatingRuleDTO.class, "practiceGatingRules", rowNumber, errors));
+                practiceDTO.setMinimumCoverage(parseGatingPercentage(row.getPracticeMinimumCoverage(), "practiceMinimumCoverage", rowNumber, errors));
+                practiceDTO.setMinimumIncludedCount(parseGatingPercentage(row.getPracticeMinimumIncludedCount(), "practiceMinimumIncludedCount", rowNumber, errors));
                 practice = new PracticeAccumulator(practiceDTO, row.getPracticeSortOrder());
                 module.practices.put(practiceKey, practice);
             }
@@ -652,6 +654,17 @@ public class CsvParsingService {
             return defaultValue;
         }
         return parsePositiveDouble(value, fieldName, rowNumber, errors);
+    }
+
+    private Double parseGatingPercentage(String value, String field, int rowNumber, List<String> errors) {
+        if (value == null || value.isBlank()) return 0.0;
+        try {
+            double percentage = Double.parseDouble(value.trim());
+            if (Double.isFinite(percentage) && percentage >= 0 && percentage <= 100) return percentage;
+        } catch (NumberFormatException ignored) {
+        }
+        errors.add("Row " + rowNumber + ": " + field + " must be a percentage between 0 and 100.");
+        return 0.0;
     }
 
     private AggregationRule parseAggregationRule(String value, String field, int rowNumber, List<String> errors) {

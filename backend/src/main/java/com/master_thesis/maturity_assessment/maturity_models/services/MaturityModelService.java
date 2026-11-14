@@ -11,7 +11,6 @@ import com.master_thesis.maturity_assessment.maturity_models.dto.MaturityModelSu
 import com.master_thesis.maturity_assessment.maturity_models.dto.MaturityLevelDTO;
 import com.master_thesis.maturity_assessment.maturity_models.dto.MaturityModelEditorDTO;
 import com.master_thesis.maturity_assessment.maturity_models.dto.MappingRuleDTO;
-import com.master_thesis.maturity_assessment.maturity_models.dto.GatingRuleDTO;
 import com.master_thesis.maturity_assessment.maturity_models.models.MaturityLevel;
 import com.master_thesis.maturity_assessment.maturity_models.models.Question;
 import com.master_thesis.maturity_assessment.maturity_models.models.Practice;
@@ -22,8 +21,6 @@ import com.master_thesis.maturity_assessment.maturity_models.models.MaturityMode
 import com.master_thesis.maturity_assessment.maturity_models.models.Domain;
 import com.master_thesis.maturity_assessment.maturity_models.models.AggregationRule;
 import com.master_thesis.maturity_assessment.maturity_models.models.DimensionMappingRule;
-import com.master_thesis.maturity_assessment.maturity_models.models.GatingRule;
-import com.master_thesis.maturity_assessment.maturity_models.models.GatingSelection;
 import com.master_thesis.maturity_assessment.maturity_models.repository.MaturityModelRepository;
 import com.master_thesis.maturity_assessment.maturity_models.repository.DomainRepository;
 import com.master_thesis.maturity_assessment.assessments.repository.AssessmentRepository;
@@ -423,7 +420,8 @@ public class MaturityModelService {
                 dto.setWeight(dimension.getWeight());
                 dto.setAggregationRule(resolveAggregationRule(dimension.getAggregationRule()));
                 dto.setMappingRules(toMappingRuleDtos(dimension.getMappingRules()));
-                dto.setGatingRules(toGatingRuleDtos(dimension.getGatingRules()));
+                dto.setMinimumCoverage(dimension.getMinimumCoverage() == null ? 0.0 : dimension.getMinimumCoverage());
+                dto.setMinimumIncludedCount(dimension.getMinimumIncludedCount() == null ? 0.0 : dimension.getMinimumIncludedCount());
                 dto.setSortOrder(dimension.getSortOrder());
 
                 // Convert modules
@@ -455,7 +453,8 @@ public class MaturityModelService {
                 dimension.setMaturityModel(model);
                 dimension.setSortOrder(sortOrder);
                 dimension.setMappingRules(toMappingRuleEntities(dto.getMappingRules(), dimension, levelCount));
-                dimension.setGatingRules(toGatingRuleEntities(dto.getGatingRules(), null, null, dimension));
+                dimension.setMinimumCoverage(dto.getMinimumCoverage() == null ? 0.0 : dto.getMinimumCoverage());
+                dimension.setMinimumIncludedCount(dto.getMinimumIncludedCount() == null ? 0.0 : dto.getMinimumIncludedCount());
 
                 // Convert and set modules (list index = persisted sort order)
                 if (dto.getModules() != null) {
@@ -487,7 +486,8 @@ public class MaturityModelService {
                 dto.setDescription(module.getDescription());
                 dto.setWeight(module.getWeight());
                 dto.setAggregationRule(resolveAggregationRule(module.getAggregationRule()));
-                dto.setGatingRules(toGatingRuleDtos(module.getGatingRules()));
+                dto.setMinimumCoverage(module.getMinimumCoverage() == null ? 0.0 : module.getMinimumCoverage());
+                dto.setMinimumIncludedCount(module.getMinimumIncludedCount() == null ? 0.0 : module.getMinimumIncludedCount());
                 dto.setSortOrder(module.getSortOrder());
 
                 // Convert practices
@@ -521,7 +521,8 @@ public class MaturityModelService {
                 module.setAggregationRule(resolveAggregationRule(dto.getAggregationRule()));
                 module.setDimension(dimension);
                 module.setSortOrder(sortOrder);
-                module.setGatingRules(toGatingRuleEntities(dto.getGatingRules(), null, module, null));
+                module.setMinimumCoverage(dto.getMinimumCoverage() == null ? 0.0 : dto.getMinimumCoverage());
+                module.setMinimumIncludedCount(dto.getMinimumIncludedCount() == null ? 0.0 : dto.getMinimumIncludedCount());
 
                 // Convert and set practices
                 if (dto.getPractices() != null) {
@@ -599,7 +600,8 @@ public class MaturityModelService {
                 dto.setDescription(practice.getDescription());
                 dto.setWeight(practice.getWeight());
                 dto.setAggregationRule(resolveAggregationRule(practice.getAggregationRule()));
-                dto.setGatingRules(toGatingRuleDtos(practice.getGatingRules()));
+                dto.setMinimumCoverage(practice.getMinimumCoverage() == null ? 0.0 : practice.getMinimumCoverage());
+                dto.setMinimumIncludedCount(practice.getMinimumIncludedCount() == null ? 0.0 : practice.getMinimumIncludedCount());
 
                 // Convert questions
                 if (practice.getQuestions() != null) {
@@ -624,7 +626,8 @@ public class MaturityModelService {
                 practice.setWeight(dto.getWeight() != null ? dto.getWeight() : 1.0);
                 practice.setAggregationRule(resolveAggregationRule(dto.getAggregationRule()));
                 practice.setModule(module);
-                practice.setGatingRules(toGatingRuleEntities(dto.getGatingRules(), practice, null, null));
+                practice.setMinimumCoverage(dto.getMinimumCoverage() == null ? 0.0 : dto.getMinimumCoverage());
+                practice.setMinimumIncludedCount(dto.getMinimumIncludedCount() == null ? 0.0 : dto.getMinimumIncludedCount());
 
                 // Convert and set questions
                 if (dto.getQuestions() != null) {
@@ -766,7 +769,8 @@ public class MaturityModelService {
                         editorDimension.setWeight(dimension.getWeight());
                         editorDimension.setAggregationRule(resolveAggregationRule(dimension.getAggregationRule()));
                         editorDimension.setMappingRules(dimension.getMappingRules());
-                        editorDimension.setGatingRules(dimension.getGatingRules());
+                        editorDimension.setMinimumCoverage(dimension.getMinimumCoverage());
+                        editorDimension.setMinimumIncludedCount(dimension.getMinimumIncludedCount());
                         List<MaturityModelEditorDTO.EditorModuleDTO> modules = new ArrayList<>();
                         for (ModuleDTO module : dimension.getModules() == null ? List.<ModuleDTO>of() : dimension.getModules()) {
                                 var editorModule = new MaturityModelEditorDTO.EditorModuleDTO();
@@ -782,7 +786,8 @@ public class MaturityModelService {
                                 editorModule.setDescription(module.getDescription());
                                 editorModule.setWeight(module.getWeight());
                                 editorModule.setAggregationRule(resolveAggregationRule(module.getAggregationRule()));
-                                editorModule.setGatingRules(module.getGatingRules());
+                                editorModule.setMinimumCoverage(module.getMinimumCoverage());
+                                editorModule.setMinimumIncludedCount(module.getMinimumIncludedCount());
                                 List<MaturityModelEditorDTO.EditorPracticeDTO> practices = new ArrayList<>();
                                 for (PracticeDTO practice : module.getPractices() == null
                                                 ? List.<PracticeDTO>of() : module.getPractices()) {
@@ -794,7 +799,8 @@ public class MaturityModelService {
                                         editorPractice.setDescription(practice.getDescription());
                                         editorPractice.setWeight(practice.getWeight());
                                         editorPractice.setAggregationRule(resolveAggregationRule(practice.getAggregationRule()));
-                                        editorPractice.setGatingRules(practice.getGatingRules());
+                                        editorPractice.setMinimumCoverage(practice.getMinimumCoverage());
+                                        editorPractice.setMinimumIncludedCount(practice.getMinimumIncludedCount());
                                         List<MaturityModelEditorDTO.EditorQuestionDTO> questions = new ArrayList<>();
                                         for (QuestionDTO question : practice.getQuestions() == null
                                                         ? List.<QuestionDTO>of() : practice.getQuestions()) {
@@ -856,7 +862,8 @@ public class MaturityModelService {
                         dimension.setWeight(editorDimension.getWeight());
                         dimension.setAggregationRule(resolveAggregationRule(editorDimension.getAggregationRule()));
                         dimension.setMappingRules(editorDimension.getMappingRules());
-                        dimension.setGatingRules(editorDimension.getGatingRules());
+                        dimension.setMinimumCoverage(editorDimension.getMinimumCoverage());
+                        dimension.setMinimumIncludedCount(editorDimension.getMinimumIncludedCount());
                         List<ModuleDTO> modules = new ArrayList<>();
                         for (var editorModule : editorDimension.getModules() == null
                                         ? List.<MaturityModelEditorDTO.EditorModuleDTO>of() : editorDimension.getModules()) {
@@ -873,7 +880,8 @@ public class MaturityModelService {
                                 module.setDescription(editorModule.getDescription());
                                 module.setWeight(editorModule.getWeight());
                                 module.setAggregationRule(resolveAggregationRule(editorModule.getAggregationRule()));
-                                module.setGatingRules(editorModule.getGatingRules());
+                                module.setMinimumCoverage(editorModule.getMinimumCoverage());
+                                module.setMinimumIncludedCount(editorModule.getMinimumIncludedCount());
                                 List<PracticeDTO> practices = new ArrayList<>();
                                 for (var editorPractice : editorModule.getPractices() == null
                                                 ? List.<MaturityModelEditorDTO.EditorPracticeDTO>of()
@@ -886,7 +894,8 @@ public class MaturityModelService {
                                         practice.setDescription(editorPractice.getDescription());
                                         practice.setWeight(editorPractice.getWeight());
                                         practice.setAggregationRule(resolveAggregationRule(editorPractice.getAggregationRule()));
-                                        practice.setGatingRules(editorPractice.getGatingRules());
+                                        practice.setMinimumCoverage(editorPractice.getMinimumCoverage());
+                                        practice.setMinimumIncludedCount(editorPractice.getMinimumIncludedCount());
                                         List<QuestionDTO> questions = new ArrayList<>();
                                         for (var editorQuestion : editorPractice.getQuestions() == null
                                                         ? List.<MaturityModelEditorDTO.EditorQuestionDTO>of()
@@ -966,54 +975,6 @@ public class MaturityModelService {
                                 .collect(Collectors.toList());
         }
 
-        private List<GatingRuleDTO> toGatingRuleDtos(List<GatingRule> rules) {
-                if (rules == null) {
-                        return new ArrayList<>();
-                }
-                return rules.stream()
-                                .sorted(Comparator.comparing(GatingRule::getOrder))
-                                .map(rule -> {
-                                        GatingRuleDTO dto = new GatingRuleDTO();
-                                        dto.setOrder(rule.getOrder());
-                                        dto.setSelection(rule.getSelection());
-                                        dto.setChildCode(rule.getChildCode());
-                                        dto.setOperator(rule.getOperator());
-                                        dto.setThreshold(rule.getThreshold());
-                                        dto.setOperation(rule.getOperation());
-                                        dto.setValue(rule.getValue());
-                                        return dto;
-                                })
-                                .collect(Collectors.toList());
-        }
-
-        private List<GatingRule> toGatingRuleEntities(
-                        List<GatingRuleDTO> suppliedRules,
-                        Practice practice,
-                        Module module,
-                        Dimension dimension) {
-                if (suppliedRules == null) {
-                        return new ArrayList<>();
-                }
-                return suppliedRules.stream()
-                                .sorted(Comparator.comparing(GatingRuleDTO::getOrder))
-                                .map(dto -> {
-                                        GatingRule rule = new GatingRule();
-                                        rule.setOrder(dto.getOrder());
-                                        rule.setSelection(dto.getSelection());
-                                        rule.setChildCode(dto.getSelection() == GatingSelection.SPECIFIC_CHILD
-                                                        ? dto.getChildCode().trim()
-                                                        : null);
-                                        rule.setOperator(dto.getOperator());
-                                        rule.setThreshold(dto.getThreshold());
-                                        rule.setOperation(dto.getOperation());
-                                        rule.setValue(dto.getValue());
-                                        rule.setPractice(practice);
-                                        rule.setModule(module);
-                                        rule.setDimension(dimension);
-                                        return rule;
-                                })
-                                .collect(Collectors.toList());
-        }
 
         private List<MappingRuleDTO> defaultMappingRules(int levelCount) {
                 if (levelCount <= 0) {
@@ -1405,99 +1366,27 @@ public class MaturityModelService {
         }
 
         private void validateGatingRules(MaturityModelDTO dto) {
-                if (dto.getDimensions() == null) {
-                        return;
-                }
+                if (dto.getDimensions() == null) return;
                 for (DimensionDTO dimension : dto.getDimensions()) {
-                        validateGatingRuleList(
-                                        dimension.getGatingRules(),
-                                        codes(dimension.getModules() == null ? null : dimension.getModules().stream()
-                                                        .filter(module -> !Boolean.FALSE.equals(module.getVisible())).toList(),
-                                                        ModuleDTO::getCode),
-                                        "dimension '" + dimension.getId() + "'");
-                        if (dimension.getModules() == null) {
-                                continue;
-                        }
+                        validateGatingThresholds(dimension.getMinimumCoverage(), dimension.getMinimumIncludedCount(), "dimension '" + dimension.getId() + "'");
+                        if (dimension.getModules() == null) continue;
                         for (ModuleDTO module : dimension.getModules()) {
-                                validateGatingRuleList(
-                                                module.getGatingRules(),
-                                                codes(module.getPractices(), PracticeDTO::getCode),
-                                                "module '" + module.getCode() + "'");
-                                if (module.getPractices() == null) {
-                                        continue;
-                                }
+                                validateGatingThresholds(module.getMinimumCoverage(), module.getMinimumIncludedCount(), "module '" + module.getCode() + "'");
+                                if (module.getPractices() == null) continue;
                                 for (PracticeDTO practice : module.getPractices()) {
-                                        validateGatingRuleList(
-                                                        practice.getGatingRules(),
-                                                        codes(practice.getQuestions(), QuestionDTO::getCode),
-                                                        "practice '" + practice.getCode() + "'");
+                                        validateGatingThresholds(practice.getMinimumCoverage(), practice.getMinimumIncludedCount(), "practice '" + practice.getCode() + "'");
                                 }
                         }
                 }
         }
 
-        private <T> Set<String> codes(List<T> children, java.util.function.Function<T, String> code) {
-                if (children == null) {
-                        return Set.of();
-                }
-                return children.stream()
-                                .map(code)
-                                .filter(java.util.Objects::nonNull)
-                                .map(value -> value.toLowerCase(Locale.ROOT))
-                                .collect(Collectors.toSet());
-        }
-
-        private void validateGatingRuleList(
-                        List<GatingRuleDTO> rules,
-                        Set<String> immediateChildCodes,
-                        String owner) {
-                if (rules == null || rules.isEmpty()) {
-                        return;
-                }
-                if (rules.stream().anyMatch(java.util.Objects::isNull)) {
-                        throw invalidGatingRules(owner, "contain only complete rule objects");
-                }
-                List<GatingRuleDTO> sorted = rules.stream()
-                                .sorted(Comparator.comparing(
-                                                GatingRuleDTO::getOrder,
-                                                Comparator.nullsLast(Integer::compareTo)))
-                                .toList();
-                for (int index = 0; index < sorted.size(); index++) {
-                        GatingRuleDTO rule = sorted.get(index);
-                        if (rule.getOrder() == null || rule.getOrder() != index) {
-                                throw invalidGatingRules(owner, "use contiguous order values starting at 0");
-                        }
-                        if (rule.getSelection() == null || rule.getOperator() == null || rule.getOperation() == null) {
-                                throw invalidGatingRules(owner, "define a selection, comparison, and score operation");
-                        }
-                        validateGatingOperand(rule.getThreshold(), "threshold", owner);
-                        validateGatingOperand(rule.getValue(), "operation value", owner);
-                        String childCode = rule.getChildCode();
-                        if (rule.getSelection() == GatingSelection.SPECIFIC_CHILD) {
-                                if (childCode == null || childCode.isBlank()
-                                                || !immediateChildCodes.contains(childCode.toLowerCase(Locale.ROOT))) {
-                                        throw invalidGatingRules(owner,
-                                                        "reference a visible immediate child for every specificChild rule");
-                                }
-                        } else if (childCode != null && !childCode.isBlank()) {
-                                throw invalidGatingRules(owner,
-                                                "omit childCode unless selection is specificChild");
+        private void validateGatingThresholds(Double coverage, Double includedCount, String owner) {
+                for (Double value : new Double[]{coverage, includedCount}) {
+                        if (value != null && (!Double.isFinite(value) || value < 0 || value > 100)) {
+                                throw new IllegalOperationException("INVALID_GATING_RULES",
+                                                "Gating thresholds for " + owner + " must be percentages between 0 and 100.");
                         }
                 }
-        }
-
-        private void validateGatingOperand(java.math.BigDecimal value, String label, String owner) {
-                if (value == null || value.compareTo(java.math.BigDecimal.ZERO) < 0
-                                || value.compareTo(java.math.BigDecimal.ONE) > 0
-                                || Math.max(0, value.stripTrailingZeros().scale()) > 2) {
-                        throw invalidGatingRules(owner, "use a " + label + " between 0 and 1 with at most two decimals");
-                }
-        }
-
-        private IllegalOperationException invalidGatingRules(String owner, String detail) {
-                return new IllegalOperationException(
-                                "INVALID_GATING_RULES",
-                                "Gating rules for " + owner + " must " + detail + ".");
         }
 
         private void validateTextLengths(MaturityModelDTO dto) {

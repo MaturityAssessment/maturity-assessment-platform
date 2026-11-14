@@ -30,13 +30,11 @@ test("added and removed branches are counted once with nested content", () => {
   assert.equal(compareDocuments(after, before).counts.added, 1);
   assert.equal(compareDocuments(null, before).isNew, true);
 });
-test("reordering ignores numeric prefixes and rewritten dependency/gating references", () => {
+test("reordering ignores numeric prefixes and rewritten dependency references", () => {
   const before = createEmptyDocument(); const p = practice(before);
   p.questions.push({ ...emptyQuestion(2), dependsOnQuestionCode: p.questions[0].code, dependencyCondition: { type: "boolean", answers: [true] } });
-  p.gatingRules = [{ order: 0, selection: "specificChild", childCode: p.questions[0].code, operator: ">", threshold: 0, operation: "set", value: 1 }];
   const after = structuredClone(before); const target = practice(after);
-  const reordered = renumberSiblingCodes([...target.questions].reverse(), "Q", target.gatingRules);
-  target.questions = reordered.items; target.gatingRules = reordered.gatingRules;
+  target.questions = renumberSiblingCodes([...target.questions].reverse(), "Q").items;
   const result = compareDocuments(before, after);
   assert.deepEqual(result.counts, { added: 0, removed: 0, updated: 0, order: 1 });
   target.questions.push(emptyQuestion(3));
@@ -123,10 +121,10 @@ test("initialization and import preserve baseline; saved payload contains only w
   assert.equal("baseline" in payload, false); assert.equal("clientKey" in payload.dimensions[0], false);
   assert.equal(editorReducer(state, { type: "clean" }).dirty, false);
 });
-test("gating, mappings and dependency-only edits remain visible", () => {
+test("gating thresholds, mappings and dependency-only edits remain visible", () => {
   const baseline = createEmptyDocument(); const document = structuredClone(baseline);
+  practice(document).minimumIncludedCount = 80;
   document.dimensions[0].mappingRules[1].minimumScore = 0.3;
-  practice(document).gatingRules = [{ order: 0, selection: "anyChild", operator: "<", threshold: 0.5, operation: "set", value: 0 }];
   question(document).dependsOnQuestionCode = "Q99_MISSING";
   const result = compareDocuments(baseline, document);
   assert.equal(result.counts.updated, 3);

@@ -195,21 +195,24 @@ This example creates a small model. Replace `domainId` with an existing domain.
     "weight": 1,
     "aggregationRule": "AVERAGE",
     "mappingRules": [],
-    "gatingRules": [],
+    "minimumCoverage": 0,
+    "minimumIncludedCount": 0,
     "modules": [{
       "code": "delivery",
       "name": "Delivery",
       "visible": true,
       "weight": 1,
       "aggregationRule": "AVERAGE",
-      "gatingRules": [],
+      "minimumCoverage": 0,
+    "minimumIncludedCount": 0,
       "practices": [{
         "code": "review",
         "name": "Code review",
         "requiresEvidence": false,
         "weight": 1,
         "aggregationRule": "AVERAGE",
-        "gatingRules": [],
+        "minimumCoverage": 0,
+    "minimumIncludedCount": 0,
         "questions": [{
           "code": "reviewed",
           "text": "Are changes reviewed before merging?",
@@ -239,8 +242,7 @@ Dimensions without visible modules are omitted from assessment results. Visibili
 belongs to the exact model version; changing it through version editing leaves
 existing assessments on their original version.
 
-A dimension's `specificChild` gating rule must reference a visible module.
-Saving an explicit reference to a hidden module returns `400 INVALID_GATING_RULES`.
+Hidden modules do not contribute to completion percentages or scores.
 The editor alerts on affected rules and blocks saving until they are repaired.
 `anyChild` and `allChildren` evaluate only visible, scored modules. Rules inside a
 hidden module are retained for editing and do not run during assessment.
@@ -305,9 +307,7 @@ with different visibility or a mutex pair with both modules visible. API writes
 reject inconsistent visibility rather than changing it implicitly.
 
 The editor previews group visibility changes and mutex switches before applying
-them. It blocks hiding a prerequisite still needed by another visible module and
-alerts about affected gating rules; explicit gates referencing hidden modules
-continue to block saving. Sidebar badges summarize relationships. Co-requisites
+them. It blocks hiding a prerequisite still needed by another visible module and preserves completion thresholds. Sidebar badges summarize relationships. Co-requisites
 and mutex affect visibility only: assessment completion, scoring and gating gain
 no additional runtime rules. Existing hidden-module exclusion still applies.
 
@@ -376,24 +376,25 @@ Aggregation rules at model/dimension/module/practice level are `AVERAGE`,
 to the configured rule. Dimension `mappingRules` entries have `levelNumber` and
 `minimumScore`. Explicit mappings need one entry for every level, starting with
 level 1 at zero, then strictly increasing thresholds in 0–1. Omitted/empty rules
-receive equal-width defaults. Gating rules are supported on dimensions, modules,
-and practices:
+receive equal-width defaults. Practices, modules and dimensions have two gating
+thresholds: `minimumCoverage` and `minimumIncludedCount`, both percentages in
+0–100 (default 0, disabled). Invalid values return `400 INVALID_GATING_RULES`.
+The `gatingRules` score-adjustment list has been retired.
 
-| Gating field | Serialized value |
-|---|---|
-| `order` | Contiguous integer rule order starting at 0 |
-| `selection` | `specificChild`, `anyChild`, `allChildren` |
-| `childCode` | Selected immediate child's code for `specificChild` |
-| `operator` | `<`, `<=`, `==`, `>=`, `>` |
-| `threshold` | Numeric comparison threshold in 0–1, at most two decimals |
-| `operation` | `set`, `add`, `subtract` |
-| `value` | Numeric amount in 0–1, at most two decimals |
+An aggregate is withheld when either active minimum fails. Equality passes.
+Coverage gating applies only to `WEIGHTED_AVERAGE`; included-count gating applies
+to every method. No scored children also withholds the aggregate. Withheld scores
+and levels are null and excluded from parent aggregation.
 
-Omit `childCode` for `anyChild` and `allChildren`; `specificChild` must identify
-an immediate child of the element containing the rule.
+Practice included count is answered / visible questions, counting required and
+optional questions equally and ignoring untriggered dependencies. Higher levels
+average direct-child included-count percentages, with withheld children
+contributing zero. Coverage weights those same child included-count percentages
+for weighted mean; otherwise it equals included count. See
+[the calculation details](../../../../docs/gating-rules.md).
 
-Preserve mapping/gating configuration when editing an existing document. These
-rules affect calculated results, not which REST endpoints are available.
+Preserve thresholds and mapping configuration when editing existing documents.
+These settings affect results, not which REST endpoints are available.
 
 ## Question types
 

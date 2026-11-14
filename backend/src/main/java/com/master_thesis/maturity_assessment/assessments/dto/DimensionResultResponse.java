@@ -4,6 +4,9 @@ import lombok.Data;
 
 @Data
 public class DimensionResultResponse {
+    private Double includedCount;
+    private Double coverage;
+    private String scoreState;
     private String dimensionId;
     private String dimensionName;
     private String dimensionDescription;

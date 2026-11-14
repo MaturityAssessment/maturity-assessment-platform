@@ -22,7 +22,8 @@ public class CsvMaturityModelRow {
     private String dimensionWeight;
     private String dimensionAggregationRule;
     private String dimensionMappingRules;
-    private String dimensionGatingRules;
+    private String dimensionMinimumCoverage;
+    private String dimensionMinimumIncludedCount;
 
     private String moduleCode;
     private String moduleName;
@@ -36,7 +37,8 @@ public class CsvMaturityModelRow {
     private String moduleSubstitutes;
     private String moduleWeight;
     private String moduleAggregationRule;
-    private String moduleGatingRules;
+    private String moduleMinimumCoverage;
+    private String moduleMinimumIncludedCount;
 
     private String practiceId;
     private String practiceCode;
@@ -46,7 +48,8 @@ public class CsvMaturityModelRow {
     private String practiceRequiresEvidence;
     private String practiceEvidenceRequirements;
     private String practiceAggregationRule;
-    private String practiceGatingRules;
+    private String practiceMinimumCoverage;
+    private String practiceMinimumIncludedCount;
 
     private String questionWeight;
     private String questionCode;

@@ -3,10 +3,6 @@ package com.master_thesis.maturity_assessment.maturity_models.services;
 import com.master_thesis.maturity_assessment.maturity_models.models.MaturityLevel;
 import com.master_thesis.maturity_assessment.maturity_models.models.AggregationRule;
 import com.master_thesis.maturity_assessment.maturity_models.models.DimensionMappingRule;
-import com.master_thesis.maturity_assessment.maturity_models.models.GatingComparisonOperator;
-import com.master_thesis.maturity_assessment.maturity_models.models.GatingRule;
-import com.master_thesis.maturity_assessment.maturity_models.models.GatingScoreOperation;
-import com.master_thesis.maturity_assessment.maturity_models.models.GatingSelection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -197,66 +193,11 @@ class MaturityScoringServiceTest {
         assertEquals(2, scoringService.mapNormalizedScoreToLevel(0.21, List.of(), 5));
     }
 
-    @Test
-    void gatingRules_supportSelectionsComparisonsAndSequentialEffects() {
-        List<MaturityScoringService.ChildScore> children = List.of(
-                new MaturityScoringService.ChildScore("P1", 0.39),
-                new MaturityScoringService.ChildScore("P2", 0.80));
-        List<GatingRule> rules = List.of(
-                gatingRule(0, GatingSelection.ANY_CHILD, null,
-                        GatingComparisonOperator.BELOW, 0.40,
-                        GatingScoreOperation.SET, 0.40),
-                gatingRule(1, GatingSelection.SPECIFIC_CHILD, "p2",
-                        GatingComparisonOperator.ABOVE_OR_EQUAL, 0.80,
-                        GatingScoreOperation.ADD, 0.10),
-                gatingRule(2, GatingSelection.ALL_CHILDREN, null,
-                        GatingComparisonOperator.ABOVE, 0.20,
-                        GatingScoreOperation.SUBTRACT, 0.05));
 
-        assertEquals(0.45, scoringService.applyGatingRules(0.72, children, rules));
-    }
 
-    @Test
-    void gatingRules_roundHalfUpClampAndTreatEmptySelectionsAsFalse() {
-        assertEquals(0.35, scoringService.roundAndClampNormalized(0.345));
-        assertEquals(1.0, scoringService.applyGatingRules(
-                0.96,
-                List.of(new MaturityScoringService.ChildScore("Q1", 0.5)),
-                List.of(gatingRule(0, GatingSelection.ALL_CHILDREN, null,
-                        GatingComparisonOperator.EQUAL, 0.50,
-                        GatingScoreOperation.ADD, 0.10))));
-        assertEquals(0.25, scoringService.applyGatingRules(
-                0.25,
-                List.of(),
-                List.of(gatingRule(0, GatingSelection.ALL_CHILDREN, null,
-                        GatingComparisonOperator.ABOVE_OR_EQUAL, 0.0,
-                        GatingScoreOperation.SET, 1.0))));
-        assertEquals(0.0, scoringService.applyGatingRules(
-                0.03,
-                List.of(new MaturityScoringService.ChildScore("Q1", 0.5)),
-                List.of(gatingRule(0, GatingSelection.SPECIFIC_CHILD, "Q1",
-                        GatingComparisonOperator.BELOW_OR_EQUAL, 0.50,
-                        GatingScoreOperation.SUBTRACT, 0.10))));
-    }
 
-    private GatingRule gatingRule(
-            int order,
-            GatingSelection selection,
-            String childCode,
-            GatingComparisonOperator operator,
-            double threshold,
-            GatingScoreOperation operation,
-            double value) {
-        GatingRule rule = new GatingRule();
-        rule.setOrder(order);
-        rule.setSelection(selection);
-        rule.setChildCode(childCode);
-        rule.setOperator(operator);
-        rule.setThreshold(BigDecimal.valueOf(threshold));
-        rule.setOperation(operation);
-        rule.setValue(BigDecimal.valueOf(value));
-        return rule;
-    }
+
+
 
     private DimensionMappingRule mappingRule(int level, double minimumScore) {
         DimensionMappingRule rule = new DimensionMappingRule();

@@ -101,8 +101,8 @@ class MaturityModelExcelServiceTest {
         assertFalse(parsed.getMaturityModel().getDimensions().getFirst().getModules().getFirst().getVisible());
         try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(xlsx))) {
             Sheet modules = workbook.getSheet(MaturityModelExcelService.SHEET_MODULES);
-            modules.getRow(0).removeCell(modules.getRow(0).getCell(7));
-            modules.getRow(1).removeCell(modules.getRow(1).getCell(7));
+            modules.getRow(0).removeCell(modules.getRow(0).getCell(8));
+            modules.getRow(1).removeCell(modules.getRow(1).getCell(8));
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             workbook.write(output);
             var legacy = excelService.parseExcelWorkbook(new ByteArrayInputStream(output.toByteArray()));
@@ -122,7 +122,7 @@ class MaturityModelExcelServiceTest {
         assertEquals(modules.get(1).getPrerequisiteModuleCodes(), parsed.getMaturityModel().getDimensions().getFirst().getModules().get(1).getPrerequisiteModuleCodes());
         try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(xlsx))) {
             Sheet sheet = workbook.getSheet(MaturityModelExcelService.SHEET_MODULES);
-            for (Row row : sheet) if (row.getCell(8) != null) row.removeCell(row.getCell(8));
+            for (Row row : sheet) if (row.getCell(9) != null) row.removeCell(row.getCell(9));
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             workbook.write(output);
             var legacy = excelService.parseExcelWorkbook(new ByteArrayInputStream(output.toByteArray()));
@@ -152,7 +152,7 @@ class MaturityModelExcelServiceTest {
         assertEquals(List.of(third.getCode()), parsed.getMaturityModel().getDimensions().getFirst().getModules().get(1).getMutexModuleCodes());
         try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(xlsx))) {
             Sheet sheet = workbook.getSheet(MaturityModelExcelService.SHEET_MODULES);
-            for (Row row : sheet) for (int column : List.of(9, 10)) if (row.getCell(column) != null) row.removeCell(row.getCell(column));
+            for (Row row : sheet) for (int column : List.of(10, 11)) if (row.getCell(column) != null) row.removeCell(row.getCell(column));
             ByteArrayOutputStream output = new ByteArrayOutputStream(); workbook.write(output);
             var legacy = excelService.parseExcelWorkbook(new ByteArrayInputStream(output.toByteArray()));
             assertTrue(legacy.isSuccess(), legacy.getErrorDetails());
@@ -178,7 +178,7 @@ class MaturityModelExcelServiceTest {
         assertEquals(module.getSubstitutesModuleCodes(), imported.getSubstitutesModuleCodes());
         try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(xlsx))) {
             for (Row row : workbook.getSheet(MaturityModelExcelService.SHEET_MODULES))
-                for (int column : List.of(11, 12, 13)) if (row.getCell(column) != null) row.removeCell(row.getCell(column));
+                for (int column : List.of(12, 13, 14)) if (row.getCell(column) != null) row.removeCell(row.getCell(column));
             ByteArrayOutputStream output = new ByteArrayOutputStream(); workbook.write(output);
             var legacy = excelService.parseExcelWorkbook(new ByteArrayInputStream(output.toByteArray()));
             assertTrue(legacy.isSuccess(), legacy.getErrorDetails());
@@ -193,7 +193,7 @@ class MaturityModelExcelServiceTest {
     void invalidVisibilityInWorkbookIsRejected() throws Exception {
         try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(
                 excelService.exportMaturityModelToXlsx(buildSampleModel())))) {
-            workbook.getSheet(MaturityModelExcelService.SHEET_MODULES).getRow(1).getCell(7).setCellValue("sometimes");
+            workbook.getSheet(MaturityModelExcelService.SHEET_MODULES).getRow(1).getCell(8).setCellValue("sometimes");
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             workbook.write(output);
             var parsed = excelService.parseExcelWorkbook(new ByteArrayInputStream(output.toByteArray()));
@@ -211,10 +211,10 @@ class MaturityModelExcelServiceTest {
                     List.of("modelName", "modelDescription", "modelAutoEvaluated", "modelAggregationRule", "modelChangelogMarkdown"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_MODEL), fmt));
             assertEquals(
-                    List.of("dimensionId", "moduleCode", "moduleName", "moduleDescription", "moduleWeight", "moduleAggregationRule", "moduleGatingRules", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes"),
+                    List.of("dimensionId", "moduleCode", "moduleName", "moduleDescription", "moduleWeight", "moduleAggregationRule", "moduleMinimumCoverage", "moduleMinimumIncludedCount", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_MODULES), fmt));
             assertEquals(
-                    List.of("dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceGatingRules", "practiceEvidenceRequirements"),
+                    List.of("dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceMinimumCoverage", "practiceMinimumIncludedCount", "practiceEvidenceRequirements"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_PRACTICES), fmt));
             assertEquals(
                     MaturityModelExcelService.QUESTION_EXPORT_HEADERS,

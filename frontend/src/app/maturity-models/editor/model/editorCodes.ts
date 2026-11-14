@@ -1,4 +1,3 @@
-import type { GatingRule } from "@/api/types";
 import { TEXT_LIMITS } from "../../../../config/textLimits.ts";
 
 export type ElementCodeType = "D" | "M" | "P" | "Q";
@@ -17,7 +16,7 @@ export function codeWithPrefix(prefix: string, suffix: string) {
 
 export function renumberSiblingCodes<
   T extends { code: string; dependsOnQuestionCode?: string; prerequisiteModuleCodes?: string[]; coRequisiteModuleCodes?: string[]; mutexModuleCodes?: string[]; reinforcesModuleCodes?: string[]; substitutesModuleCodes?: string[] }
->(items: T[], type: ElementCodeType, gatingRules: GatingRule[] = []) {
+>(items: T[], type: ElementCodeType) {
   const nextCodes = items.map((item, index) =>
     codeWithPrefix(codePrefix(type, index + 1), codeSuffix(item.code))
   );
@@ -40,10 +39,6 @@ export function renumberSiblingCodes<
         dependsOnQuestionCode: reference(item.dependsOnQuestionCode),
       }),
     })),
-    gatingRules: gatingRules.map((rule) =>
-      rule.selection === "specificChild"
-        ? { ...rule, childCode: reference(rule.childCode) }
-        : rule
-    ),
+
   };
 }

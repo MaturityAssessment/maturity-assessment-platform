@@ -49,7 +49,7 @@ function exportWorkbook(data: AssessmentResultsExportData) {
     ["Respondent", data.respondent],
     ["Completed", formatDate(data.completedAt)],
     ["Overall maturity level", data.overallMaturityLevel],
-    ["Overall score", data.overallScore],
+    ["Overall score", data.overallScore ?? "Withheld"],
     ["Scale maximum", data.scaleMax],
     ["Evaluator recommendations", data.evaluatorInsight],
   ];
@@ -67,7 +67,7 @@ function exportWorkbook(data: AssessmentResultsExportData) {
       Score: dimension.score,
       "Scale maximum": data.scaleMax,
       "Maturity level": dimension.maturityLevel,
-      "Scored items": dimension.questionCount,
+      "Visible questions": dimension.questionCount,
       "Difference from overall": dimension.differenceFromOverall,
     }))
   );
@@ -81,6 +81,18 @@ function exportWorkbook(data: AssessmentResultsExportData) {
   ];
   addAutoFilter(dimensionSheet);
   XLSX.utils.book_append_sheet(workbook, dimensionSheet, "Dimensions");
+
+  if (data.elementResults.length) {
+    const completionSheet = XLSX.utils.json_to_sheet(data.elementResults.map(element => ({
+      Type: element.elementType, Dimension: element.dimensionId ?? "", Module: element.moduleCode ?? "",
+      Practice: element.practiceCode ?? "", Question: element.questionCode ?? "", Name: element.name,
+      State: element.state, "Normalized score": element.normalizedScore ?? "",
+      "Included count (%)": element.includedCount, "Coverage (%)": element.coverage,
+    })));
+    completionSheet["!cols"] = Array.from({ length: 10 }, () => ({ wch: 24 }));
+    addAutoFilter(completionSheet);
+    XLSX.utils.book_append_sheet(workbook, completionSheet, "Completion");
+  }
 
   const answerSheet = XLSX.utils.json_to_sheet(
     data.answers.map((answer) => ({
@@ -162,7 +174,7 @@ function AssessmentResultsDocument({
           <Text style={styles.resultLevel}>{data.overallMaturityLevel}</Text>
           <View style={styles.resultScoreRow}>
             <Text style={styles.resultScore}>
-              {formatScore(data.overallScore)} / {data.scaleMax} overall score
+              {data.overallScore == null ? "Withheld" : `${formatScore(data.overallScore)} / ${data.scaleMax} overall score`}
             </Text>
           </View>
         </View>
@@ -209,6 +221,15 @@ function AssessmentResultsDocument({
             </View>
           ))}
         </View>
+
+        {data.elementResults.length > 0 && <>
+          <SectionTitle>Completion and gating</SectionTitle>
+          {data.elementResults.filter(element => element.elementType !== "question").map((element, index) => (
+            <Text key={index} style={styles.tableCell}>
+              {element.name} ({element.elementType}): {element.state === "withheld" ? "Withheld" : "Computed"}; included count {element.includedCount.toFixed(1)}%; coverage {element.coverage.toFixed(1)}%
+            </Text>
+          ))}
+        </>}
 
         <SectionTitle>Evaluator recommendations</SectionTitle>
         <View style={styles.noteBox}>
@@ -366,7 +387,8 @@ function formatDate(value: string) {
       }).format(date);
 }
 
-function formatScore(value: number) {
+function formatScore(value: number | null) {
+  if (value == null) return "Withheld";
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
 

@@ -145,7 +145,7 @@ export default function EvaluationQueuePanel({
           `assessment ${item.assessment.id}`,
           item.version == null ? "" : `version ${item.version}`,
         ].some((value) =>
-          value.toLocaleLowerCase().includes(normalizedQuery)
+          value?.toLocaleLowerCase().includes(normalizedQuery)
         );
       const matchesDomain =
         domainFilter === "all" || item.domain === domainFilter;
@@ -381,7 +381,7 @@ export default function EvaluationQueuePanel({
                             )}
                           </span>
                           <span className="mt-0.5 block max-w-40 truncate text-xs text-slate-500">
-                            {item.assessment.overallMaturityLevel ||
+                            {item.assessment.scoreState === "withheld" ? "Withheld" : item.assessment.overallMaturityLevel ||
                               "Not calculated"}
                           </span>
                         </td>

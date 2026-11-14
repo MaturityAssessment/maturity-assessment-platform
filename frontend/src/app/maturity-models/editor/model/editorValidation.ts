@@ -8,7 +8,7 @@ import { countItems } from "./editorDocument.ts";
 import type { EditorIssue, Selection } from "./editorTypes";
 import { TEXT_LIMITS } from "../../../../config/textLimits.ts";
 import { moduleRelationshipIssues } from "./moduleRelationships.ts";
-import { hasGatingRuleIssues } from "./gatingRules.ts";
+import { hasGatingThresholdIssues } from "./gatingRules.ts";
 
 function validCode(code: string) {
   return /^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(code.trim());
@@ -204,15 +204,12 @@ export function validateDocument(
       });
     }
     if (
-      hasGatingRuleIssues(
-        dimension.gatingRules,
-        dimension.modules.map((module) => module.code)
-      )
+      hasGatingThresholdIssues(dimension)
     ) {
       add({
         step: "structure",
         severity: "error",
-        message: `Dimension ${dimensionIndex + 1} has an invalid gating rule. Use immediate modules and normalized values with at most two decimals.`,
+        message: `Dimension ${dimensionIndex + 1} has an invalid gating rule. Use percentages between 0 and 100.`,
         selection: dimensionSelection,
       });
     }
@@ -224,18 +221,10 @@ export function validateDocument(
         selection: dimensionSelection,
       });
     }
-    for (const rule of dimension.gatingRules) {
-      const hidden = rule.selection === "specificChild"
-        ? dimension.modules.find((module) => module.visible === false && module.code.toLowerCase() === rule.childCode?.toLowerCase())
-        : undefined;
-      if (hidden) add({ step: "structure", severity: "error",
-        message: `Gating rule in ${dimension.name || dimension.code} references hidden module ${hidden.code}. Change the rule or restore module visibility.`,
-        selection: dimensionSelection });
-    }
     for (const issue of moduleRelationshipIssues(dimension.modules)) {
-      const module = dimension.modules.find((candidate) => candidate.code.toLowerCase() === issue.code.toLowerCase());
+      const affectedModule = dimension.modules.find((candidate) => candidate.code.toLowerCase() === issue.code.toLowerCase());
       add({ step: "structure", severity: "error", message: issue.message,
-        selection: module ? { type: "module", key: module.clientKey } : dimensionSelection });
+        selection: affectedModule ? { type: "module", key: affectedModule.clientKey } : dimensionSelection });
     }
     const moduleCodes = new Map<string, string>();
     dimension.modules.forEach((module, moduleIndex) => {
@@ -280,15 +269,12 @@ export function validateDocument(
         });
       }
       if (
-        hasGatingRuleIssues(
-          module.gatingRules,
-          module.practices.map((practice) => practice.code)
-        )
+        hasGatingThresholdIssues(module)
       ) {
         add({
           step: "structure",
           severity: "error",
-          message: `Module ${moduleIndex + 1} has an invalid gating rule. Use immediate practices and normalized values with at most two decimals.`,
+          message: `Module ${moduleIndex + 1} has an invalid gating rule. Use percentages between 0 and 100.`,
           selection: moduleSelection,
         });
       }
@@ -299,15 +285,12 @@ export function validateDocument(
           key: practice.clientKey,
         };
         if (
-          hasGatingRuleIssues(
-            practice.gatingRules,
-            practice.questions.map((question) => question.code)
-          )
+          hasGatingThresholdIssues(practice)
         ) {
           add({
             step: "structure",
             severity: "error",
-            message: `Practice ${practiceIndex + 1} has an invalid gating rule. Use immediate questions and normalized values with at most two decimals.`,
+            message: `Practice ${practiceIndex + 1} has an invalid gating rule. Use percentages between 0 and 100.`,
             selection: practiceSelection,
           });
         }

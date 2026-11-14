@@ -25,7 +25,7 @@ const locationPath = (location: ChangeLocation[]) => location.map(item => `${ite
 const title = (item: Item) => `${item.code} — ${("text" in item ? item.text : item.name) || "Untitled"}`;
 const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const human = (value: string) => value.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().replace(/^./, c => c.toUpperCase());
-const labels: Record<string, string> = { allowNotApplicable: "Allow N/A", notApplicableScore: "N/A score", mandatoryBadge: "Mandatory badge", reinforcesModuleCodes: "Reinforces", substitutesModuleCodes: "Substitutes", coRequisiteModuleCodes: "Co-requisite modules", mutexModuleCodes: "Mutually exclusive modules", prerequisiteModuleCodes: "Prerequisite modules", visible: "Visible in assessments", text: "Question text", help: "Help text", autoEvaluated: "Automatic evaluation", domainId: "Domain", aggregationRule: "Aggregation", requiresEvidence: "Evidence required", evidenceRequirements: "Evidence requirements", instructions: "Acceptance criteria", format: "Accepted formats", frequency: "Frequency", maxAgeDays: "Maximum evidence age (days)", dependsOnQuestionCode: "Depends on question", dependencyCondition: "Dependency condition", mappingRules: "Maturity mapping", gatingRules: "Gating rules", changelogMarkdown: "Release notes" };
+const labels: Record<string, string> = { allowNotApplicable: "Allow N/A", notApplicableScore: "N/A score", mandatoryBadge: "Mandatory badge", reinforcesModuleCodes: "Reinforces", substitutesModuleCodes: "Substitutes", coRequisiteModuleCodes: "Co-requisite modules", mutexModuleCodes: "Mutually exclusive modules", prerequisiteModuleCodes: "Prerequisite modules", visible: "Visible in assessments", text: "Question text", help: "Help text", autoEvaluated: "Automatic evaluation", domainId: "Domain", aggregationRule: "Aggregation", requiresEvidence: "Evidence required", evidenceRequirements: "Evidence requirements", instructions: "Acceptance criteria", format: "Accepted formats", frequency: "Frequency", maxAgeDays: "Maximum evidence age (days)", dependsOnQuestionCode: "Depends on question", dependencyCondition: "Dependency condition", mappingRules: "Maturity mapping", minimumCoverage: "Minimum coverage (%)", minimumIncludedCount: "Minimum included count (%)", changelogMarkdown: "Release notes" };
 function display(value: unknown): string {
   if (value === undefined || value === null || value === "") return "Not provided";
   if (typeof value === "boolean") return value ? "Yes" : "No";
@@ -65,10 +65,6 @@ function fields(item: Item, siblings: Item[]): Fields {
         const index = choices.findIndex(c => c.id === id);
         return index < 0 ? id : { position: index + 1, label: choices[index].label };
       }) };
-    }
-    if (key === "gatingRules" && "gatingRules" in item) {
-      value = item.gatingRules.map(({ order: _order, childCode, ...rule }) => ({ ...rule, ...(rule.selection === "specificChild" ? { childCode: reference(childCode, children(item))?.clientKey ?? childCode } : {}) }));
-      text = display(item.gatingRules.map(({ order: _order, childCode, ...rule }) => ({ ...rule, ...(rule.selection === "specificChild" ? { child: children(item).find(i => i.code === childCode) ? title(children(item).find(i => i.code === childCode)!) : childCode } : {}) })));
     }
     if (["aggregationRule", "type"].includes(key)) text = human(String(value));
     result[key] = { value, text: text ?? display(value) };

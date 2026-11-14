@@ -31,12 +31,10 @@ test("reverting an addition removes its subtree and cleans references to added q
   practice(current).questions.push(added);
   question(current).dependsOnQuestionCode = added.code;
   question(current).dependencyCondition = { type: "boolean", answers: [true] };
-  practice(current).gatingRules = [{ order: 0, selection: "specificChild", childCode: added.code, operator: ">", threshold: 0, operation: "set", value: 1 }];
   const next = revertEditorChange(current, baseline, `added:${added.clientKey}`);
   assert.equal(practice(next).questions.length, 1);
   assert.equal(question(next).dependsOnQuestionCode, undefined);
   assert.equal(question(next).dependencyCondition, undefined);
-  assert.deepEqual(practice(next).gatingRules, []);
   const dimension = emptyDimension(2, 1, 1, 1);
   current.dimensions.push(dimension);
   assert.equal(revertEditorChange(current, baseline, `added:${dimension.clientKey}`).dimensions.length, 1);
@@ -48,14 +46,12 @@ test("restoring deleted questions resolves code collisions without redirecting c
   const second = { ...emptyQuestion(2), code: "Q02_SECOND" };
   const third = { ...emptyQuestion(3), code: "Q03_THIRD", dependsOnQuestionCode: second.code, dependencyCondition: { type: "boolean" as const, answers: [true] } };
   practice(baseline).questions.push(second, third);
-  practice(baseline).gatingRules = [{ order: 0, selection: "specificChild", childCode: second.code, operator: ">", threshold: 0, operation: "set", value: 1 }];
   const current = deleteQuestion(structuredClone(baseline), practice(baseline).clientKey, first.clientKey);
   practice(current).questions[0].text = "Keep my edit";
   const next = revertEditorChange(current, baseline, `removed:${first.clientKey}`);
   assert.deepEqual(practice(next).questions.map(item => item.clientKey), practice(baseline).questions.map(item => item.clientKey));
   assert.equal(practice(next).questions[1].text, "Keep my edit");
   assert.equal(practice(next).questions[2].dependsOnQuestionCode, practice(next).questions[1].code);
-  assert.equal(practice(next).gatingRules[0].childCode, practice(next).questions[1].code);
 });
 
 test("restoring order keeps additions, item edits, and reference identities", () => {

@@ -43,12 +43,12 @@ Keep sheet names and column headers. Dimension/module/practice sheet row order
 controls structural order; Questions row order controls questions within each
 practice. Levels are ordered by their explicit `number`. Child rows join using
 `dimensionId`, `moduleCode`, and `practiceCode`; changing a code requires updating
-child references, dependency codes and gating references. Codes are unique among
+child references and dependency codes. Codes are unique among
 siblings and may repeat in different branches. Added items must lead to at least
 one question. Delete child rows when deleting their parent; duplicate or
 unreferenced structure rows are rejected rather than discarded.
 
-Scoring mappings and gating rules use JSON arrays in their respective cells;
+Scoring mappings use JSON arrays; gating thresholds use numeric percentage cells;
 examples and allowed values are in `Instructions`. Blank or omitted newer
 columns retain legacy application defaults. Invalid edits produce a validation
 message before saving. Review the imported model, choose a domain, then save it

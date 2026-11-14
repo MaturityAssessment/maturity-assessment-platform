@@ -4,7 +4,6 @@ import type { MaturityModel } from "../../../../src/api/types.ts";
 import { visibleAssessmentModel } from "../../../../src/lib/moduleVisibility.ts";
 import { createEmptyDocument, hydrateDocument, serializeDocument } from "../../../../src/app/maturity-models/editor/model/editorDocument.ts";
 import { validateDocument } from "../../../../src/app/maturity-models/editor/model/editorValidation.ts";
-import { moduleVisibilityDependencies } from "../../../../src/app/maturity-models/editor/model/moduleVisibility.ts";
 import { compareDocuments } from "../../../../src/app/maturity-models/editor/model/editorChanges.ts";
 
 test("assessment projection removes hidden modules and empty dimensions without mutating the model", () => {
@@ -31,37 +30,6 @@ test("visibility defaults to true and false survives hydration and serialization
   module.visible = false;
   assert.equal(serializeDocument(hydrateDocument(document, false)).dimensions[0].modules[0].visible, false);
 });
-
-test("hidden explicit gating references block saving until the rule is fixed or visibility restored", () => {
-  const document = createEmptyDocument();
-  const dimension = document.dimensions[0];
-  const module = dimension.modules[0];
-  dimension.gatingRules = [{ order: 0, selection: "specificChild", childCode: module.code.toLowerCase(), operator: "<", threshold: 0.5, operation: "set", value: 0.2 }];
-  const visibilityIssues = () => validateDocument(document).filter((issue) => /hidden module/.test(issue.message));
-  module.visible = false;
-  assert.equal(visibilityIssues().length, 1);
-  assert.equal(visibilityIssues()[0].severity, "error");
-  assert.equal(visibilityIssues()[0].selection?.key, dimension.clientKey);
-  assert.match(moduleVisibilityDependencies(dimension, module)[0], /before saving/);
-  module.visible = true;
-  assert.equal(visibilityIssues().length, 0);
-  module.visible = false;
-  dimension.gatingRules = [];
-  assert.equal(visibilityIssues().length, 0);
-});
-
-test("any/all gating rules alert the editor that their scope changes without creating invalid references", () => {
-  const document = createEmptyDocument();
-  const dimension = document.dimensions[0];
-  const module = dimension.modules[0];
-  module.visible = false;
-  for (const selection of ["anyChild", "allChildren"] as const) {
-    dimension.gatingRules = [{ order: 0, selection, operator: "<", threshold: 0.5, operation: "set", value: 0.2 }];
-    assert.match(moduleVisibilityDependencies(dimension, module)[0], /only visible modules/);
-    assert.equal(validateDocument(document).filter((issue) => /gating/i.test(issue.message)).length, 0);
-  }
-});
-
 
 test("visibility changes appear in the version change review", () => {
   const baseline = createEmptyDocument();

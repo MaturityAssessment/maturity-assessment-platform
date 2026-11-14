@@ -1,7 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { getModuleBadges } from "../../model/moduleBadges";
 import ModuleRelationshipsField from "./ModuleRelationshipsField";
-import { moduleVisibilityDependencies } from "../../model/moduleVisibility";
 import { ArrowLeftIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import type {
   ModelEditorDimension,
@@ -40,9 +39,7 @@ export default function ModuleEditor({
     (candidate) => candidate.clientKey === module.clientKey
   );
   const badges = getModuleBadges(dimension, module);
-  const visibilityDependencies = module.visible === false
-    ? moduleVisibilityDependencies(dimension, module)
-    : [];
+
   const update = (next: ModelEditorModule) =>
     commands.updateModule(dimension.clientKey, module.clientKey, next);
 
@@ -77,14 +74,7 @@ export default function ModuleEditor({
           commands.moveModule(dimension.clientKey, module.clientKey, 1)
         }
         onDelete={() => {
-          const referenced = dimension.gatingRules.some(
-            (rule) =>
-              rule.selection === "specificChild" &&
-              rule.childCode?.toLowerCase() === module.code.toLowerCase()
-          );
-          const message = referenced
-            ? "Delete this module and all of its practices? Gating rules that reference it will also be removed."
-            : "Delete this module and all of its practices?";
+          const message = "Delete this module and all of its practices?";
           if (!window.confirm(message))
             return;
           commands.deleteModule(dimension.clientKey, module.clientKey);
@@ -96,11 +86,7 @@ export default function ModuleEditor({
           {badges.map((badge, index) => <Badge key={`${badge.key}:${index}`} color={badge.color} title={badge.title} className="max-w-full whitespace-normal break-words">{badge.label}</Badge>)}
         </div>
       </section>}
-      {visibilityDependencies.length > 0 && (
-        <div role="alert" className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          {visibilityDependencies.map((message) => <p key={message}>{message}</p>)}
-        </div>
-      )}
+
       <ElementEditorTabs
         kind="Module"
         tabs={[
@@ -219,17 +205,15 @@ export default function ModuleEditor({
           {
             id: "gating",
             label: "Gating rules",
-            count: module.gatingRules.length,
+            count: Number(module.minimumCoverage > 0) + Number(module.minimumIncludedCount > 0),
             content: (
               <GatingRuleField
                 idPrefix={`module-${module.clientKey}`}
-                childLabel="Practices"
-                childOptions={module.practices.map((practice) => ({
-                  code: practice.code,
-                  name: practice.name,
-                }))}
-                value={module.gatingRules}
-                onChange={(gatingRules) => update({ ...module, gatingRules })}
+                aggregationRule={module.aggregationRule}
+                isPractice={false}
+                minimumCoverage={module.minimumCoverage}
+                minimumIncludedCount={module.minimumIncludedCount}
+                onChange={(thresholds) => update({ ...module, ...thresholds })}
               />
             ),
           },
@@ -251,13 +235,7 @@ export default function ModuleEditor({
                 onDelete={(practiceKey) => {
                   const selectedPractice = module.practices.find((item) => item.clientKey === practiceKey);
                   if (!selectedPractice) return;
-                  const referenced = module.gatingRules.some((rule) =>
-                    rule.selection === "specificChild" &&
-                    rule.childCode?.toLowerCase() === selectedPractice.code.toLowerCase()
-                  );
-                  const message = referenced
-                    ? "Delete this practice and all of its questions? Gating rules that reference it will also be removed."
-                    : "Delete this practice and all of its questions?";
+                  const message = "Delete this practice and all of its questions?";
                   if (window.confirm(message)) commands.deletePractice(module.clientKey, practiceKey);
                 }}
                 onSelect={onSelect}

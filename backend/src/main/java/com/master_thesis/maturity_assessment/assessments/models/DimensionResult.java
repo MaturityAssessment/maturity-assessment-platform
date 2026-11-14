@@ -7,6 +7,15 @@ import lombok.Data;
 @Entity
 @Table(name = "dimension_results")
 public class DimensionResult {
+    @Column(name = "included_count")
+    private Double includedCount;
+
+    @Column(name = "coverage")
+    private Double coverage;
+
+    @Column(name = "score_state", length = 20)
+    private String scoreState;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -20,10 +29,10 @@ public class DimensionResult {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String dimensionDescription;
 
-    @Column(nullable = false)
+    @Column
     private Double averageScore;
 
-    @Column(nullable = false)
+    @Column
     private String maturityLevel;
 
     @Column(name = "maturity_level_number")

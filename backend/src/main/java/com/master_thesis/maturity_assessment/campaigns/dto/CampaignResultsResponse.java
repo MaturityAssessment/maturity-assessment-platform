@@ -27,7 +27,7 @@ public class CampaignResultsResponse {
     public static class DimensionResult {
         private String dimensionId;
         private String dimensionName;
-        private double averageScore;
+        private Double averageScore;
         private long responseCount;
     }
 
@@ -36,7 +36,7 @@ public class CampaignResultsResponse {
         private Long participantId;
         private String email;
         private Long assessmentId;
-        private double overallScore;
+        private Double overallScore;
         private String overallMaturityLevel;
         private LocalDateTime evaluatedAt;
     }

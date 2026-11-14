@@ -27,10 +27,6 @@ import com.master_thesis.maturity_assessment.maturity_models.models.Module;
 import com.master_thesis.maturity_assessment.maturity_models.models.Practice;
 import com.master_thesis.maturity_assessment.maturity_models.models.Question;
 import com.master_thesis.maturity_assessment.maturity_models.models.AggregationRule;
-import com.master_thesis.maturity_assessment.maturity_models.models.GatingComparisonOperator;
-import com.master_thesis.maturity_assessment.maturity_models.models.GatingRule;
-import com.master_thesis.maturity_assessment.maturity_models.models.GatingScoreOperation;
-import com.master_thesis.maturity_assessment.maturity_models.models.GatingSelection;
 import com.master_thesis.maturity_assessment.maturity_models.repository.MaturityModelRepository;
 import com.master_thesis.maturity_assessment.maturity_models.services.MaturityScoringService;
 import org.junit.jupiter.api.BeforeEach;
@@ -251,14 +247,8 @@ class AssessmentServiceLifecycleTest {
         dimension.getModules().get(1).setVisible(false);
         model.getDimensions().get(1).getModules().getFirst().setVisible(false);
         dimension.getModules().get(1).getPractices().getFirst().getQuestions().getFirst().setRequired(true);
-        dimension.setGatingRules(List.of(
-                gatingRule(GatingSelection.ANY_CHILD, null, GatingComparisonOperator.BELOW,
-                        0.5, GatingScoreOperation.SET, 0.0),
-                gatingRule(GatingSelection.SPECIFIC_CHILD, "M2", GatingComparisonOperator.ABOVE_OR_EQUAL,
-                        0.0, GatingScoreOperation.SET, 0.0),
-                gatingRule(GatingSelection.ALL_CHILDREN, null, GatingComparisonOperator.ABOVE,
-                        0.7, GatingScoreOperation.ADD, 0.1)));
-        for (int i = 0; i < dimension.getGatingRules().size(); i++) dimension.getGatingRules().get(i).setOrder(i);
+        dimension.setMinimumIncludedCount(100.0);
+        dimension.setMinimumCoverage(100.0);
         Assessment draft = draftAssessment();
         when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
         when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
@@ -270,20 +260,14 @@ class AssessmentServiceLifecycleTest {
 
         assertEquals(1, response.getDimensionResults().size());
         assertEquals("D1", response.getDimensionResults().getFirst().getDimensionId());
-        assertEquals(85.0, response.getDimensionResults().getFirst().getPercentageScore());
-        assertEquals(5, response.getDimensionResults().getFirst().getMaturityLevelNumber());
+        assertEquals(75.0, response.getDimensionResults().getFirst().getPercentageScore());
+        assertEquals(4, response.getDimensionResults().getFirst().getMaturityLevelNumber());
         assertEquals(3, response.getDimensionResults().getFirst().getTotalQuestions());
-        assertEquals(5.0, response.getOverallAverage());
+        assertEquals(4.0, response.getOverallAverage());
         assertEquals("COMPLETED", response.getStatus());
-        // Stored/manual evaluation scores must also ignore hidden modules even if present.
-        List<com.master_thesis.maturity_assessment.assessments.models.DimensionResult> reevaluated =
-                org.springframework.test.util.ReflectionTestUtils.invokeMethod(assessmentService,
-                        "calculateDimensionResultsFromScores", Map.of(
-                                "D1_M1_101_1001", 1.0, "D1_M1_101_1002", 0.25, "D1_M1_102_1003", 0.75,
-                                "D1_M2_103_1004", 0.0, "D2_M3_104_1005", 1.0), MODEL_ID, Map.of());
-        assertEquals(1, reevaluated.size());
-        assertEquals(85.0, reevaluated.getFirst().getPercentageScore());
-        assertEquals(3, reevaluated.getFirst().getTotalQuestions());
+        assertEquals(100.0, response.getDimensionResults().getFirst().getIncludedCount());
+        assertEquals(100.0, response.getDimensionResults().getFirst().getCoverage());
+
     }
 
     @Test
@@ -496,36 +480,7 @@ class AssessmentServiceLifecycleTest {
         assertEquals("Level 3", response.getOverallMaturityLevel());
     }
 
-    @Test
-    void gatingRulesApplyAtEveryHierarchyStageBeforeDimensionMapping() {
-        MaturityModel model = booleanScoringModel();
-        Practice practice = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
-        Module module = model.getDimensions().getFirst().getModules().getFirst();
-        Dimension dimension = model.getDimensions().getFirst();
-        practice.setGatingRules(List.of(gatingRule(
-                GatingSelection.SPECIFIC_CHILD, "Q1001", GatingComparisonOperator.BELOW,
-                0.50, GatingScoreOperation.SET, 0.40)));
-        module.setGatingRules(List.of(gatingRule(
-                GatingSelection.SPECIFIC_CHILD, "P1", GatingComparisonOperator.ABOVE_OR_EQUAL,
-                0.40, GatingScoreOperation.ADD, 0.10)));
-        dimension.setGatingRules(List.of(gatingRule(
-                GatingSelection.ANY_CHILD, null, GatingComparisonOperator.ABOVE_OR_EQUAL,
-                0.50, GatingScoreOperation.ADD, 0.25)));
-        Assessment draft = draftAssessment();
 
-        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
-        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
-                USER_ID, MODEL_ID, AssessmentStatus.DRAFT)).thenReturn(Optional.of(draft));
-        when(dimensionResultRepository.findByAssessmentId(ASSESSMENT_ID)).thenReturn(List.of());
-
-        AssessmentResponse response = assessmentService.createAssessment(request(Map.of(
-                "D1_M1_101_1001", false,
-                "D1_M1_101_1002", false)), user);
-
-        assertEquals(75.0, response.getDimensionResults().getFirst().getPercentageScore());
-        assertEquals(4, response.getDimensionResults().getFirst().getMaturityLevelNumber());
-        assertEquals(4.0, response.getDimensionResults().getFirst().getAverageScore());
-    }
 
     @Test
     void booleanScoresRetainLegacyMeaningWhenMixedWithUnnormalizedFormats() {
@@ -982,6 +937,11 @@ class AssessmentServiceLifecycleTest {
                 user
         );
 
+        assertEquals("computed", response.getScoreState());
+        assertEquals(100.0, response.getIncludedCount());
+        assertEquals(100.0, element(response, "practice", null).includedCount());
+        assertEquals(0.75, element(response, "question", null).normalizedScore());
+        assertEquals(response.getElementResults(), assessment.getElementResults());
         assertEquals("COMPLETED", response.getStatus());
         assertEquals(4.0, response.getOverallAverage());
         QuestionEvaluation persistedAnswer =
@@ -2315,6 +2275,168 @@ class AssessmentServiceLifecycleTest {
         return model;
     }
 
+    private AssessmentResponse submitForGating(MaturityModel model, Map<String, Object> answers) {
+        Assessment draft = draftAssessment();
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
+                USER_ID, MODEL_ID, AssessmentStatus.DRAFT)).thenReturn(Optional.of(draft));
+        when(dimensionResultRepository.findByAssessmentId(ASSESSMENT_ID)).thenReturn(List.of());
+        AssessmentResponse response = assessmentService.createAssessment(request(answers), user);
+        assertEquals(response.getElementResults(), draft.getElementResults());
+        assertEquals(response.getCoverage(), draft.getCoverage());
+        return response;
+    }
+
+    private com.master_thesis.maturity_assessment.assessments.models.AssessmentElementResult element(
+            AssessmentResponse response, String type, String code) {
+        return response.getElementResults().stream().filter(result -> type.equals(result.elementType())
+                && (code == null || code.equals(switch (type) {
+                    case "practice" -> result.practiceCode();
+                    case "module" -> result.moduleCode();
+                    case "dimension" -> result.dimensionId();
+                    default -> result.questionCode();
+                }))).findFirst().orElseThrow();
+    }
+
+    private Map<String, Object> partialHierarchyAnswers() {
+        return Map.of("D1_M1_101_1001", 1, "D1_M1_102_1003", 5,
+                "D1_M2_103_1004", 5, "D2_M3_104_1005", 5);
+    }
+
+    @Test
+    void completionUsesDirectChildIncludedCountsAndWeightedCoverageRatherThanDescendantTotals() throws Exception {
+        MaturityModel model = hierarchicalAggregationModel();
+        var dimension = model.getDimensions().getFirst();
+        var module = dimension.getModules().getFirst();
+        var practice = module.getPractices().getFirst();
+        practice.setAggregationRule(AggregationRule.WEIGHTED_AVERAGE);
+        practice.setWeight(3.0);
+        practice.getQuestions().getFirst().setWeight(9.0);
+        practice.getQuestions().getFirst().setRequired(true);
+        practice.setMinimumCoverage(90.0);
+        practice.setMinimumIncludedCount(50.0);
+        module.setAggregationRule(AggregationRule.WEIGHTED_AVERAGE);
+        module.setMinimumCoverage(62.5);
+        dimension.setAggregationRule(AggregationRule.WEIGHTED_AVERAGE);
+        AssessmentResponse response = submitForGating(model, partialHierarchyAnswers());
+        var p = element(response, "practice", "P1");
+        assertEquals(50.0, p.includedCount());
+        assertEquals(90.0, p.coverage());
+        assertEquals("computed", p.state());
+        var m = element(response, "module", "M1");
+        assertEquals(75.0, m.includedCount());
+        assertEquals(62.5, m.coverage());
+        assertEquals("computed", m.state());
+        assertEquals(87.5, element(response, "dimension", "D1").includedCount());
+        assertEquals(87.5, element(response, "dimension", "D1").coverage());
+        assertEquals(93.75, response.getIncludedCount());
+        assertEquals(93.75, response.getCoverage());
+        assertEquals(0.0, element(response, "question", "Q1002").includedCount());
+        var stored = new ObjectMapper().readValue(new ObjectMapper().writeValueAsString(response.getElementResults()),
+                new com.fasterxml.jackson.core.type.TypeReference<List<com.master_thesis.maturity_assessment.assessments.models.AssessmentElementResult>>() {});
+        assertEquals(response.getElementResults(), stored);
+    }
+
+    @Test
+    void withheldChildCountsAsZeroForCompletionAndDoesNotContributeItsScore() {
+        MaturityModel model = hierarchicalAggregationModel();
+        var dimension = model.getDimensions().getFirst();
+        var module = dimension.getModules().getFirst();
+        var practice = module.getPractices().getFirst();
+        practice.setMinimumIncludedCount(51.0);
+        practice.setWeight(3.0);
+        module.setAggregationRule(AggregationRule.WEIGHTED_AVERAGE);
+        module.setMinimumIncludedCount(50.0);
+        module.setMinimumCoverage(25.0);
+        dimension.setMinimumIncludedCount(75.0);
+        AssessmentResponse response = submitForGating(model, partialHierarchyAnswers());
+        var p = element(response, "practice", "P1");
+        assertEquals("withheld", p.state());
+        assertNull(p.normalizedScore());
+        assertEquals(50.0, p.includedCount());
+        var m = element(response, "module", "M1");
+        assertEquals(50.0, m.includedCount());
+        assertEquals(25.0, m.coverage());
+        assertEquals(1.0, m.normalizedScore());
+        assertEquals("computed", m.state());
+        assertEquals(75.0, element(response, "dimension", "D1").includedCount());
+        assertEquals(100.0, response.getDimensionResults().getFirst().getPercentageScore());
+    }
+
+    @Test
+    void withholdingCanCascadeAndWithheldDimensionsAreExcludedFromTheOverallScore() {
+        MaturityModel model = hierarchicalAggregationModel();
+        var dimension = model.getDimensions().getFirst();
+        var module = dimension.getModules().getFirst();
+        module.getPractices().getFirst().setMinimumIncludedCount(51.0);
+        module.setMinimumIncludedCount(51.0);
+        dimension.setMinimumIncludedCount(60.0);
+        dimension.setWeight(3.0);
+        model.setAggregationRule(AggregationRule.WEIGHTED_AVERAGE);
+        AssessmentResponse response = submitForGating(model, partialHierarchyAnswers());
+        assertEquals("withheld", element(response, "module", "M1").state());
+        var d = response.getDimensionResults().getFirst();
+        assertEquals("withheld", d.getScoreState());
+        assertEquals(50.0, d.getIncludedCount());
+        assertNull(d.getAverageScore());
+        assertNull(d.getPercentageScore());
+        assertNull(d.getMaturityLevel());
+        assertNull(d.getMaturityLevelNumber());
+        assertEquals(5.0, response.getOverallAverage());
+        assertEquals(50.0, response.getIncludedCount());
+        assertEquals(25.0, response.getCoverage());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(AggregationRule.class)
+    void countMinimumAppliesToEveryMethodButCoverageMinimumOnlyToWeightedMean(AggregationRule rule) {
+        MaturityModel model = booleanScoringModel();
+        var practice = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        practice.setAggregationRule(rule);
+        practice.setMinimumCoverage(99.0);
+        practice.setMinimumIncludedCount(50.0);
+        AssessmentResponse response = submitForGating(model, Map.of("D1_M1_101_1001", true));
+        var result = element(response, "practice", "P1");
+        assertEquals(50.0, result.includedCount());
+        assertEquals(50.0, result.coverage());
+        assertEquals(rule == AggregationRule.WEIGHTED_AVERAGE ? "withheld" : "computed", result.state());
+    }
+
+    @Test
+    void zeroWeightsFallBackToCountCoverageAndNoScoresWithholdsEvenWithDisabledMinima() {
+        MaturityModel model = booleanScoringModel();
+        var practice = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        practice.getQuestions().forEach(question -> question.setWeight(0.0));
+        AssessmentResponse response = submitForGating(model, Map.of("D1_M1_101_1001", true));
+        assertEquals(50.0, element(response, "practice", "P1").coverage());
+        response = submitForGating(model, Map.of());
+        assertEquals("withheld", response.getScoreState());
+        assertNull(response.getOverallAverage());
+        assertNull(response.getOverallMaturityLevel());
+        assertNull(response.getOverallPercentageScore());
+        assertEquals(0.0, response.getIncludedCount());
+    }
+
+    @Test
+    void untriggeredQuestionsAreOmittedWhileVisibleNaAnswersCountAsAnswered() {
+        MaturityModel model = booleanScoringModel();
+        var practice = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        var parent = practice.getQuestions().getFirst();
+        var child = practice.getQuestions().getLast();
+        child.setDependsOnQuestion(parent);
+        var condition = new com.master_thesis.maturity_assessment.maturity_models.dto.DependencyCondition();
+        condition.setType("boolean"); condition.setAnswers(List.of(true)); child.setDependencyCondition(condition);
+        practice.setMinimumIncludedCount(100.0);
+        AssessmentResponse response = submitForGating(model, Map.of("D1_M1_101_1001", false));
+        assertEquals(100.0, element(response, "practice", "P1").includedCount());
+        assertFalse(response.getElementResults().stream().anyMatch(result -> "Q1002".equals(result.questionCode())));
+        parent.setAllowNotApplicable(true); parent.setNotApplicableScore(0.0);
+        response = submitForGating(model, Map.of("D1_M1_101_1001", Map.of("notApplicable", true)));
+        assertEquals(100.0, element(response, "practice", "P1").includedCount());
+        assertEquals(0.0, element(response, "practice", "P1").normalizedScore());
+        assertEquals("computed", response.getScoreState());
+    }
+
     private Question question(Long id) {
         Question question = new Question();
         question.setId(id);
@@ -2326,23 +2448,7 @@ class AssessmentServiceLifecycleTest {
         return question;
     }
 
-    private GatingRule gatingRule(
-            GatingSelection selection,
-            String childCode,
-            GatingComparisonOperator operator,
-            double threshold,
-            GatingScoreOperation operation,
-            double value) {
-        GatingRule rule = new GatingRule();
-        rule.setOrder(0);
-        rule.setSelection(selection);
-        rule.setChildCode(childCode);
-        rule.setOperator(operator);
-        rule.setThreshold(BigDecimal.valueOf(threshold));
-        rule.setOperation(operation);
-        rule.setValue(BigDecimal.valueOf(value));
-        return rule;
-    }
+
 
     private Practice practice(Long id, String code, Question... questions) {
         Practice practice = new Practice();

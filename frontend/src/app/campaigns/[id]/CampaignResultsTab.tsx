@@ -89,12 +89,12 @@ export default function CampaignResultsTab({
         <ResultPanel title="Average by dimension" description="Mean final score for every evaluated response.">
           <div className="space-y-5">
             {results.dimensions.map((dimension) => {
-              const percentage = Math.min(100, Math.max(0, (dimension.averageScore / scaleMax) * 100));
+              const percentage = Math.min(100, Math.max(0, ((dimension.averageScore ?? 0) / scaleMax) * 100));
               return (
                 <div key={dimension.dimensionId}>
                   <div className="mb-2 flex items-center justify-between gap-4 text-sm">
                     <span className="font-semibold text-slate-700">{dimension.dimensionName}</span>
-                    <span className="whitespace-nowrap text-slate-500">{formatScore1ToN(dimension.averageScore, scaleMax)}</span>
+                    <span className="whitespace-nowrap text-slate-500">{dimension.averageScore == null ? "Withheld" : formatScore1ToN(dimension.averageScore, scaleMax)}</span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                     <div className="h-full rounded-full bg-indigo-600" style={{ width: `${percentage}%` }} />
@@ -139,7 +139,7 @@ export default function CampaignResultsTab({
                   <td className="py-4 pr-5 text-sm font-semibold text-slate-900">{participant.email}</td>
                   <td className="px-5 py-4 text-sm text-slate-600">#{participant.assessmentId}</td>
                   <td className="px-5 py-4 text-sm text-slate-600">{participant.overallMaturityLevel || "Not available"}</td>
-                  <td className="py-4 pl-5 text-right text-sm font-semibold text-slate-800">{formatScore1ToN(participant.overallScore, scaleMax)}</td>
+                  <td className="py-4 pl-5 text-right text-sm font-semibold text-slate-800">{participant.overallScore == null ? "Withheld" : formatScore1ToN(participant.overallScore, scaleMax)}</td>
                 </tr>
               ))}
             </tbody>

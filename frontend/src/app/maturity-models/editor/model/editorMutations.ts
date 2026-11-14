@@ -135,8 +135,8 @@ function updateModuleParent(
   let next = update(found.module);
   if (next === found.module) return document;
   if (renumberPractices && next.practices !== found.module.practices) {
-    const result = renumberSiblingCodes(next.practices, "P", next.gatingRules);
-    next = { ...next, practices: result.items, gatingRules: result.gatingRules };
+    const result = renumberSiblingCodes(next.practices, "P");
+    next = { ...next, practices: result.items };
   }
   return updateDimension(document, found.dimension.clientKey, {
     ...found.dimension,
@@ -155,8 +155,8 @@ function updatePracticeParent(
   let next = update(found.practice);
   if (next === found.practice) return document;
   if (renumberQuestions && next.questions !== found.practice.questions) {
-    const result = renumberSiblingCodes(next.questions, "Q", next.gatingRules);
-    next = { ...next, questions: result.items, gatingRules: result.gatingRules };
+    const result = renumberSiblingCodes(next.questions, "Q");
+    next = { ...next, questions: result.items };
   }
   return updateModule(document, found.dimension.clientKey, found.module.clientKey, {
     ...found.module,
@@ -188,8 +188,8 @@ export function updateDimension(
 ) {
   if (renumberModules && dimension.modules !== findDimension(document, dimensionKey)?.modules) {
     if (!hasValidModulePrerequisiteOrder(dimension.modules)) return document;
-    const result = renumberSiblingCodes(dimension.modules, "M", dimension.gatingRules);
-    dimension = { ...dimension, modules: result.items, gatingRules: result.gatingRules };
+    const result = renumberSiblingCodes(dimension.modules, "M");
+    dimension = { ...dimension, modules: result.items };
   }
   return {
     ...document,
@@ -277,15 +277,7 @@ export function updateModule(
   if (relationsChanged || module.visible !== previous.visible) modules = planModuleVisibility(modules, module.code, module.visible !== false);
   return updateDimension(document, dimensionKey, {
     ...dimension,
-    gatingRules: previous
-      ? dimension.gatingRules.map((rule) =>
-          rule.selection === "specificChild" &&
-          rule.childCode?.toLowerCase() === previous.code.toLowerCase() &&
-          previous.code !== module.code
-            ? { ...rule, childCode: module.code }
-            : rule
-        )
-      : dimension.gatingRules,
+
     modules,
   });
 }
@@ -332,11 +324,6 @@ export function deleteModule(
   if (dimension.modules.some((module) => module.prerequisiteModuleCodes?.some((code) => code.toLowerCase() === removed.code.toLowerCase()))) return document;
   return updateDimension(document, dimensionKey, {
     ...dimension,
-    gatingRules: dimension.gatingRules.filter(
-      (rule) =>
-        rule.selection !== "specificChild" ||
-        rule.childCode?.toLowerCase() !== removed.code.toLowerCase()
-    ),
     modules: dimension.modules.filter((module) => module.clientKey !== moduleKey).map((module) => ({
       ...module,
       coRequisiteModuleCodes: (module.coRequisiteModuleCodes ?? []).filter((code) => code.toLowerCase() !== removed.code.toLowerCase()),
@@ -367,20 +354,8 @@ export function updatePractice(
   practice: ModelEditorPractice
 ) {
   return updateModuleParent(document, moduleKey, (module) => {
-    const previous = module.practices.find(
-      (candidate) => candidate.clientKey === practiceKey
-    );
     return {
       ...module,
-      gatingRules: previous
-        ? module.gatingRules.map((rule) =>
-            rule.selection === "specificChild" &&
-            rule.childCode?.toLowerCase() === previous.code.toLowerCase() &&
-            previous.code !== practice.code
-              ? { ...rule, childCode: practice.code }
-              : rule
-          )
-        : module.gatingRules,
       practices: replaceByKey(module.practices, practiceKey, practice),
     };
   });
@@ -422,11 +397,6 @@ export function deletePractice(
     if (!removed) return module;
     return {
       ...module,
-      gatingRules: module.gatingRules.filter(
-        (rule) =>
-          rule.selection !== "specificChild" ||
-          rule.childCode?.toLowerCase() !== removed.code.toLowerCase()
-      ),
       practices: module.practices.filter(
         (practice) => practice.clientKey !== practiceKey
       ),
@@ -460,13 +430,6 @@ export function updateQuestion(
     if (!previous) return practice;
     return {
       ...practice,
-      gatingRules: practice.gatingRules.map((rule) =>
-        rule.selection === "specificChild" &&
-        rule.childCode?.toLowerCase() === previous.code.toLowerCase() &&
-        previous.code !== question.code
-          ? { ...rule, childCode: question.code }
-          : rule
-      ),
       questions: practice.questions.map((candidate) => {
         if (candidate.clientKey === questionKey) return question;
         if (
@@ -518,11 +481,6 @@ export function deleteQuestion(
     if (!question) return practice;
     return {
       ...practice,
-      gatingRules: practice.gatingRules.filter(
-        (rule) =>
-          rule.selection !== "specificChild" ||
-          rule.childCode?.toLowerCase() !== question.code.toLowerCase()
-      ),
       questions: practice.questions
         .filter((candidate) => candidate.clientKey !== questionKey)
         .map((candidate) =>

@@ -38,7 +38,7 @@ function encodeReferences(items: Item[]) {
       for (const field of [...SYMMETRIC_RELATION_FIELDS, ...MODULE_BADGE_REFERENCE_FIELDS]) item[field] = (item[field] ?? []).map(code => resolve(code, items)!);
     }
     if ("dependsOnQuestionCode" in item && item.dependsOnQuestionCode) item.dependsOnQuestionCode = resolve(item.dependsOnQuestionCode, items);
-    if ("gatingRules" in item) item.gatingRules = item.gatingRules.map(rule => rule.selection === "specificChild" ? { ...rule, childCode: resolve(rule.childCode, children(item)) } : rule);
+
     encodeReferences(children(item));
   }
 }
@@ -63,11 +63,7 @@ function finishReferences(items: Item[], deleted: Set<string>, depth = 0) {
       item.dependsOnQuestionCode = resolve(item.dependsOnQuestionCode, items);
       if (!item.dependsOnQuestionCode) item.dependencyCondition = undefined;
     }
-    if ("gatingRules" in item) item.gatingRules = item.gatingRules.flatMap(rule => {
-      if (rule.selection !== "specificChild") return [rule];
-      const childCode = resolve(rule.childCode, children(item));
-      return childCode ? [{ ...rule, childCode }] : [];
-    });
+
   }
 }
 function collectKeys(item: Item, keys: Set<string>) {

@@ -161,7 +161,7 @@ export function buildAssessmentView(
     version: getAssessmentVersion(assessment, models),
     progress: getAssessmentProgress(assessment, models),
     scorePercentage: getAssessmentScorePercentage(assessment, models),
-    maturityLevel: assessment.overallMaturityLevel,
+    maturityLevel: assessment.scoreState === "withheld" ? "Withheld" : assessment.overallMaturityLevel ?? "",
     updatedAtTime: getAssessmentTime(assessment),
     updatedLabel: formatRelativeDate(
       assessment.updatedAt || assessment.createdAt,

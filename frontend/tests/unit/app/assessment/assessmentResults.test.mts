@@ -262,3 +262,24 @@ test("result exports preserve N/A labels and scores for every question type", ()
     assert.equal(data.answers[0].finalScore, 0.65);
   }
 });
+
+test("withheld results retain completion snapshots and never become zero scores or maturity levels", () => {
+  const withheld: AssessmentResponse = {
+    ...assessment,
+    overallAverage: null,
+    overallMaturityLevel: null,
+    scoreState: "withheld",
+    dimensionResults: assessment.dimensionResults!.map(result => ({ ...result, averageScore: null, maturityLevel: null, scoreState: "withheld" })),
+    elementResults: [{ elementType: "dimension", dimensionId: "D1", moduleCode: null, practiceCode: null,
+      questionCode: null, responseKey: null, name: "Withheld dimension", state: "withheld", normalizedScore: null,
+      includedCount: 50, coverage: 25 }],
+  };
+  const metrics = buildAssessmentResultMetrics(withheld, model, steps);
+  assert.equal(metrics.overallScore, null);
+  assert.equal(metrics.finalLevelNumber, null);
+  assert.deepEqual(metrics.dimensions, []);
+  const exported = buildAssessmentResultsExportData(withheld, model, steps);
+  assert.equal(exported.overallScore, null);
+  assert.equal(exported.overallMaturityLevel, "Withheld");
+  assert.deepEqual(exported.elementResults, withheld.elementResults);
+});

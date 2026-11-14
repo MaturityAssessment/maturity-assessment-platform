@@ -1,6 +1,7 @@
 import { isNotApplicableAnswer } from "../../lib/notApplicable.ts";
 import type {
   AssessmentResponse,
+  AssessmentElementResult,
   Evidence,
   MaturityModel,
   Question,
@@ -38,7 +39,7 @@ export type AssessmentResultsExportData = {
   completedAt: string;
   respondent: string;
   overallMaturityLevel: string;
-  overallScore: number;
+  overallScore: number | null;
   scaleMax: number;
   evaluatorInsight: string;
   dimensions: ReturnType<typeof buildAssessmentResultMetrics>["dimensions"];
@@ -46,6 +47,7 @@ export type AssessmentResultsExportData = {
     typeof buildAssessmentResultMetrics
   >["scoreDistribution"];
   answers: AssessmentExportAnswer[];
+  elementResults: AssessmentElementResult[];
 };
 
 export function buildAssessmentResultsExportData(
@@ -110,13 +112,14 @@ export function buildAssessmentResultsExportData(
     completedAt: assessment.updatedAt || assessment.createdAt,
     respondent: assessment.userEmail?.trim() || "",
     overallMaturityLevel:
-      assessment.overallMaturityLevel?.trim() || "Not available",
+      assessment.scoreState === "withheld" ? "Withheld" : assessment.overallMaturityLevel?.trim() || "Not available",
     overallScore: metrics.overallScore,
     scaleMax,
     evaluatorInsight: assessment.evaluatorInsight?.trim() || "",
     dimensions: metrics.dimensions,
     scoreDistribution: metrics.scoreDistribution,
     answers,
+    elementResults: assessment.elementResults ?? [],
   };
 }
 

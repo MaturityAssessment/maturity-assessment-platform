@@ -44,6 +44,7 @@ import {
   type AssessmentAdjustmentMetric,
 } from "./assessmentResults";
 import { buildAssessmentResultsExportData } from "./assessmentResultsExport";
+import AssessmentCompletionResults from "./AssessmentCompletionResults";
 import EvidenceUpload from "@/components/assessment/EvidenceUpload";
 import { hydrateEvidenceByField, getPracticeEvidenceField } from "./assessmentEvidence";
 import { hydrateQuestionResponses } from "./assessmentQuestionResponses";
@@ -174,12 +175,12 @@ export default function AssessmentResultsTab({
               Overall maturity level
             </p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              {assessment.overallMaturityLevel || "Not available"}
+              {assessment.scoreState === "withheld" ? "Withheld" : assessment.overallMaturityLevel || "Not available"}
             </h1>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <span className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold ring-1 ring-inset ring-white/10">
                 <Award className="h-4 w-4 text-amber-300" aria-hidden="true" />
-                {formatScore1ToN(metrics.overallScore, scaleMax)}
+                {assessment.scoreState === "withheld" ? "Withheld" : formatScore1ToN(metrics.overallScore, scaleMax)}
               </span>
               {metrics.finalLevelNumber != null && (
                 <span className="text-sm text-slate-300">
@@ -336,6 +337,8 @@ export default function AssessmentResultsTab({
           />
         </div>
       </section>
+
+      <AssessmentCompletionResults elements={assessment.elementResults} />
 
       {metrics.adjustedItemCount > 0 && (
         <AdjustmentComparison
@@ -534,7 +537,7 @@ function DimensionProfile({
   dimensions: ReturnType<
     typeof buildAssessmentResultMetrics
   >["dimensions"];
-  overallScore: number;
+  overallScore: number | null;
   scaleMax: number;
 }) {
   const radarData = dimensions.map((dimension) => ({
@@ -640,11 +643,11 @@ function DimensionScoreRow({
   dimension: ReturnType<
     typeof buildAssessmentResultMetrics
   >["dimensions"][number];
-  overallScore: number;
+  overallScore: number | null;
   scaleMax: number;
   compact?: boolean;
 }) {
-  const difference = dimension.score - overallScore;
+  const difference = overallScore == null ? null : dimension.score - overallScore;
   return (
     <div>
       <div className="flex items-center justify-between gap-3 text-xs">
@@ -655,7 +658,7 @@ function DimensionScoreRow({
           <span className="font-bold tabular-nums text-slate-900">
             {dimension.score.toFixed(1)}
           </span>
-          <DeltaBadge value={difference} suffix=" vs overall" />
+          {difference != null && <DeltaBadge value={difference} suffix=" vs overall" />}
         </span>
       </div>
       {!compact && (
@@ -664,11 +667,11 @@ function DimensionScoreRow({
             className="h-full rounded-full bg-indigo-500"
             style={{ width: `${(dimension.score / scaleMax) * 100}%` }}
           />
-          <span
+          {overallScore != null && <span
             className="absolute inset-y-[-2px] w-0.5 bg-cyan-600"
             style={{ left: `${(overallScore / scaleMax) * 100}%` }}
             aria-hidden="true"
-          />
+          />}
         </div>
       )}
     </div>

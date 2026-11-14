@@ -140,60 +140,25 @@ test("unused weights retain valid values and serialize unfinished values safely"
   assert.ok(serializedWeights().every(Number.isNaN));
 });
 
-test("gating rules default empty and serialize in contiguous display order", () => {
+test("gating percentages default to zero and survive hydration and serialization", () => {
   const document = createEmptyDocument();
+  assert.equal(document.dimensions[0].minimumCoverage, 0);
   const practice = document.dimensions[0].modules[0].practices[0];
-  assert.deepEqual(document.dimensions[0].gatingRules, []);
-  assert.deepEqual(document.dimensions[0].modules[0].gatingRules, []);
-  assert.deepEqual(practice.gatingRules, []);
-
-  practice.gatingRules = [
-    {
-      order: 8,
-      selection: "anyChild",
-      operator: "<",
-      threshold: 0.4,
-      operation: "set",
-      value: 0.4,
-    },
-    {
-      order: 3,
-      selection: "specificChild",
-      childCode: practice.questions[0].code,
-      operator: ">=",
-      threshold: 0.8,
-      operation: "add",
-      value: 0.1,
-    },
-  ];
-
+  assert.equal(practice.minimumIncludedCount, 0);
+  practice.minimumCoverage = 82.5;
+  practice.minimumIncludedCount = 75;
   const serialized = serializeDocument(document);
-  assert.deepEqual(
-    serialized.dimensions[0].modules[0].practices[0].gatingRules.map(
-      (rule) => rule.order
-    ),
-    [0, 1]
-  );
-  assert.equal(
-    serialized.dimensions[0].modules[0].practices[0].gatingRules[0].childCode,
-    undefined
-  );
-
-  const legacy = hydrateDocument(
-    {
-      ...document,
-      dimensions: document.dimensions.map(({ gatingRules: _rules, ...dimension }) => ({
-        ...dimension,
-        modules: dimension.modules.map(({ gatingRules: _moduleRules, ...module }) => ({
-          ...module,
-          practices: module.practices.map(({ gatingRules: _practiceRules, ...practice }) => practice),
-        })),
-      })),
-    } as unknown as typeof document,
-    false
-  );
-  assert.deepEqual(legacy.dimensions[0].gatingRules, []);
-  assert.deepEqual(legacy.dimensions[0].modules[0].practices[0].gatingRules, []);
+  const hydrated = hydrateDocument(serialized as unknown as typeof document, false);
+  assert.equal(hydrated.dimensions[0].modules[0].practices[0].minimumCoverage, 82.5);
+  assert.equal(hydrated.dimensions[0].modules[0].practices[0].minimumIncludedCount, 75);
+  assert.equal("gatingRules" in serialized.dimensions[0].modules[0].practices[0], false);
+  const legacy = structuredClone(document) as any;
+  legacy.dimensions[0].gatingRules = [{ operation: "set", value: 1 }];
+  delete legacy.dimensions[0].minimumCoverage;
+  delete legacy.dimensions[0].minimumIncludedCount;
+  assert.equal("gatingRules" in serializeDocument(hydrateDocument(legacy, false)).dimensions[0], false);
+  assert.equal(hydrateDocument(legacy, false).dimensions[0].minimumCoverage, 0);
+  assert.equal(hydrateDocument(legacy, false).dimensions[0].minimumIncludedCount, 0);
 });
 
 

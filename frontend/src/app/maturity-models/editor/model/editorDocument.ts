@@ -1,6 +1,5 @@
 import type {
   AggregationRule,
-  GatingRule,
   MaturityLevel,
   MaturityModelEditorDocument,
   ModelEditorDimension,
@@ -12,26 +11,6 @@ import { normalizeModuleRelationships } from "./moduleRelationships.ts";
 import { codePrefix, renumberSiblingCodes } from "./editorCodes.ts";
 
 export const DEFAULT_AGGREGATION_RULE: AggregationRule = "WEIGHTED_AVERAGE";
-
-function hydrateGatingRules(rules: GatingRule[] | undefined): GatingRule[] {
-  return [...(rules ?? [])]
-    .sort((left, right) => left.order - right.order)
-    .map((rule, order) => ({
-      ...rule,
-      order,
-      childCode:
-        rule.selection === "specificChild" ? rule.childCode : undefined,
-    }));
-}
-
-function serializeGatingRules(rules: GatingRule[]) {
-  return rules.map((rule, order) => ({
-    ...rule,
-    order,
-    childCode:
-      rule.selection === "specificChild" ? rule.childCode : undefined,
-  }));
-}
 
 export function defaultMappingRules(levelCount: number) {
   return Array.from({ length: levelCount }, (_, index) => ({
@@ -102,7 +81,8 @@ export function emptyPractice(
     description: "",
     weight: 1,
     aggregationRule: DEFAULT_AGGREGATION_RULE,
-    gatingRules: [],
+    minimumCoverage: 0,
+    minimumIncludedCount: 0,
     requiresEvidence: false,
     evidenceRequirements: [],
     questions: [emptyQuestion(questionOrdinal)],
@@ -121,7 +101,8 @@ export function emptyModule(
     description: "",
     weight: 1,
     aggregationRule: DEFAULT_AGGREGATION_RULE,
-    gatingRules: [],
+    minimumCoverage: 0,
+    minimumIncludedCount: 0,
     visible: true,
     prerequisiteModuleCodes: [],
     coRequisiteModuleCodes: [],
@@ -147,7 +128,8 @@ export function emptyDimension(
     weight: 1,
     aggregationRule: DEFAULT_AGGREGATION_RULE,
     mappingRules: defaultMappingRules(DEFAULT_LEVELS.length),
-    gatingRules: [],
+    minimumCoverage: 0,
+    minimumIncludedCount: 0,
     modules: [
       emptyModule(moduleOrdinal, practiceOrdinal, questionOrdinal),
     ],
@@ -167,6 +149,12 @@ export function createEmptyDocument(): MaturityModelEditorDocument {
   };
 }
 
+// Older drafts may still contain retired score-adjustment rules.
+function withoutLegacyGating<T extends object>(item: T): T {
+  const { gatingRules: _legacyRules, ...fields } = item as T & { gatingRules?: unknown };
+  return fields as T;
+}
+
 export function hydrateDocument(
   raw: MaturityModelEditorDocument,
   // Kept for compatibility with existing editor initialization call sites.
@@ -183,14 +171,15 @@ export function hydrateDocument(
     aggregationRule: raw.aggregationRule ?? DEFAULT_AGGREGATION_RULE,
     levels,
     dimensions: (raw.dimensions ?? []).map((dimension) => ({
-      ...dimension,
+      ...withoutLegacyGating(dimension),
       description: dimension.description ?? "",
       clientKey: dimension.clientKey || key(),
       codeLocked: false,
       weight: dimension.weight ?? 1,
       aggregationRule:
         dimension.aggregationRule ?? DEFAULT_AGGREGATION_RULE,
-      gatingRules: hydrateGatingRules(dimension.gatingRules),
+      minimumCoverage: dimension.minimumCoverage ?? 0,
+      minimumIncludedCount: dimension.minimumIncludedCount ?? 0,
       mappingRules:
         dimension.mappingRules?.length === levels.length
           ? dimension.mappingRules.map((rule, index) => ({
@@ -199,7 +188,7 @@ export function hydrateDocument(
             }))
           : defaultMappingRules(levels.length),
       modules: (dimension.modules ?? []).map((module) => ({
-        ...module,
+        ...withoutLegacyGating(module),
         description: module.description ?? "",
         visible: module.visible !== false,
         prerequisiteModuleCodes: [...(module.prerequisiteModuleCodes ?? [])],
@@ -212,9 +201,10 @@ export function hydrateDocument(
         codeLocked: false,
         weight: module.weight ?? 1,
         aggregationRule: module.aggregationRule ?? DEFAULT_AGGREGATION_RULE,
-        gatingRules: hydrateGatingRules(module.gatingRules),
+        minimumCoverage: module.minimumCoverage ?? 0,
+        minimumIncludedCount: module.minimumIncludedCount ?? 0,
         practices: (module.practices ?? []).map((practice) => ({
-          ...practice,
+          ...withoutLegacyGating(practice),
           description: practice.description ?? "",
           requiresEvidence: practice.requiresEvidence ?? false,
           evidenceRequirements: (practice.evidenceRequirements?.length ? practice.evidenceRequirements : practice.requiresEvidence
@@ -224,7 +214,8 @@ export function hydrateDocument(
           weight: practice.weight ?? 1,
           aggregationRule:
             practice.aggregationRule ?? DEFAULT_AGGREGATION_RULE,
-          gatingRules: hydrateGatingRules(practice.gatingRules),
+          minimumCoverage: practice.minimumCoverage ?? 0,
+          minimumIncludedCount: practice.minimumIncludedCount ?? 0,
           questions: (practice.questions ?? []).map((question) => ({
             ...question,
             clientKey: question.clientKey || key(),
@@ -253,22 +244,21 @@ export function hydrateDocument(
   // Initialize prefixes once; subsequent structural edits renumber only siblings.
   document.dimensions = renumberSiblingCodes(document.dimensions, "D").items;
   for (const dimension of document.dimensions) {
-    const modules = renumberSiblingCodes(dimension.modules, "M", dimension.gatingRules);
+    const modules = renumberSiblingCodes(dimension.modules, "M");
     dimension.modules = normalizeModuleRelationships(modules.items);
-    dimension.gatingRules = modules.gatingRules;
+
     for (const modelModule of dimension.modules) {
-      const practices = renumberSiblingCodes(modelModule.practices, "P", modelModule.gatingRules);
+      const practices = renumberSiblingCodes(modelModule.practices, "P");
       modelModule.practices = practices.items;
-      modelModule.gatingRules = practices.gatingRules;
+
       for (const practice of modelModule.practices) {
         practice.questions = practice.questions.map((question) => {
           const parent = practice.questions.find((candidate) => candidate.code.toLowerCase() === question.dependsOnQuestionCode?.toLowerCase());
           return parent?.type === "boolean" && !question.dependencyCondition
             ? { ...question, dependencyCondition: { type: "boolean" as const, answers: [true] } } : question;
         });
-        const questions = renumberSiblingCodes(practice.questions, "Q", practice.gatingRules);
+        const questions = renumberSiblingCodes(practice.questions, "Q");
         practice.questions = questions.items;
-        practice.gatingRules = questions.gatingRules;
       }
     }
   }
@@ -297,15 +287,16 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
     })),
     dimensions: document.dimensions.map(
       ({ clientKey: _key, codeLocked: _locked, ...dimension }) => ({
-        ...dimension,
+        ...withoutLegacyGating(dimension),
         weight: serializeWeight(dimension.weight, document.aggregationRule),
         code: dimension.code.trim(),
         name: dimension.name.trim(),
         description: dimension.description.trim() || undefined,
-        gatingRules: serializeGatingRules(dimension.gatingRules),
+        minimumCoverage: dimension.minimumCoverage ?? 0,
+        minimumIncludedCount: dimension.minimumIncludedCount ?? 0,
         modules: dimension.modules.map(
           ({ clientKey: _moduleKey, codeLocked: _moduleLocked, ...module }) => ({
-            ...module,
+            ...withoutLegacyGating(module),
             weight: serializeWeight(module.weight, dimension.aggregationRule),
             visible: module.visible !== false,
             prerequisiteModuleCodes: [...(module.prerequisiteModuleCodes ?? [])],
@@ -317,21 +308,23 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
             code: module.code.trim(),
             name: module.name.trim(),
             description: module.description.trim(),
-            gatingRules: serializeGatingRules(module.gatingRules),
+            minimumCoverage: module.minimumCoverage ?? 0,
+            minimumIncludedCount: module.minimumIncludedCount ?? 0,
             practices: module.practices.map(
               ({
                 clientKey: _practiceKey,
                 codeLocked: _practiceLocked,
                 ...practice
               }) => ({
-                ...practice,
+                ...withoutLegacyGating(practice),
                 weight: serializeWeight(practice.weight, module.aggregationRule),
                 requiresEvidence: (practice.evidenceRequirements ?? []).some(item => item.required),
                 evidenceRequirements: (practice.evidenceRequirements ?? []).map(item => ({ ...item, name: item.name.trim(), instructions: item.instructions.trim() })),
                 code: practice.code.trim(),
                 name: practice.name.trim(),
                 description: practice.description.trim(),
-                gatingRules: serializeGatingRules(practice.gatingRules),
+                minimumCoverage: practice.minimumCoverage ?? 0,
+                minimumIncludedCount: practice.minimumIncludedCount ?? 0,
                 questions: practice.questions.map(
                   ({
                     clientKey: _questionKey,

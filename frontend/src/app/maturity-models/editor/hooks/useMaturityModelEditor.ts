@@ -1,7 +1,6 @@
 "use client";
 
 import { MODULE_PREREQUISITE_ORDER_MESSAGE } from "../model/modulePrerequisites";
-import { moduleVisibilityDependencies } from "../model/moduleVisibility";
 
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -253,15 +252,12 @@ export function useMaturityModelEditor(
       return previous && (previous.visible !== false) !== (module.visible !== false)
         ? [{ dimension, module, visible: module.visible !== false }] : [];
     }));
-    const warnings = [...new Set(changes.filter((change) => !change.visible)
-      .flatMap(({ dimension, module }) => moduleVisibilityDependencies(dimension, module)))];
     if ((changes.length > 1 || (previewSingle && changes.length > 0)) && !window.confirm([
       "Apply these visibility changes?",
       ...changes.map(({ module, visible }) => `${visible ? "Show" : "Hide"}: ${module.name || module.code} (${module.code})`),
-      ...warnings,
     ].join("\n\n"))) return;
     replaceDocument(next, selection);
-    dispatch({ type: "notice", notice: warnings.length ? { type: "warning", message: warnings.join(" ") } : null });
+    dispatch({ type: "notice", notice: null });
   }, [replaceDocument, state.document]);
 
   const withDocument = useCallback(
@@ -331,10 +327,10 @@ export function useMaturityModelEditor(
       toggleModuleVisibility: (dimensionKey: string, moduleKey: string) => {
         if (!state.document) return;
         const dimension = findDimension(state.document, dimensionKey);
-        const module = dimension?.modules.find((item) => item.clientKey === moduleKey);
-        if (!dimension || !module) return;
+        const targetModule = dimension?.modules.find((item) => item.clientKey === moduleKey);
+        if (!dimension || !targetModule) return;
         try {
-          commitStructureChange(updateModule(state.document, dimensionKey, moduleKey, { ...module, visible: module.visible === false }));
+          commitStructureChange(updateModule(state.document, dimensionKey, moduleKey, { ...targetModule, visible: targetModule.visible === false }));
         } catch (error) {
           dispatch({ type: "notice", notice: { type: "error", message: error instanceof Error ? error.message : "Could not change module visibility." } });
         }

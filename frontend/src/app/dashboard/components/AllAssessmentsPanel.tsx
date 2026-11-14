@@ -48,7 +48,7 @@ function getOutcomeSortValue(assessment: DashboardAssessmentView) {
     return statusValue + assessment.progress;
   }
   if (assessment.status === "completed") {
-    return statusValue + assessment.assessment.overallAverage;
+    return statusValue + (assessment.assessment.overallAverage ?? 0);
   }
   return statusValue;
 }

@@ -21,8 +21,8 @@ in an assessment payload. [Assessment response keys](reference/assessments.md#as
 combine both kinds of identifiers.
 
 JSON fields generally use camelCase. Enum spelling is contract-specific: roles
-and assessment statuses use uppercase, question types use lowercase, and gating
-rules have their own [serialized values](reference/maturity-models.md#model-contracts).
+and assessment statuses use uppercase; question types and element score states use lowercase.
+Gating thresholds are numeric percentages.
 
 Campaign timestamps use `Instant` (for example `2027-01-15T18:00:00Z`); send an
 explicit UTC offset for `endsAt`. Assessment and model timestamps use

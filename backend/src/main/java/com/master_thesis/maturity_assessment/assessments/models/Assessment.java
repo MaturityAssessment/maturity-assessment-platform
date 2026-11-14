@@ -12,6 +12,19 @@ import com.master_thesis.maturity_assessment.campaigns.models.CampaignParticipan
 @Entity
 @Table(name = "assessments")
 public class Assessment {
+    @Column(name = "included_count")
+    private Double includedCount;
+
+    @Column(name = "coverage")
+    private Double coverage;
+
+    @Column(name = "score_state", length = 20)
+    private String scoreState;
+
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "element_results", columnDefinition = "jsonb")
+    private List<AssessmentElementResult> elementResults;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -23,10 +36,10 @@ public class Assessment {
     private boolean referenceDateInferred;
 
 
-    @Column(nullable = false)
+    @Column
     private Double overallAverage;
 
-    @Column(nullable = false)
+    @Column
     private String overallMaturityLevel;
 
     @Column(nullable = false)

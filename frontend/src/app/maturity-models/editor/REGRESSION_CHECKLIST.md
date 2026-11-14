@@ -97,10 +97,10 @@ or question configuration.
 - Setting/removing a co-requisite or mutex pair from either module updates both
   endpoints. Sidebar badges summarize co-requisite groups and excluded modules.
 - Showing/hiding a module changes its whole co-requisite group. Mutex switches
-  preview all modules to show/hide and affected gates before applying; cancelling
+  preview all modules to show/hide before applying; cancelling
   leaves the document unchanged. Both mutex alternatives may be hidden.
-- Block switches that hide prerequisites needed by other visible modules. Repair
-  explicit gating references to hidden modules before saving.
+- Block switches that hide prerequisites needed by other visible modules. Hidden
+  modules are excluded from completion and score calculations.
 - Reject mutex with direct or indirect prerequisites, mutex within co-requisite
   groups, mixed visibility implication conflicts, and modules requiring both
   alternatives. Permit alternatives sharing a prerequisite. Mutex is pairwise.
@@ -158,3 +158,17 @@ or question configuration.
 - Cancel, Escape, backdrop, and the close button discard unsaved changes; closing is blocked during a save.
 - Empty fields, failed domain loading, and failed saving keep the modal open with actionable feedback.
 - Restoring an old browser draft or importing a workbook while editing preserves the current shared settings.
+
+## Completion gating
+
+- Gating tabs on practices, modules and dimensions contain minimum coverage and
+  minimum included count percentages, defaulting to zero.
+- Coverage gating is enabled only for weighted mean; switching methods retains
+  the configured threshold. Invalid percentages block saving.
+- Preserve both thresholds through drafts, review/revert, versions and Excel.
+- Required and optional visible questions both count in practice completion.
+  Untriggered dependencies and hidden modules do not count.
+- Upper levels average direct-child included-count percentages. Withheld children
+  contribute zero to completion and no score to aggregation.
+- Results and exports show completion and withholding. Withheld elements have no
+  score or maturity level. Equality with either minimum passes.

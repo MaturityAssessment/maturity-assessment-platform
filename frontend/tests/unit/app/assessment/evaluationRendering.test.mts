@@ -392,3 +392,22 @@ test("reviewing N/A shows its normalized score and uses normalized adjustments f
     assert.match(adjusted, /min="0" max="1"/);
   }
 });
+
+test("completion results show measured percentages and the withheld state", () => {
+  const Completion = load(resolve(sourceRoot, "app/assessment/AssessmentCompletionResults.tsx")).default;
+  const html = renderToStaticMarkup(createElement(Completion, { elements: [{ elementType: "practice", name: "Policy", state: "withheld", dimensionId: "D", moduleCode: "M", practiceCode: "P", normalizedScore: null, includedCount: 50, coverage: 25 }] }));
+  assert.match(html, /Withheld/);
+  assert.match(html, /50\.0%/);
+  assert.match(html, /25\.0%/);
+  assert.doesNotMatch(html, /Level 1|0\.0 \/ 5/);
+});
+
+test("gating controls use percentage thresholds and retain inactive coverage for other methods", () => {
+  const Gating = load(resolve(sourceRoot, "app/maturity-models/editor/components/GatingRuleField.tsx")).default;
+  const html = renderToStaticMarkup(createElement(Gating, { idPrefix: "practice", aggregationRule: "MINIMUM", isPractice: true, minimumCoverage: 80, minimumIncludedCount: 60, onChange: noOp }));
+  assert.match(html, /Minimum coverage \(%\)/);
+  assert.match(html, /Minimum included count \(%\)/);
+  assert.match(html, /id="practice-minimum-coverage"[^>]*disabled=""[^>]*value="80"/);
+  assert.match(html, /max="100"/);
+  assert.doesNotMatch(html, /Add rule|Set score to|specific child/);
+});

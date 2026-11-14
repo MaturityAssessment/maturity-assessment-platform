@@ -152,17 +152,15 @@ export default function DimensionEditor({
           {
             id: "gating",
             label: "Gating rules",
-            count: dimension.gatingRules.length,
+            count: Number(dimension.minimumCoverage > 0) + Number(dimension.minimumIncludedCount > 0),
             content: (
               <GatingRuleField
                 idPrefix={`dimension-${dimension.clientKey}`}
-                childLabel="Modules"
-                childOptions={dimension.modules.map((module) => ({
-                  code: module.code,
-                  name: module.visible === false ? `${module.name || module.code} (hidden)` : module.name,
-                }))}
-                value={dimension.gatingRules}
-                onChange={(gatingRules) => update({ ...dimension, gatingRules })}
+                aggregationRule={dimension.aggregationRule}
+                isPractice={false}
+                minimumCoverage={dimension.minimumCoverage}
+                minimumIncludedCount={dimension.minimumIncludedCount}
+                onChange={(thresholds) => update({ ...dimension, ...thresholds })}
               />
             ),
           },
@@ -184,13 +182,7 @@ export default function DimensionEditor({
                 onDelete={(moduleKey) => {
                   const selectedModule = dimension.modules.find((item) => item.clientKey === moduleKey);
                   if (!selectedModule) return;
-                  const referenced = dimension.gatingRules.some((rule) =>
-                    rule.selection === "specificChild" &&
-                    rule.childCode?.toLowerCase() === selectedModule.code.toLowerCase()
-                  );
-                  const message = referenced
-                    ? "Delete this module and all of its practices? Gating rules that reference it will also be removed."
-                    : "Delete this module and all of its practices?";
+                  const message = "Delete this module and all of its practices?";
                   if (window.confirm(message)) commands.deleteModule(dimension.clientKey, moduleKey);
                 }}
                 onSelect={onSelect}

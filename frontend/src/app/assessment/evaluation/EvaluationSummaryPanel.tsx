@@ -1,5 +1,6 @@
 "use client";
 
+import AssessmentCompletionResults from "../AssessmentCompletionResults";
 import { CalendarDays, FileStack, Gauge, UserRound } from "lucide-react";
 import { formatScore1ToN, formatLevelWithNumber } from "@/lib/maturityFormat";
 import type { AssessmentDetail } from "./types";
@@ -32,7 +33,7 @@ export default function EvaluationSummaryPanel({
     },
     {
       label: "Preliminary level",
-      value: formatLevelWithNumber(
+      value: assessment.scoreState === "withheld" ? "Withheld" : formatLevelWithNumber(
         assessment.overallMaturityLevel,
         maturityModel?.levels ?? null,
         scaleN
@@ -41,7 +42,7 @@ export default function EvaluationSummaryPanel({
     },
     {
       label: "Preliminary score",
-      value: formatScore1ToN(assessment.overallAverage, scaleN),
+      value: assessment.scoreState === "withheld" ? "Withheld" : formatScore1ToN(assessment.overallAverage, scaleN),
       icon: Gauge,
     },
     {
@@ -90,6 +91,7 @@ export default function EvaluationSummaryPanel({
         </div>
 
       </section>
+      <AssessmentCompletionResults elements={assessment.elementResults} />
     </div>
   );
 }

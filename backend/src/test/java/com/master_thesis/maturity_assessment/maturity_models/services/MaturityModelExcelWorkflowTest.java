@@ -52,35 +52,30 @@ class MaturityModelExcelWorkflowTest {
             mappings.add(rule);
         }
         dimension.setMappingRules(mappings);
-        dimension.setGatingRules(List.of(gate("PM_CORE")));
+        dimension.setMinimumCoverage(80.0);
+        dimension.setMinimumIncludedCount(65.5);
         ModuleDTO module = dimension.getModules().getFirst();
         module.setWeight(4.0);
         module.setAggregationRule(AggregationRule.MAXIMUM);
-        module.setGatingRules(List.of(gate("P1_PD")));
+        module.setMinimumCoverage(80.0);
+        module.setMinimumIncludedCount(65.5);
         PracticeDTO practice = module.getPractices().getFirst();
         practice.setWeight(3.0);
         practice.setRequiresEvidence(true);
         practice.setAggregationRule(AggregationRule.SUM);
-        practice.setGatingRules(List.of(gate("Q1_APD")));
+        practice.setMinimumCoverage(80.0);
+        practice.setMinimumIncludedCount(65.5);
         practice.getQuestions().getFirst().setBooleanCorrectAnswer(false);
         // Both forms of dependency references can arrive from model exports.
         practice.getQuestions().getFirst().setId(501L);
         practice.getQuestions().getLast().setDependsOnQuestionCode(null);
         practice.getQuestions().getLast().setDependsOnQuestionId(501L);
+        model.getDimensions().stream().flatMap(d -> d.getModules().stream()).flatMap(m -> m.getPractices().stream())
+                .flatMap(p -> p.getQuestions().stream()).forEach(q -> q.setAllowNotApplicable(Boolean.TRUE.equals(q.getAllowNotApplicable())));
         return model;
     }
 
-    private static GatingRuleDTO gate(String child) {
-        GatingRuleDTO rule = new GatingRuleDTO();
-        rule.setOrder(0);
-        rule.setSelection(GatingSelection.SPECIFIC_CHILD);
-        rule.setChildCode(child);
-        rule.setOperator(GatingComparisonOperator.BELOW);
-        rule.setThreshold(new BigDecimal("0.5"));
-        rule.setOperation(GatingScoreOperation.SET);
-        rule.setValue(BigDecimal.ZERO);
-        return rule;
-    }
+
 
     @Test
     void allQuestionTypesAndScoringSettings_surviveExportImportAndEditorSave() throws Exception {
@@ -119,17 +114,17 @@ class MaturityModelExcelWorkflowTest {
         var savedDimension = saved.getDimensions().getFirst();
         var importedDimension = imported.getDimensions().getFirst();
         assertEquals(importedDimension.getMappingRules(), savedDimension.getMappingRules());
-        assertEquals(importedDimension.getGatingRules(), savedDimension.getGatingRules());
+        assertEquals(importedDimension.getMinimumCoverage(), savedDimension.getMinimumCoverage());
         assertEquals(importedDimension.getWeight(), savedDimension.getWeight());
         var savedModule = savedDimension.getModules().getFirst();
         var importedModule = importedDimension.getModules().getFirst();
         assertEquals(importedModule.getAggregationRule(), savedModule.getAggregationRule());
-        assertEquals(importedModule.getGatingRules(), savedModule.getGatingRules());
+        assertEquals(importedModule.getMinimumCoverage(), savedModule.getMinimumCoverage());
         assertEquals(importedModule.getWeight(), savedModule.getWeight());
         var savedPractice = savedModule.getPractices().getFirst();
         var importedPractice = importedModule.getPractices().getFirst();
         assertEquals(importedPractice.getAggregationRule(), savedPractice.getAggregationRule());
-        assertEquals(importedPractice.getGatingRules(), savedPractice.getGatingRules());
+        assertEquals(importedPractice.getMinimumCoverage(), savedPractice.getMinimumCoverage());
         assertEquals(importedPractice.getWeight(), savedPractice.getWeight());
         assertTrue(savedPractice.getRequiresEvidence());
         assertFalse(savedPractice.getQuestions().getFirst().getBooleanCorrectAnswer());
@@ -248,7 +243,7 @@ class MaturityModelExcelWorkflowTest {
         for (String[] change : List.of(
                 new String[]{"Model", "modelAggregationRule", "invalid", "modelAggregationRule"},
                 new String[]{"Dimensions", "dimensionMappingRules", "not JSON", "dimensionMappingRules"},
-                new String[]{"Practices", "practiceGatingRules", "[{\"order\":0,\"selection\":\"specificChild\",\"childCode\":\"UNKNOWN\",\"operator\":\"<\",\"threshold\":0.5,\"operation\":\"set\",\"value\":0}]", "immediate child"},
+                new String[]{"Practices", "practiceMinimumCoverage", "101", "practiceMinimumCoverage"},
                 new String[]{"Questions", "questionBooleanCorrectAnswer", "maybe", "questionBooleanCorrectAnswer"},
                 new String[]{"Questions", "questionWeight", "-1", "questionWeight"},
                 new String[]{"Levels", "number", "1.4", "level numbers"},
@@ -294,9 +289,9 @@ class MaturityModelExcelWorkflowTest {
             for (String[] columns : List.of(
                     new String[]{"Model", "modelAggregationRule", "modelChangelogMarkdown"},
                     new String[]{"Levels", "description"},
-                    new String[]{"Dimensions", "dimensionDescription", "dimensionWeight", "dimensionAggregationRule", "dimensionMappingRules", "dimensionGatingRules"},
-                    new String[]{"Modules", "moduleWeight", "moduleAggregationRule", "moduleGatingRules"},
-                    new String[]{"Practices", "practiceWeight", "practiceAggregationRule", "practiceGatingRules", "practiceRequiresEvidence"},
+                    new String[]{"Dimensions", "dimensionDescription", "dimensionWeight", "dimensionAggregationRule", "dimensionMappingRules", "dimensionMinimumCoverage", "dimensionMinimumIncludedCount"},
+                    new String[]{"Modules", "moduleWeight", "moduleAggregationRule", "moduleMinimumCoverage", "moduleMinimumIncludedCount"},
+                    new String[]{"Practices", "practiceWeight", "practiceAggregationRule", "practiceMinimumCoverage", "practiceMinimumIncludedCount", "practiceRequiresEvidence"},
                     new String[]{"Questions", "questionBooleanCorrectAnswer"})) {
                 for (Cell cell : workbook.getSheet(columns[0]).getRow(0)) {
                     if (java.util.Arrays.asList(columns).subList(1, columns.length).contains(cell.getStringCellValue())) cell.setBlank();
@@ -325,7 +320,7 @@ class MaturityModelExcelWorkflowTest {
             questions.removeRow(questions.getRow(questions.getLastRowNum()));
             set(workbook, "Questions", 1, "questionCode", "Q1_REVISED");
             set(workbook, "Questions", 2, "dependsOnQuestionCode", "Q1_REVISED");
-            set(workbook, "Practices", 1, "practiceGatingRules", "[{\"order\":0,\"selection\":\"specificChild\",\"childCode\":\"Q1_REVISED\",\"operator\":\"<\",\"threshold\":0.5,\"operation\":\"set\",\"value\":0}]");
+
         });
         var response = new MaturityModelController(modelService(), excel).parseEditorUpload(upload(edited), 8L);
         assertEquals(200, response.getStatusCode().value(), response.getBody().getErrorDetails());
@@ -333,7 +328,7 @@ class MaturityModelExcelWorkflowTest {
         var practice = dimensions.getFirst().getModules().getFirst().getPractices().getFirst();
         assertEquals("Q1_REVISED", practice.getQuestions().getFirst().getCode());
         assertEquals("Q1_REVISED", practice.getQuestions().getLast().getDependsOnQuestionCode());
-        assertEquals("Q1_REVISED", practice.getGatingRules().getFirst().getChildCode());
+        assertEquals(80.0, practice.getMinimumCoverage());
         assertEquals(3, dimensions.getLast().getModules().getLast().getPractices().getFirst().getQuestions().size());
     }
 

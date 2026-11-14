@@ -17,8 +17,8 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString(exclude = { "module", "questions", "gatingRules" })
-@EqualsAndHashCode(exclude = { "module", "questions", "gatingRules" })
+@ToString(exclude = { "module", "questions" })
+@EqualsAndHashCode(exclude = { "module", "questions" })
 public class Practice {
 
     @ElementCollection
@@ -57,9 +57,11 @@ public class Practice {
     @OrderBy("sortOrder ASC, id ASC")
     private List<Question> questions;
 
-    @OneToMany(mappedBy = "practice", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
-    @OrderBy("order ASC")
-    private List<GatingRule> gatingRules;
+    @Column(name = "minimum_coverage", nullable = false)
+    private Double minimumCoverage = 0.0;
+
+    @Column(name = "minimum_included_count", nullable = false)
+    private Double minimumIncludedCount = 0.0;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

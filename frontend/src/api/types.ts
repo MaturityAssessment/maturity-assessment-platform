@@ -32,19 +32,7 @@ export interface MappingRule {
   minimumScore: number;
 }
 
-export type GatingSelection = "specificChild" | "anyChild" | "allChildren";
-export type GatingComparisonOperator = "<" | "<=" | "==" | ">=" | ">";
-export type GatingScoreOperation = "set" | "add" | "subtract";
 
-export interface GatingRule {
-  order: number;
-  selection: GatingSelection;
-  childCode?: string;
-  operator: GatingComparisonOperator;
-  threshold: number;
-  operation: GatingScoreOperation;
-  value: number;
-}
 
 export type DependencyCondition =
   | { type: "boolean"; answers: boolean[] }
@@ -168,7 +156,8 @@ export interface Practice {
   description?: string;
   weight?: number;
   aggregationRule?: AggregationRule;
-  gatingRules?: GatingRule[];
+  minimumCoverage?: number;
+  minimumIncludedCount?: number;
   questions: Question[];
 }
 
@@ -190,7 +179,8 @@ export interface Module {
   description?: string;
   weight?: number; // For aggregation, defaults to 1.0
   aggregationRule?: AggregationRule;
-  gatingRules?: GatingRule[];
+  minimumCoverage?: number;
+  minimumIncludedCount?: number;
   /** 0-based order within the dimension (from API / persisted). */
   sortOrder?: number;
   practices: Practice[];
@@ -203,7 +193,8 @@ export interface Dimension {
   weight?: number;
   aggregationRule?: AggregationRule;
   mappingRules?: MappingRule[];
-  gatingRules?: GatingRule[];
+  minimumCoverage?: number;
+  minimumIncludedCount?: number;
   /** 0-based order within the model (from API / persisted). */
   sortOrder?: number;
   modules: Module[];
@@ -267,9 +258,9 @@ export interface AssessmentResponse {
   referenceDateInferred?: boolean;
   historicalEvidenceValidity?: EvidenceFreshnessSummary;
   currentEvidenceFreshness?: EvidenceFreshnessSummary;
-  overallAverage: number;
+  overallAverage: number | null;
   overallPercentageScore?: number;
-  overallMaturityLevel: string;
+  overallMaturityLevel: string | null;
   isCompleted: boolean;
   status?: "DRAFT" | "PENDING_REVIEW" | "CHANGES_REQUESTED" | "COMPLETED";
   maturityModelId?: number;
@@ -288,18 +279,25 @@ export interface AssessmentResponse {
   campaignId?: number;
   campaignName?: string;
   campaignParticipantId?: number;
+  includedCount?: number | null;
+  coverage?: number | null;
+  scoreState?: string | null;
+  elementResults?: AssessmentElementResult[] | null;
 }
 
 export interface DimensionResultResponse {
   dimensionId: string;
   dimensionName: string;
   dimensionDescription?: string | null;
-  averageScore: number;
+  averageScore: number | null;
   percentageScore?: number | null;
-  maturityLevel: string;
+  maturityLevel: string | null;
   maturityLevelNumber?: number | null;
   totalQuestions: number;
   totalScore: number;
+  includedCount?: number | null;
+  coverage?: number | null;
+  scoreState?: string | null;
 }
 
 export type QuestionEvaluationStatus = "ACCEPTED" | "ADJUSTED" | "FLAGGED";
@@ -495,7 +493,7 @@ export interface CampaignMaturityLevelResult {
 export interface CampaignDimensionResult {
   dimensionId: string;
   dimensionName: string;
-  averageScore: number;
+  averageScore: number | null;
   responseCount: number;
 }
 
@@ -503,7 +501,7 @@ export interface CampaignParticipantResult {
   participantId?: number | null;
   email: string;
   assessmentId: number;
-  overallScore: number;
+  overallScore: number | null;
   overallMaturityLevel?: string | null;
   evaluatedAt?: string | null;
 }
@@ -632,7 +630,8 @@ export interface ModelEditorPractice {
   description: string;
   weight: number;
   aggregationRule: AggregationRule;
-  gatingRules: GatingRule[];
+  minimumCoverage: number;
+  minimumIncludedCount: number;
   questions: ModelEditorQuestion[];
 }
 
@@ -655,7 +654,8 @@ export interface ModelEditorModule {
   description: string;
   weight: number;
   aggregationRule: AggregationRule;
-  gatingRules: GatingRule[];
+  minimumCoverage: number;
+  minimumIncludedCount: number;
   practices: ModelEditorPractice[];
 }
 
@@ -668,7 +668,8 @@ export interface ModelEditorDimension {
   weight: number;
   aggregationRule: AggregationRule;
   mappingRules: MappingRule[];
-  gatingRules: GatingRule[];
+  minimumCoverage: number;
+  minimumIncludedCount: number;
   modules: ModelEditorModule[];
 }
 
@@ -724,4 +725,19 @@ export interface AuthenticationResponse {
 
 export interface RefreshTokenRequest {
   refreshToken: string;
+}
+
+/** Stored evaluation snapshot; completion metrics are percentages and scores use 0..1. */
+export interface AssessmentElementResult {
+  elementType: "question" | "practice" | "module" | "dimension" | "global";
+  dimensionId: string | null;
+  moduleCode: string | null;
+  practiceCode: string | null;
+  questionCode: string | null;
+  responseKey: string | null;
+  name: string;
+  state: "computed" | "withheld" | "unanswered" | "unscored";
+  normalizedScore: number | null;
+  includedCount: number;
+  coverage: number;
 }

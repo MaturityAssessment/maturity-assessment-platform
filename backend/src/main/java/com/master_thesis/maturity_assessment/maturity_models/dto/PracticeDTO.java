@@ -17,7 +17,8 @@ public class PracticeDTO {
     private String description;
     private Double weight;
     private AggregationRule aggregationRule;
-    private List<GatingRuleDTO> gatingRules;
+    private Double minimumCoverage = 0.0;
+    private Double minimumIncludedCount = 0.0;
 
     private List<QuestionDTO> questions;
 }

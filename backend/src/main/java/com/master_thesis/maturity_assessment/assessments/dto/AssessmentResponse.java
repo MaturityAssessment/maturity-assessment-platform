@@ -7,6 +7,10 @@ import java.util.Map;
 
 @Data
 public class AssessmentResponse {
+    private Double includedCount;
+    private Double coverage;
+    private String scoreState;
+    private List<com.master_thesis.maturity_assessment.assessments.models.AssessmentElementResult> elementResults;
     private Long id;
     private Double overallAverage;
     private Double overallPercentageScore;

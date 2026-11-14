@@ -527,3 +527,20 @@ Question events share the existing hierarchy filters and row shortcuts.
 Existing assessments start collecting
 history with their next change; past activity is not reconstructed. The frontend
 presents these records as readable sentences and before/after details in the Logs tab.
+
+## Completion and withheld scores
+
+Submission and final evaluation populate `includedCount`, `coverage`, and
+`scoreState` on the assessment and on each dimension result. Metrics are
+percentages (0–100). `elementResults` stores the evaluated snapshot for every
+visible question, practice, module, dimension and global result, with public
+location codes, the question's `responseKey`, `name`, `state`, nullable
+`normalizedScore` (0–1), `includedCount`, and `coverage`.
+
+A `withheld` result has null score and maturity-level fields. Do not interpret
+those nulls as zero or Level 1. Withheld scores are excluded from aggregation;
+withheld children contribute zero to parent completion percentages. States
+`unanswered` and `unscored` describe questions without an answer or usable score.
+An answered question awaiting review still counts as answered for completion.
+Existing assessments have null metrics until evaluated again. See the
+[gating calculations](../../../../docs/gating-rules.md) for formulas and defaults.

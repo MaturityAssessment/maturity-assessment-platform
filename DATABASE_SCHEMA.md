@@ -263,8 +263,18 @@ strictly increasing. Migration V34 backfills equal-width thresholds.
 
 ### 6b. gating_rules
 
-Defines ordered numeric constraints evaluated after aggregation on practices,
-modules, and dimensions.
+Legacy score-adjustment rules, retired by V54. Rows remain for historical preservation;
+the application no longer reads or executes them. Practices, modules and dimensions
+now store `minimum_coverage` and `minimum_included_count`, percentages in 0–100,
+NOT NULL with default zero. See [gating calculations](docs/gating-rules.md).
+
+V54 also adds nullable `coverage`, `included_count` and `score_state` columns to
+`assessments` and `dimension_results`, and an `element_results` JSONB snapshot on
+`assessments`. The snapshot includes each visible question, practice, module,
+dimension and the global result. Withheld results store null scores and maturity
+levels. Existing assessments retain null metrics until reevaluated.
+
+Historical table definition:
 
 | Column              | Type         | Constraints | Description |
 | ------------------- | ------------ | ----------- | ----------- |
@@ -322,7 +332,7 @@ Modules also own the ordered `module_prerequisites` collection:
 | prerequisite_module_code | VARCHAR(64) | NOT NULL; UNIQUE with module_id | Code of an earlier module in the same dimension |
 
 The model service validates target scope, order, uniqueness and visibility.
-References use sibling public codes, as gating rules do. Version creation copies
+References use sibling public codes. Version creation copies
 the configuration into the new version's module rows.
 
 Modules also own `module_corequisites` and `module_mutex`. Both have the same

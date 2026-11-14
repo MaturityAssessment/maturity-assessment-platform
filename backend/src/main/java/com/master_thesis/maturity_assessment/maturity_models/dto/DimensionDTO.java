@@ -13,7 +13,8 @@ public class DimensionDTO {
     private Double weight;
     private AggregationRule aggregationRule;
     private List<MappingRuleDTO> mappingRules;
-    private List<GatingRuleDTO> gatingRules;
+    private Double minimumCoverage = 0.0;
+    private Double minimumIncludedCount = 0.0;
 
     /** Display order within the model (0-based); derived from JSON array order on write. */
     private Integer sortOrder;
