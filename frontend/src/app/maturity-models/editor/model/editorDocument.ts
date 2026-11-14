@@ -275,6 +275,13 @@ export function hydrateDocument(
   return document;
 }
 
+// Keep configured weights when switching rules; unfinished unused weights must
+// still satisfy the API's numeric constraints when the model is saved.
+function serializeWeight(weight: number, parentRule: AggregationRule, allowZero = false) {
+  const valid = Number.isFinite(weight) && (allowZero ? weight >= 0 : weight > 0);
+  return parentRule !== "WEIGHTED_AVERAGE" && !valid ? 1 : weight;
+}
+
 export function serializeDocument(document: MaturityModelEditorDocument) {
   return {
     name: document.name.trim(),
@@ -291,6 +298,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
     dimensions: document.dimensions.map(
       ({ clientKey: _key, codeLocked: _locked, ...dimension }) => ({
         ...dimension,
+        weight: serializeWeight(dimension.weight, document.aggregationRule),
         code: dimension.code.trim(),
         name: dimension.name.trim(),
         description: dimension.description.trim() || undefined,
@@ -298,6 +306,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
         modules: dimension.modules.map(
           ({ clientKey: _moduleKey, codeLocked: _moduleLocked, ...module }) => ({
             ...module,
+            weight: serializeWeight(module.weight, dimension.aggregationRule),
             visible: module.visible !== false,
             prerequisiteModuleCodes: [...(module.prerequisiteModuleCodes ?? [])],
             coRequisiteModuleCodes: [...(module.coRequisiteModuleCodes ?? [])],
@@ -316,6 +325,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
                 ...practice
               }) => ({
                 ...practice,
+                weight: serializeWeight(practice.weight, module.aggregationRule),
                 requiresEvidence: (practice.evidenceRequirements ?? []).some(item => item.required),
                 evidenceRequirements: (practice.evidenceRequirements ?? []).map(item => ({ ...item, name: item.name.trim(), instructions: item.instructions.trim() })),
                 code: practice.code.trim(),
@@ -329,6 +339,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
                     ...question
                   }) => ({
                     ...question,
+                    weight: serializeWeight(question.weight, practice.aggregationRule, !question.required),
                     code: question.code.trim(),
                     text: question.text.trim(),
                     help: question.help.trim(),

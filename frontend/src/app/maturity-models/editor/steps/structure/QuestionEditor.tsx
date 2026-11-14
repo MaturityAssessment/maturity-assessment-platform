@@ -1,4 +1,3 @@
-import WeightInput from "../../components/WeightInput";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle, Description } from "@headlessui/react";
 import { XMarkIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type {
@@ -117,16 +116,6 @@ export default function QuestionEditor({
                 <option value="open_answer">Open answer</option>
               </select>
             </label>
-              <label className={labelClass}>
-                Weight
-                <WeightInput
-                  key={question.clientKey}
-                  id={`question-${question.clientKey}-weight`}
-                  value={question.weight}
-                  allowZero={!question.required}
-                  onChange={(weight) => onChange({ ...question, weight })}
-                />
-              </label>
 
             <QuestionDependencyField question={question} practice={practice} onChange={onChange} />
             <ScaleConfigurationFields

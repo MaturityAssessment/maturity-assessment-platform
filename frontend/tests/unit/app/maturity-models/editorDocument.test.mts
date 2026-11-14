@@ -106,6 +106,40 @@ test("serialization retains selected aggregation rules and dimension weights", (
   assert.equal(serializedQuestion.scaleHighPointIsMaximum, false);
 });
 
+test("unused weights retain valid values and serialize unfinished values safely", () => {
+  const document = createEmptyDocument();
+  const dimension = document.dimensions[0];
+  const module = dimension.modules[0];
+  const practice = module.practices[0];
+  const question = practice.questions[0];
+  document.aggregationRule = dimension.aggregationRule = module.aggregationRule = practice.aggregationRule = "AVERAGE";
+  const serializedWeights = () => {
+    const savedDimension = serializeDocument(document).dimensions[0];
+    const savedModule = savedDimension.modules[0];
+    const savedPractice = savedModule.practices[0];
+    return [savedDimension.weight, savedModule.weight, savedPractice.weight, savedPractice.questions[0].weight];
+  };
+
+  dimension.weight = 2;
+  module.weight = 3;
+  practice.weight = 4;
+  question.weight = 5;
+  assert.deepEqual(serializedWeights(), [2, 3, 4, 5]);
+  question.required = true;
+  for (const invalid of [NaN, Infinity, -1, 0]) {
+    dimension.weight = module.weight = practice.weight = question.weight = invalid;
+    assert.deepEqual(serializedWeights(), [1, 1, 1, 1]);
+    assert.ok(Object.is(question.weight, invalid), "saving does not mutate the draft");
+  }
+  question.required = false;
+  assert.equal(serializedWeights()[3], 0);
+
+  // Active weights still need validation; serialization must not hide errors.
+  document.aggregationRule = dimension.aggregationRule = module.aggregationRule = practice.aggregationRule = "WEIGHTED_AVERAGE";
+  dimension.weight = module.weight = practice.weight = question.weight = NaN;
+  assert.ok(serializedWeights().every(Number.isNaN));
+});
+
 test("gating rules default empty and serialize in contiguous display order", () => {
   const document = createEmptyDocument();
   const practice = document.dimensions[0].modules[0].practices[0];

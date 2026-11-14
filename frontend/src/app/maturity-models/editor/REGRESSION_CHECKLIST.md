@@ -17,9 +17,25 @@ or question configuration.
 ## Editing
 
 - Edit overview fields, automatic evaluation, and two to twelve scale levels.
+- Set dimension weights beside overall aggregation in Scale, module weights in
+  the dimension's Modules tab, practice weights in the module's Practices tab,
+  and question weights in the practice's Questions tab. Child editors have no
+  control for their own weight.
+- Show weight controls only when the immediate parent's aggregation is Weighted
+  average. Switching rules preserves configured weights; hidden unfinished weights
+  do not block saving. Optional questions permit zero weight.
+- Review weight errors open the parent's child tab (or Scale for dimensions) and
+  focus the affected weight input. Check weight editing and reordering at mobile
+  and desktop widths.
+- Child lists use shared column headings on desktop and labeled weights on mobile.
+  Question text uses one line with an ellipsis and a full-text tooltip. Plain numbers double as drag handles
+  in a narrow left column, with up/down chevrons above and below. Visible arrows support reordering;
+  verify keyboard access, disabled boundary moves, visible delete buttons and delete confirmations.
+- Tabs omit zero-count badges. Assessment availability in module Details retains its
+  assessment exclusions and dependency alerts.
 - Add, edit, move, drag, reorder, and delete dimensions, modules, practices,
   and questions.
-- Toggle module visibility using both its switch and the outline actions menu;
+- Toggle module visibility using Assessment availability in Details and the outline actions menu;
   verify the hidden indicator and restore visibility through either control.
 - Hide a module referenced by a dimension gate: show the dependency alert and
   block save until the rule is fixed or visibility restored. Any/all-child gates

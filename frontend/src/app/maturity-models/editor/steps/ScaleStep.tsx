@@ -2,6 +2,7 @@ import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type { MaturityModelEditorDocument } from "@/api/types";
 import { inputClass, Panel } from "../components/FormFields";
 import AggregationRuleField from "../components/AggregationRuleField";
+import ChildWeightField from "../components/ChildWeightField";
 import { TEXT_LIMITS } from "@/config/textLimits";
 import { defaultMappingRules } from "../model/editorDocument";
 
@@ -140,6 +141,29 @@ export default function ScaleStep({
             }
           />
         </div>
+        {document.aggregationRule === "WEIGHTED_AVERAGE" && (
+          <div className="mt-6 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">Dimension weights</h3>
+            <p className="text-sm text-gray-500">Set each dimension&apos;s relative importance in the overall result.</p>
+            {document.dimensions.map((dimension) => (
+              <div key={dimension.clientKey} className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gray-200 p-4">
+                <div className="min-w-0 flex-1 basis-40">
+                  <p className="break-words text-sm font-semibold text-gray-900">{dimension.name || "Untitled dimension"}</p>
+                  <p className="mt-1 break-words font-mono text-xs text-gray-500">{dimension.code}</p>
+                </div>
+                <ChildWeightField
+                  id={`dimension-${dimension.clientKey}-weight`}
+                  name={dimension.name || dimension.code}
+                  value={dimension.weight}
+                  onChange={(weight) => onChange({
+                    ...document,
+                    dimensions: document.dimensions.map((item) => item.clientKey === dimension.clientKey ? { ...item, weight } : item),
+                  })}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </Panel>
     </div>
   );

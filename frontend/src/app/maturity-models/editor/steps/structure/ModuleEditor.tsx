@@ -2,8 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { getModuleBadges } from "../../model/moduleBadges";
 import ModuleRelationshipsField from "./ModuleRelationshipsField";
 import { moduleVisibilityDependencies } from "../../model/moduleVisibility";
-import WeightInput from "../../components/WeightInput";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import type {
   ModelEditorDimension,
   ModelEditorModule,
@@ -61,6 +60,12 @@ export default function ModuleEditor({
         kind="Module"
         code={module.code}
         name={module.name}
+        status={module.visible === false ? (
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-800">
+            <EyeSlashIcon aria-hidden="true" className="h-3.5 w-3.5" />
+            Hidden from assessments
+          </span>
+        ) : undefined}
         context={`${module.practices.length} practice${module.practices.length === 1 ? "" : "s"} in this module`}
         canMoveUp={moduleIndex > 0}
         canMoveDown={moduleIndex < dimension.modules.length - 1}
@@ -91,21 +96,6 @@ export default function ModuleEditor({
           {badges.map((badge, index) => <Badge key={`${badge.key}:${index}`} color={badge.color} title={badge.title} className="max-w-full whitespace-normal break-words">{badge.label}</Badge>)}
         </div>
       </section>}
-      <label className="mb-5 flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
-        <input
-          type="checkbox"
-          role="switch"
-          checked={module.visible !== false}
-          onChange={() => commands.toggleModuleVisibility(dimension.clientKey, module.clientKey)}
-          className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-        />
-        <span>
-          <span className="block text-sm font-semibold text-gray-900">Visible in assessments</span>
-          <span className="block text-sm leading-6 text-gray-500">
-            Hidden modules remain editable here. They and their practices and questions are excluded from assessments and evaluation.
-          </span>
-        </span>
-      </label>
       {visibilityDependencies.length > 0 && (
         <div role="alert" className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           {visibilityDependencies.map((message) => <p key={message}>{message}</p>)}
@@ -171,6 +161,29 @@ export default function ModuleEditor({
                       }
                     />
                   </label>
+                  <div className="flex items-start justify-between gap-6 border-t border-gray-100 pt-5 @2xl:col-span-2">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900">Assessment availability</h4>
+                      <p id={`module-${module.clientKey}-visibility-description`} className="mt-1 max-w-lg text-sm leading-6 text-gray-500">
+                        Include this module, its practices and questions in assessments and scoring.
+                        Hidden content stays editable here.
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3 pt-0.5">
+                      <span aria-hidden="true" className="hidden text-sm text-gray-500 @lg:block">{module.visible !== false ? "Included" : "Hidden"}</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-label="Include module in assessments"
+                        aria-checked={module.visible !== false}
+                        aria-describedby={`module-${module.clientKey}-visibility-description`}
+                        onClick={() => commands.toggleModuleVisibility(dimension.clientKey, module.clientKey)}
+                        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-reduce:transition-none ${module.visible !== false ? "bg-blue-600" : "bg-gray-300"}`}
+                      >
+                        <span aria-hidden="true" className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform motion-reduce:transition-none ${module.visible !== false ? "translate-x-6" : "translate-x-1"}`} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
               </>
@@ -200,19 +213,6 @@ export default function ModuleEditor({
                     update({ ...module, aggregationRule })
                   }
                 />
-                <label className="grid gap-x-6 gap-y-2 rounded-xl border border-gray-200 bg-gray-50/70 p-5 @lg:grid-cols-[minmax(0,1fr)_8rem]">
-                  <span className="text-sm font-semibold text-gray-900">Weight in the dimension</span>
-                  <WeightInput
-                    key={module.clientKey}
-                    id={`module-${module.clientKey}-weight`}
-                    className="@lg:col-start-2 @lg:row-span-2 @lg:row-start-1 @lg:self-center"
-                    value={module.weight}
-                    onChange={(weight) => update({ ...module, weight })}
-                  />
-                  <span className="block text-sm font-normal leading-6 text-gray-500">
-                    Relative importance when this dimension uses weighted aggregation.
-                  </span>
-                </label>
               </>
             ),
           },
@@ -243,6 +243,10 @@ export default function ModuleEditor({
                 parentCode={module.code}
                 itemType="practice"
                 items={module.practices}
+                onWeightChange={module.aggregationRule === "WEIGHTED_AVERAGE" ? (practiceKey, weight) => {
+                  const practice = module.practices.find((item) => item.clientKey === practiceKey);
+                  if (practice) commands.updatePractice(module.clientKey, practiceKey, { ...practice, weight });
+                } : undefined}
                 onAdd={() => commands.addPractice(module.clientKey)}
                 onDelete={(practiceKey) => {
                   const selectedPractice = module.practices.find((item) => item.clientKey === practiceKey);

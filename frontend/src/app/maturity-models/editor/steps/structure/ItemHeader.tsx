@@ -1,14 +1,12 @@
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  TrashIcon,
-} from "@heroicons/react/24/outline";
+import type { ReactNode } from "react";
+import ItemRowActions from "./ItemRowActions";
 
 export default function ItemHeader({
   kind,
   code,
   name,
   context,
+  status,
   canDelete,
   canMoveUp = true,
   canMoveDown = true,
@@ -20,6 +18,7 @@ export default function ItemHeader({
   code: string;
   name?: string;
   context?: string;
+  status?: ReactNode;
   canDelete: boolean;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
@@ -39,9 +38,12 @@ export default function ItemHeader({
           </span>
         </div>
         {name !== undefined && (
-          <h2 className="mt-3 text-2xl font-semibold leading-8 tracking-tight text-gray-950 [overflow-wrap:anywhere]">
-            {name || `Untitled ${kind.toLowerCase()}`}
-          </h2>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h2 className="text-2xl font-semibold leading-8 tracking-tight text-gray-950 [overflow-wrap:anywhere]">
+              {name || `Untitled ${kind.toLowerCase()}`}
+            </h2>
+            {status}
+          </div>
         )}
         {context && (
           <p className="mt-1 text-sm leading-6 text-gray-500 [overflow-wrap:anywhere]">
@@ -49,38 +51,15 @@ export default function ItemHeader({
           </p>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 bg-gray-50/70 p-1">
-        <button
-          type="button"
-          onClick={onMoveUp}
-          disabled={!canMoveUp}
-          aria-label={`Move ${kind} up`}
-          title={`Move ${kind.toLowerCase()} up`}
-          className="rounded-md p-2 text-gray-500 outline-none hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          <ArrowUpIcon className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={onMoveDown}
-          disabled={!canMoveDown}
-          aria-label={`Move ${kind} down`}
-          title={`Move ${kind.toLowerCase()} down`}
-          className="rounded-md p-2 text-gray-500 outline-none hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          <ArrowDownIcon className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={!canDelete}
-          aria-label={`Delete ${kind}`}
-          title={`Delete ${kind.toLowerCase()}`}
-          className="ml-2 rounded-md p-2 text-gray-400 outline-none hover:bg-red-50 hover:text-red-600 focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          <TrashIcon className="h-4 w-4" />
-        </button>
-      </div>
+      <ItemRowActions
+        name={name || kind}
+        canMoveUp={canMoveUp}
+        canMoveDown={canMoveDown}
+        canDelete={canDelete}
+        onMoveUp={onMoveUp}
+        onMoveDown={onMoveDown}
+        onDelete={onDelete}
+      />
     </div>
   );
 }

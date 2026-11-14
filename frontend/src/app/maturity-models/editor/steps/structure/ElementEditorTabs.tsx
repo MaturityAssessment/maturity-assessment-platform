@@ -20,12 +20,13 @@ export default function ElementEditorTabs({
     <TabGroup className="@container">
       <TabList
         aria-label={`${kind} settings`}
-        className={`gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1 ${tabs.length > 4 ? "flex overflow-x-auto" : "grid grid-cols-2 @2xl:grid-cols-4"}`}
+        className="flex gap-5 overflow-x-auto border-b border-gray-200"
       >
         {tabs.map((tab) => (
           <Tab
             key={tab.id}
-            className="group flex flex-1 shrink-0 min-h-11 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 outline-none transition hover:bg-white/70 hover:text-gray-950 focus-visible:ring-2 focus-visible:ring-blue-500 data-[selected]:bg-white data-[selected]:text-blue-700 data-[selected]:shadow-sm"
+            data-editor-tab={tab.id}
+            className="group flex min-h-11 shrink-0 items-center justify-center gap-2 border-b-2 border-transparent px-1 py-3 text-sm font-medium text-gray-500 outline-none transition hover:text-gray-950 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 data-[selected]:border-blue-600 data-[selected]:text-blue-700"
           >
             {tab.label}
             {!!tab.issueCount && (
@@ -33,7 +34,7 @@ export default function ElementEditorTabs({
                 ⚠ {tab.issueCount}
               </span>
             )}
-            {tab.count !== undefined && (
+            {tab.count !== undefined && tab.count > 0 && (
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs tabular-nums text-gray-600 group-data-[selected]:bg-blue-50 group-data-[selected]:text-blue-700">
                 {tab.count}
               </span>
@@ -41,7 +42,7 @@ export default function ElementEditorTabs({
           </Tab>
         ))}
       </TabList>
-      <TabPanels className="pt-7">
+      <TabPanels className="pt-6">
         {tabs.map((tab) => (
           <TabPanel
             key={tab.id}

@@ -1,4 +1,3 @@
-import WeightInput from "../../components/WeightInput";
 import type {
   MaturityModelEditorDocument,
   ModelEditorDimension,
@@ -139,19 +138,6 @@ export default function DimensionEditor({
                     update({ ...dimension, aggregationRule })
                   }
                 />
-                <label className="grid gap-x-6 gap-y-2 rounded-xl border border-gray-200 bg-gray-50/70 p-5 @lg:grid-cols-[minmax(0,1fr)_8rem]">
-                  <span className="text-sm font-semibold text-gray-900">Weight in the model</span>
-                  <WeightInput
-                    key={dimension.clientKey}
-                    id={`dimension-${dimension.clientKey}-weight`}
-                    className="@lg:col-start-2 @lg:row-span-2 @lg:row-start-1 @lg:self-center"
-                    value={dimension.weight}
-                    onChange={(weight) => update({ ...dimension, weight })}
-                  />
-                  <span className="block text-sm font-normal leading-6 text-gray-500">
-                    Relative importance when the model uses weighted aggregation.
-                  </span>
-                </label>
                 <MappingRuleField
                   idPrefix={`dimension-${dimension.clientKey}`}
                   levels={document.levels}
@@ -190,6 +176,10 @@ export default function DimensionEditor({
                 parentCode={dimension.code}
                 itemType="module"
                 items={dimension.modules}
+                onWeightChange={dimension.aggregationRule === "WEIGHTED_AVERAGE" ? (moduleKey, weight) => {
+                  const selectedModule = dimension.modules.find((item) => item.clientKey === moduleKey);
+                  if (selectedModule) commands.updateModule(dimension.clientKey, moduleKey, { ...selectedModule, weight });
+                } : undefined}
                 onAdd={() => commands.addModule(dimension.clientKey)}
                 onDelete={(moduleKey) => {
                   const selectedModule = dimension.modules.find((item) => item.clientKey === moduleKey);

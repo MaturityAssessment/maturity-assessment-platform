@@ -172,8 +172,8 @@ export function validateDocument(
       dimensionSelection,
       `dimension-${dimension.clientKey}-code`
     );
-    if (!Number.isFinite(dimension.weight) || dimension.weight <= 0) {
-      add({ step: "structure", severity: "error", message: "Dimension weight is required and must be greater than zero.", selection: dimensionSelection, field: `dimension-${dimension.clientKey}-weight` });
+    if (document.aggregationRule === "WEIGHTED_AVERAGE" && (!Number.isFinite(dimension.weight) || dimension.weight <= 0)) {
+      add({ step: "scale", severity: "error", message: "Dimension weight is required and must be greater than zero.", field: `dimension-${dimension.clientKey}-weight` });
     }
     if (!dimension.name.trim()) {
       add({
@@ -260,8 +260,8 @@ export function validateDocument(
         moduleSelection,
         `module-${module.clientKey}-code`
       );
-      if (!Number.isFinite(module.weight) || module.weight <= 0) {
-        add({ step: "structure", severity: "error", message: "Module weight is required and must be greater than zero.", selection: moduleSelection, field: `module-${module.clientKey}-weight` });
+      if (dimension.aggregationRule === "WEIGHTED_AVERAGE" && (!Number.isFinite(module.weight) || module.weight <= 0)) {
+        add({ step: "structure", severity: "error", message: "Module weight is required and must be greater than zero.", selection: dimensionSelection, tab: "modules", field: `module-${module.clientKey}-weight` });
       }
       if (!module.name.trim()) {
         add({
@@ -319,8 +319,8 @@ export function validateDocument(
           practiceSelection,
           `practice-${practice.clientKey}-code`
         );
-        if (!Number.isFinite(practice.weight) || practice.weight <= 0) {
-          add({ step: "structure", severity: "error", message: "Practice weight is required and must be greater than zero.", selection: practiceSelection, field: `practice-${practice.clientKey}-weight` });
+        if (module.aggregationRule === "WEIGHTED_AVERAGE" && (!Number.isFinite(practice.weight) || practice.weight <= 0)) {
+          add({ step: "structure", severity: "error", message: "Practice weight is required and must be greater than zero.", selection: moduleSelection, tab: "practices", field: `practice-${practice.clientKey}-weight` });
         }
         if (!practice.name.trim()) {
           add({
@@ -353,8 +353,8 @@ export function validateDocument(
         const questionCodes = new Map<string, string>();
         practice.questions.forEach((question, questionIndex) => {
           const firstQuestionIssue = issues.length;
-          if (!Number.isFinite(question.weight) || question.weight < 0 || (question.required && question.weight === 0)) {
-            add({ step: "structure", severity: "error", message: question.required ? "Required question weight must be greater than zero." : "Question weight is required and must be zero or greater.", selection: practiceSelection, field: `question-${question.clientKey}-weight` });
+          if (practice.aggregationRule === "WEIGHTED_AVERAGE" && (!Number.isFinite(question.weight) || question.weight < 0 || (question.required && question.weight === 0))) {
+            add({ step: "structure", severity: "error", message: question.required ? "Required question weight must be greater than zero." : "Question weight is required and must be zero or greater.", selection: practiceSelection, tab: "questions", field: `question-${question.clientKey}-weight` });
           }
           checkCode(
             questionCodes,

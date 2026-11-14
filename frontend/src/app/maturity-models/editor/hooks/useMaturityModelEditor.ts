@@ -534,10 +534,12 @@ export function useMaturityModelEditor(
       dispatch({ type: "select", selection: issue.selection });
     }
     if (issue.field) {
-      window.setTimeout(
-        () => document.getElementById(issue.field!)?.focus(),
-        50
-      );
+      window.setTimeout(() => {
+        if (issue.tab) {
+          document.querySelector<HTMLButtonElement>(`[data-editor-tab="${issue.tab}"]`)?.click();
+        }
+        window.setTimeout(() => document.getElementById(issue.field!)?.focus(), 0);
+      }, 50);
     }
   }, []);
 

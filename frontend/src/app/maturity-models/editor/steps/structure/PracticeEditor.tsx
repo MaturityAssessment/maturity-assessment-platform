@@ -1,5 +1,4 @@
 import PracticeEvidenceEditor from "./PracticeEvidenceEditor";
-import WeightInput from "../../components/WeightInput";
 import { useMemo, useState } from "react";
 import { ArrowLeftIcon, PlusIcon } from "@heroicons/react/24/outline";
 import type {
@@ -216,19 +215,6 @@ export default function PracticeEditor({
                     update({ ...practice, aggregationRule })
                   }
                 />
-                <label className="grid gap-x-6 gap-y-2 rounded-xl border border-gray-200 bg-gray-50/70 p-5 @lg:grid-cols-[minmax(0,1fr)_8rem]">
-                  <span className="text-sm font-semibold text-gray-900">Weight in the module</span>
-                  <WeightInput
-                    key={practice.clientKey}
-                    id={`practice-${practice.clientKey}-weight`}
-                    className="@lg:col-start-2 @lg:row-span-2 @lg:row-start-1 @lg:self-center"
-                    value={practice.weight}
-                    onChange={(weight) => update({ ...practice, weight })}
-                  />
-                  <span className="block text-sm font-normal leading-6 text-gray-500">
-                    Relative importance when this module uses weighted aggregation.
-                  </span>
-                </label>
               </>
             ),
           },
@@ -257,7 +243,9 @@ export default function PracticeEditor({
             content: (
               <>
                 <div className="flex flex-wrap items-start justify-between gap-4">
-                  <EditorSectionHeading title="Questions" description="Open a question to edit it. Drag the rows or use the arrows to reorder." />
+                  <EditorSectionHeading title="Questions" description={practice.aggregationRule === "WEIGHTED_AVERAGE"
+                    ? "Drag a question number or use its arrows to reorder. Set relative weights on the right."
+                    : "Open a question to edit it. Drag its number or use the arrows to reorder."} />
                   <button type="button" onClick={() => {
                     setSelectedQuestionKey("__new__");
                     commands.addQuestion(practice.clientKey);
@@ -266,6 +254,10 @@ export default function PracticeEditor({
                   </button>
                 </div>
                 <QuestionReorderList questions={practice.questions} issues={questionIssues}
+                  onWeightChange={practice.aggregationRule === "WEIGHTED_AVERAGE" ? (questionKey, weight) => {
+                    const question = practice.questions.find((item) => item.clientKey === questionKey);
+                    if (question) commands.updateQuestion(practice.clientKey, questionKey, { ...question, weight });
+                  } : undefined}
                   onSelect={setSelectedQuestionKey}
                   onDelete={deleteQuestion}
                   onReorder={(activeKey, overKey) => commands.reorderQuestion(practice.clientKey, activeKey, overKey)} />

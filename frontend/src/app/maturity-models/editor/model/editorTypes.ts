@@ -21,6 +21,7 @@ export type EditorIssue = {
   message: string;
   selection?: Selection;
   field?: string;
+  tab?: string;
   questionKey?: string;
 };
 

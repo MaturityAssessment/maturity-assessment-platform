@@ -1,3 +1,4 @@
+import ElementListFrame from "./ElementListFrame";
 import { dependencySummary } from "@/lib/questionDependencies";
 import {
   DndContext,
@@ -14,9 +15,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowDownIcon, ArrowUpIcon, Bars3Icon, ChevronRightIcon, LinkIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { ChevronUpIcon, ChevronDownIcon, ChevronRightIcon, LinkIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type { EditorIssue } from "../../model/editorTypes";
 import type { ModelEditorQuestion } from "@/api/types";
+import ChildWeightField from "../../components/ChildWeightField";
 
 const answerTypeLabels: Record<string, string> = {
   boolean: "Yes / No",
@@ -32,12 +34,14 @@ export default function QuestionReorderList({
   onReorder,
   onSelect,
   onDelete,
+  onWeightChange,
 }: {
   questions: ModelEditorQuestion[];
   issues?: EditorIssue[];
   onSelect: (questionKey: string) => void;
   onReorder: (activeKey: string, overKey: string) => void;
   onDelete: (question: ModelEditorQuestion) => void;
+  onWeightChange?: (questionKey: string, weight: number) => void;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -61,7 +65,7 @@ export default function QuestionReorderList({
         items={questions.map((question) => question.clientKey)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="space-y-3">
+        <ElementListFrame questionLayout label="Question" weighted={!!onWeightChange}>
           {questions.map((question, questionIndex) => (
             <SortableQuestionOrderItem
               key={question.clientKey}
@@ -76,9 +80,10 @@ export default function QuestionReorderList({
               }}
               onSelect={() => onSelect(question.clientKey)}
               onDelete={() => onDelete(question)}
+              onWeightChange={onWeightChange ? (weight) => onWeightChange(question.clientKey, weight) : undefined}
             />
           ))}
-        </div>
+        </ElementListFrame>
       </SortableContext>
     </DndContext>
   );
@@ -93,6 +98,7 @@ function SortableQuestionOrderItem({
   onMove,
   onSelect,
   onDelete,
+  onWeightChange,
 }: {
   question: ModelEditorQuestion;
   dependencyText: string;
@@ -102,6 +108,7 @@ function SortableQuestionOrderItem({
   onMove: (direction: -1 | 1) => void;
   onSelect: () => void;
   onDelete: () => void;
+  onWeightChange?: (weight: number) => void;
 }) {
   const {
     attributes,
@@ -121,31 +128,40 @@ function SortableQuestionOrderItem({
         transition,
         zIndex: isDragging ? 20 : undefined,
       }}
-      className={`group relative flex items-center gap-2 rounded-xl border p-3 transition motion-reduce:transition-none ${
-        isDragging
-          ? "border-blue-400 bg-blue-50 opacity-80 shadow-lg"
-          : "border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/40"
-      }`}
+      className={`group relative grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-x-3 gap-y-3 px-4 py-4 transition motion-reduce:transition-none first:rounded-t-xl last:rounded-b-xl ${onWeightChange ? "@lg:grid-cols-[2rem_minmax(0,1fr)_5rem_2rem]" : "@lg:grid-cols-[2rem_minmax(0,1fr)_2rem]"} ${isDragging ? "z-20 bg-blue-50 shadow-lg" : "bg-white hover:bg-gray-50/70"}`}
     >
-      <button
-        ref={setActivatorNodeRef}
-        type="button"
-        aria-label={`Drag ${question.text || `question ${questionIndex + 1}`} to reorder`}
-        className="shrink-0 cursor-grab touch-none rounded p-2 text-gray-400 outline-none hover:bg-white hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-blue-500 active:cursor-grabbing"
-        {...attributes}
-        {...listeners}
-      >
-        <Bars3Icon aria-hidden="true" className="h-4 w-4" />
-      </button>
+      <div className="col-start-1 row-start-1 flex flex-col items-center">
+        <button type="button" disabled={questionIndex === 0} onClick={() => onMove(-1)}
+          aria-label={`Move question ${questionIndex + 1} up`} title="Move up"
+          className="flex h-6 w-8 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-20">
+          <ChevronUpIcon aria-hidden="true" className="h-3.5 w-3.5" />
+        </button>
+        <button
+          ref={setActivatorNodeRef}
+          type="button"
+          aria-label={`Question ${questionIndex + 1}. Drag to reorder`}
+          title="Drag this number to reorder"
+          className="flex h-6 w-8 cursor-grab touch-none items-center justify-center rounded text-sm font-medium tabular-nums text-gray-500 outline-none hover:bg-blue-50 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+        >
+          {questionIndex + 1}
+        </button>
+        <button type="button" disabled={questionIndex === questionCount - 1} onClick={() => onMove(1)}
+          aria-label={`Move question ${questionIndex + 1} down`} title="Move down"
+          className="flex h-6 w-8 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-20">
+          <ChevronDownIcon aria-hidden="true" className="h-3.5 w-3.5" />
+        </button>
+      </div>
       <button
         type="button"
         onClick={onSelect}
         aria-haspopup="dialog"
         aria-label={`Edit question ${questionIndex + 1}: ${question.text || "Untitled question"}`}
-        className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        className="group/question col-start-2 row-start-1 flex min-w-0 items-center gap-3 rounded-lg px-1 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
       >
         <span className="min-w-0 flex-1">
-          <span title={question.text || "Untitled question"} className="block truncate text-sm font-semibold text-gray-900 group-hover:text-blue-700">
+          <span title={question.text || "Untitled question"} className="block truncate text-sm font-medium leading-6 text-gray-900 group-hover/question:text-blue-700">
             {question.text || "Untitled question"}
           </span>
           <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs leading-5 text-gray-500">
@@ -154,7 +170,6 @@ function SortableQuestionOrderItem({
             </span>
             <span className="font-mono text-[11px] [overflow-wrap:anywhere]">{question.code}</span>
             <span>{question.required ? "Required" : "Optional"}</span>
-            <span>Weight {Number.isFinite(question.weight) ? question.weight : "missing"}</span>
             {question.dependsOnQuestionCode && (
               <span className="inline-flex min-w-0 items-center gap-1.5 text-gray-600">
                 <LinkIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
@@ -169,39 +184,23 @@ function SortableQuestionOrderItem({
             </span>
           )}
         </span>
-        <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-gray-400 group-hover:text-blue-600">
-          <span>Edit</span>
+        <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-gray-400 group-hover/question:text-blue-600">
           <ChevronRightIcon aria-hidden="true" className="h-4 w-4" />
         </span>
       </button>
-      <button
-        type="button"
-        disabled={questionIndex === 0}
-        onClick={() => onMove(-1)}
-        aria-label={`Move question ${questionIndex + 1} up`}
-        title="Move up"
-        className="shrink-0 rounded p-2 text-gray-400 outline-none hover:bg-white hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-30"
-      >
-        <ArrowUpIcon aria-hidden="true" className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        disabled={questionIndex === questionCount - 1}
-        onClick={() => onMove(1)}
-        aria-label={`Move question ${questionIndex + 1} down`}
-        title="Move down"
-        className="shrink-0 rounded p-2 text-gray-400 outline-none hover:bg-white hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-30"
-      >
-        <ArrowDownIcon aria-hidden="true" className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        disabled={questionCount <= 1}
-        onClick={onDelete}
-        aria-label={`Delete question ${questionIndex + 1}`}
-        title="Delete question"
-        className="shrink-0 rounded p-2 text-gray-400 outline-none hover:bg-red-50 hover:text-red-600 focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-not-allowed disabled:opacity-30"
-      >
+      {onWeightChange && (
+        <ChildWeightField
+          compact
+          id={`question-${question.clientKey}-weight`}
+          name={question.text || question.code}
+          value={question.weight}
+          allowZero={!question.required}
+          onChange={onWeightChange}
+        />
+      )}
+      <button type="button" disabled={questionCount <= 1} onClick={onDelete}
+        aria-label={`Delete question ${questionIndex + 1}`} title="Delete question"
+        className={`col-start-2 row-start-2 justify-self-end rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-25 ${onWeightChange ? "@lg:col-start-4" : "@lg:col-start-3"} @lg:row-start-1`}>
         <TrashIcon aria-hidden="true" className="h-4 w-4" />
       </button>
     </div>

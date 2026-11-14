@@ -55,6 +55,53 @@ test("structure weights require positive values and identify the affected field"
   assert.equal(validateDocument(document).filter((issue) => issue.field?.endsWith("-weight")).length, 0);
 });
 
+test("weight issues point to the parent that owns the weight controls", () => {
+  const document = createEmptyDocument();
+  const dimension = document.dimensions[0];
+  const module = dimension.modules[0];
+  const practice = module.practices[0];
+  const question = practice.questions[0];
+  dimension.weight = module.weight = practice.weight = question.weight = NaN;
+  const issues = validateDocument(document);
+  for (const [kind, item, step, selection, tab] of [
+    ["dimension", dimension, "scale", undefined, undefined],
+    ["module", module, "structure", { type: "dimension", key: dimension.clientKey }, "modules"],
+    ["practice", practice, "structure", { type: "module", key: module.clientKey }, "practices"],
+    ["question", question, "structure", { type: "practice", key: practice.clientKey }, "questions"],
+  ] as const) {
+    const issue = issues.find((issue) => issue.field === `${kind}-${item.clientKey}-weight`);
+    assert.ok(issue);
+    assert.equal(issue.step, step);
+    assert.deepEqual(issue.selection, selection);
+    assert.equal(issue.tab, tab);
+  }
+});
+
+test("each weight is validated only when its immediate parent uses weighted average", () => {
+  const document = createEmptyDocument();
+  const dimension = document.dimensions[0];
+  const module = dimension.modules[0];
+  const practice = module.practices[0];
+  const question = practice.questions[0];
+  dimension.weight = module.weight = practice.weight = question.weight = NaN;
+  const weightIssues = () => validateDocument(document).filter((issue) => issue.field?.endsWith("-weight"));
+
+  for (const rule of ["AVERAGE", "MINIMUM", "MAXIMUM", "SUM", "MEDIAN"] as const) {
+    document.aggregationRule = dimension.aggregationRule = module.aggregationRule = practice.aggregationRule = rule;
+    assert.equal(weightIssues().length, 0, rule);
+    for (const [parent, kind, child] of [
+      [document, "dimension", dimension],
+      [dimension, "module", module],
+      [module, "practice", practice],
+      [practice, "question", question],
+    ] as const) {
+      parent.aggregationRule = "WEIGHTED_AVERAGE";
+      assert.deepEqual(weightIssues().map((issue) => issue.field), [`${kind}-${child.clientKey}-weight`]);
+      parent.aggregationRule = rule;
+    }
+  }
+});
+
 test("zero question weight is valid only while the question is optional", () => {
   const document = createEmptyDocument();
   const question = document.dimensions[0].modules[0].practices[0].questions[0];
