@@ -1,3 +1,4 @@
+import { isNotApplicableAnswer } from "../../../lib/notApplicable.ts";
 import { getSingleChoiceIndex, singleChoiceValue } from "../singleChoiceResponse.ts";
 import type {
   AssessmentDetail,
@@ -25,6 +26,7 @@ export function buildResponseKey(
 }
 
 export function formatResponseValue(value: unknown) {
+  if (isNotApplicableAnswer(value)) return "N/A (Not applicable)";
   if (value === null || value === undefined) return "No response provided.";
   if (typeof value === "string") return value.trim() || "No response provided.";
   if (typeof value === "number" || typeof value === "boolean") {
@@ -45,6 +47,8 @@ export function formatQuestionResponseValue(
   if (!isAnswered(value)) {
     return "No response provided.";
   }
+
+  if (isNotApplicableAnswer(value)) return "N/A (Not applicable)";
 
   if (question.type === "boolean") {
     if (value === true || value === 1 || value === "1") return "Yes";
@@ -149,7 +153,7 @@ export function buildEvaluationModel(
             responseValue,
             initialScore: savedEvaluation?.initialScore ?? null,
             requiresManualScore:
-              isAnswered(responseValue) && question.type === "open_answer",
+              isAnswered(responseValue) && question.type === "open_answer" && !isNotApplicableAnswer(responseValue),
           };
           groupQuestions.push(row);
           questions.push(row);

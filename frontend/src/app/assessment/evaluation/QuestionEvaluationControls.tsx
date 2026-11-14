@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { isNotApplicableAnswer } from "@/lib/notApplicable";
 import {
   Check,
   Edit3,
@@ -37,11 +38,12 @@ export default function QuestionEvaluationControls({
     review.validationStatus === "ADJUSTED" ||
     review.validationStatus === "FLAGGED";
   const showNote = noteExpanded || needsNote || Boolean(review.reviewerNote);
+  const notApplicable = isNotApplicableAnswer(question.responseValue);
   const isBoolean = question.question.type === "boolean";
   const isScale = question.question.type === "likert";
   const isMultipleChoice = question.question.type === "multiple_choice";
   const isMultipleSelection = question.question.type === "multiple_selection";
-  const usesNormalizedInput = isMultipleSelection ||
+  const usesNormalizedInput = notApplicable || isMultipleSelection ||
     question.question.type === "numeric" ||
     question.question.type === "percentage";
   const isRangeQuestion =
@@ -151,7 +153,9 @@ export default function QuestionEvaluationControls({
       {(part === "all" || part === "score") && <>
         <p className="mt-2 text-xs font-medium text-gray-600">
           {question.initialScore != null
-            ? isBoolean
+            ? notApplicable
+              ? `Initial N/A score: ${question.initialScore}`
+              : isBoolean
               ? `Initial automated result: ${question.initialScore === 1 ? "Correct" : "Incorrect"}`
               : isScale
                 ? "Initial automated result calculated from the scale response"
@@ -172,7 +176,9 @@ export default function QuestionEvaluationControls({
                 htmlFor={`score-${question.responseKey}`}
                 className="text-sm font-semibold text-gray-900"
               >
-                {isBoolean
+                {notApplicable
+                  ? "Manual normalized score"
+                  : isBoolean
                   ? "Manual result"
                   : isScale
                     ? "Manual scale point"

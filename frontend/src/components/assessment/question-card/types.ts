@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
+import type { NotApplicableAnswer } from "@/api/types";
 
 export type QuestionResponseValue =
   | string
   | number
   | number[]
+  | NotApplicableAnswer
   | undefined;
 
 export type QuestionCardStatus =

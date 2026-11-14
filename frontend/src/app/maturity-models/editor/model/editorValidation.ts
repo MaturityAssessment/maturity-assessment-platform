@@ -373,6 +373,10 @@ export function validateDocument(
               field: `question-${question.clientKey}-text`,
             });
           }
+          if (question.allowNotApplicable && (typeof question.notApplicableScore !== "number"
+            || !Number.isFinite(question.notApplicableScore) || question.notApplicableScore < 0 || question.notApplicableScore > 1)) {
+            add({ step: "structure", severity: "error", message: "N/A requires a score between 0 and 1.", selection: practiceSelection, field: `question-${question.clientKey}-not-applicable-score` });
+          }
           if (question.type === "multiple_choice" && question.choices) {
             const ids = question.choices.map((choice) => choice.id).filter(Boolean);
             if (new Set(ids).size !== ids.length) add({ step: "structure", severity: "error", message: "Answer option identifiers must be unique.", selection: practiceSelection });

@@ -32,6 +32,7 @@ export function buildAssessmentAssistantContext({
 
   lines.push(`Assessment item: ${question.text.trim()}`);
   lines.push(`Expected response: ${getResponseFormat(question, modelMaxLevel)}`);
+  if (question.allowNotApplicable) lines.push("N/A (Not applicable) is also an allowed response.");
   lines.push(`Required item: ${question.required ? "Yes" : "No"}`);
   lines.push(
   );

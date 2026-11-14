@@ -96,7 +96,7 @@ public class MaturityModelExcelService {
             "questionHelp", "questionRequired", "questionRanges",
             "questionLikertScaleMax", "questionScalePointCount", "questionScaleMinLabel",
             "questionScaleMaxLabel", "questionScaleHighPointIsMaximum",
-            "questionRangeMin", "questionRangeMax", "questionRangeHighValueIsMaximum", "questionBooleanCorrectAnswer", "dependencyCondition"
+            "questionRangeMin", "questionRangeMax", "questionRangeHighValueIsMaximum", "questionBooleanCorrectAnswer", "dependencyCondition", "questionAllowNotApplicable", "questionNotApplicableScore"
     );
 
     /** Questions sheet columns written by {@link #exportMaturityModelToXlsx}. */
@@ -108,7 +108,7 @@ public class MaturityModelExcelService {
                     Stream.of("questionScalePointCount", "questionScaleMinLabel", "questionScaleMaxLabel",
                             "questionScaleHighPointIsMaximum", "questionHelp",
                             "questionRequired", "questionRangeMin", "questionRangeMax",
-                            "questionRangeHighValueIsMaximum", "questionRanges", "questionBooleanCorrectAnswer", "dependencyCondition"))
+                            "questionRangeHighValueIsMaximum", "questionRanges", "questionBooleanCorrectAnswer", "dependencyCondition", "questionAllowNotApplicable", "questionNotApplicableScore"))
     ).toList();
 
     private final CsvParsingService csvParsingService;
@@ -281,6 +281,8 @@ public class MaturityModelExcelService {
                 m.setPracticeEvidenceRequirements(pr.get("practiceEvidenceRequirements"));
                 m.setQuestionRequired(q.get("questionRequired"));
                 m.setQuestionBooleanCorrectAnswer(q.get("questionBooleanCorrectAnswer"));
+                m.setQuestionAllowNotApplicable(q.get("questionAllowNotApplicable"));
+                m.setQuestionNotApplicableScore(q.get("questionNotApplicableScore"));
                 m.setQuestionChoices(q.get("questionChoices"));
                 m.setQuestionLikertScaleMax(q.get("questionLikertScaleMax"));
                 m.setQuestionScalePointCount(q.get("questionScalePointCount"));
@@ -843,6 +845,10 @@ public class MaturityModelExcelService {
                             condition = com.master_thesis.maturity_assessment.maturity_models.dto.DependencyCondition.affirmative();
                         }
                         row.createCell(20).setCellValue(writeJson(condition));
+                        row.createCell(21).setCellValue(Boolean.TRUE.equals(q.getAllowNotApplicable()));
+                        if (Boolean.TRUE.equals(q.getAllowNotApplicable()) && q.getNotApplicableScore() != null) {
+                            row.createCell(22).setCellValue(q.getNotApplicableScore());
+                        }
                     }
                 }
             }
@@ -873,6 +879,7 @@ public class MaturityModelExcelService {
                 "dimensionMappingRules: JSON array, one threshold per level, starting at zero, strictly increasing within 0..1. Example: [{\"levelNumber\":1,\"minimumScore\":0},{\"levelNumber\":2,\"minimumScore\":0.5}].",
                 "Gating rules: JSON array. Example: [{\"order\":0,\"selection\":\"specificChild\",\"childCode\":\"Q1\",\"operator\":\"<\",\"threshold\":0.5,\"operation\":\"set\",\"value\":0}]. Reference immediate child codes. selection: specificChild/anyChild/allChildren; operator: <, <=, ==, >=, >; operation: set/add/subtract.",
                 "Question types: boolean, likert, open_answer, multiple_choice, multiple_selection, numeric, percentage. Leave type-specific columns empty for other types.",
+                "All question types: questionAllowNotApplicable enables N/A; questionNotApplicableScore is required when enabled and must be between 0 and 1.",
                 "boolean: questionBooleanCorrectAnswer is true or false (default true). practiceRequiresEvidence and questionRequired also use true/false.",
                 "multiple_choice questionChoices: [{\"label\":\"No\",\"score\":0},{\"label\":\"Yes\",\"score\":1}]. Scores are between 0 and 1.",
                 "multiple_selection questionChoices: [{\"label\":\"Control A\",\"rawValue\":2},{\"label\":\"Control B\",\"rawValue\":3}]. Raw values are nonnegative and their total must be positive.",

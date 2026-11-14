@@ -49,6 +49,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.master_thesis.maturity_assessment.maturity_models.dto.QuestionChoiceDTO;
 
 import com.master_thesis.maturity_assessment.maturity_models.services.QuestionDependencies;
+import com.master_thesis.maturity_assessment.maturity_models.services.NotApplicableAnswers;
+
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.ArrayList;
@@ -88,6 +90,8 @@ public class AssessmentService {
 
     // Inner class to store question metadata
     private static class QuestionInfo {
+        private boolean allowNotApplicable;
+        private Double notApplicableScore;
         private List<QuestionChoiceDTO> selectionOptions;
         private List<QuestionChoiceDTO> choiceOptions;
         private final String type;
@@ -357,6 +361,8 @@ public class AssessmentService {
                                                 question.getRangeHighValueIsMaximum() == null
                                                         || question.getRangeHighValueIsMaximum()
                                         );
+                                        info.allowNotApplicable = Boolean.TRUE.equals(question.getAllowNotApplicable());
+                                        info.notApplicableScore = question.getNotApplicableScore();
                                         if ("multiple_selection".equals(question.getType())) {
                                             try {
                                                 info.selectionOptions = objectMapper.readValue(question.getSelectionOptions(),
@@ -433,6 +439,12 @@ public class AssessmentService {
             return null;
         }
 
+        if (NotApplicableAnswers.isAnswer(responseValue)) {
+            if (!questionInfo.allowNotApplicable || questionInfo.notApplicableScore == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "N/A is not allowed for this question.");
+            }
+            return questionInfo.notApplicableScore;
+        }
         if ("multiple_selection".equals(questionType)) {
             return com.master_thesis.maturity_assessment.maturity_models.services.MultipleSelectionScoring.score(
                     responseValue, questionInfo.selectionOptions);
@@ -905,6 +917,12 @@ public class AssessmentService {
                         "Question response must contain an answer: " + responseKey
                 );
             }
+            if (submitted.getResponse() instanceof Map<?, ?>) {
+                if (!NotApplicableAnswers.isAnswer(submitted.getResponse()) || submitted.getChoiceIndex() != null) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid N/A answer: " + responseKey);
+                }
+                convertResponseToScore(submitted.getResponse(), question);
+            }
             if (submitted.getChoiceIndex() != null) {
                 int index = submitted.getChoiceIndex();
                 Double score = convertResponseToScore(submitted.getResponse(), question);
@@ -1263,6 +1281,7 @@ public class AssessmentService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Open answer must be " + TextLimits.OPEN_ANSWER + " characters or fewer.");
             }
+            if (NotApplicableAnswers.isAnswer(entry.getValue())) continue;
             if (question == null
                     || (!"numeric".equalsIgnoreCase(question.getType())
                     && !"percentage".equalsIgnoreCase(question.getType()))) {
@@ -1651,7 +1670,7 @@ public class AssessmentService {
         effectiveScores.putAll(evaluationSubmission.scoreOverrides);
 
         List<DimensionResult> recalculatedDimensionResults =
-                calculateDimensionResultsFromScores(effectiveScores, maturityModelId);
+                calculateDimensionResultsFromScores(effectiveScores, maturityModelId, responses);
 
         MaturityModel evalModel = maturityModelRepository.findById(maturityModelId).orElse(null);
         int maxLevelNumber = evalModel != null
@@ -1908,7 +1927,7 @@ public class AssessmentService {
             Double score = entry.getValue();
 
             QuestionInfo questionInfo = requireQuestionInfo(questionMetadata, responseKey);
-            validateManualScoreKeyAndRange(responseKey, score, manualMaxLevel, questionInfo);
+            validateManualScoreKeyAndRange(responseKey, score, manualMaxLevel, questionInfo, responses.get(responseKey));
             if (!isEligibleForManualEvaluation(questionInfo, responses.get(responseKey))) {
                 throw new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
@@ -2014,12 +2033,13 @@ public class AssessmentService {
             Double manualScore = requested.getManualScore();
             String reviewerNote = normalizeReviewerNote(requested.getReviewerNote(), responseKey);
             boolean manualScoreRequired = status == QuestionEvaluationStatus.ADJUSTED
-                    || ("open_answer".equals(questionInfo.getType()) && isAnswered(responses.get(responseKey)));
+                    || ("open_answer".equals(questionInfo.getType()) && isAnswered(responses.get(responseKey))
+                        && !NotApplicableAnswers.isAnswer(responses.get(responseKey)));
 
             if (requireComplete && manualScoreRequired) {
-                validateManualScoreKeyAndRange(responseKey, manualScore, manualMaxLevel, questionInfo);
+                validateManualScoreKeyAndRange(responseKey, manualScore, manualMaxLevel, questionInfo, responses.get(responseKey));
             } else if (manualScore != null) {
-                validateManualScoreKeyAndRange(responseKey, manualScore, manualMaxLevel, questionInfo);
+                validateManualScoreKeyAndRange(responseKey, manualScore, manualMaxLevel, questionInfo, responses.get(responseKey));
             }
 
             if (requireComplete
@@ -2086,10 +2106,17 @@ public class AssessmentService {
             String responseKey,
             Double score,
             int manualMaxLevel,
-            QuestionInfo questionInfo
+            QuestionInfo questionInfo,
+            Object responseValue
     ) {
         if (responseKey == null || responseKey.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Manual score key cannot be empty.");
+        }
+        if (NotApplicableAnswers.isAnswer(responseValue)) {
+            if (score == null || !Double.isFinite(score) || score < 0 || score > 1) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "N/A scores must be between 0 and 1.");
+            }
+            return;
         }
         if (questionInfo != null && "boolean".equalsIgnoreCase(questionInfo.getType())) {
             if (score == null || (Double.compare(score, 0.0) != 0 && Double.compare(score, 1.0) != 0)) {
@@ -2233,13 +2260,14 @@ public class AssessmentService {
                 dimensionMetadata.put(responseKey, questionInfo);
             }
         }
-        return aggregateDimensionResults(scoredResponses, dimensionMetadata, maturityModelId);
+        return aggregateDimensionResults(scoredResponses, dimensionMetadata, maturityModelId, responses);
     }
 
     @Transactional(readOnly = true)
     private List<DimensionResult> calculateDimensionResultsFromScores(
             Map<String, Double> scores,
-            Long maturityModelId
+            Long maturityModelId,
+            Map<String, Object> responses
     ) {
         Map<String, QuestionInfo> questionMetadata = loadQuestionMetadata(maturityModelId);
         Map<String, Double> validScores = new LinkedHashMap<>();
@@ -2251,13 +2279,14 @@ public class AssessmentService {
                 dimensionMetadata.put(responseKey, questionInfo);
             }
         });
-        return aggregateDimensionResults(validScores, dimensionMetadata, maturityModelId);
+        return aggregateDimensionResults(validScores, dimensionMetadata, maturityModelId, responses);
     }
 
     private List<DimensionResult> aggregateDimensionResults(
             Map<String, Double> scoredResponses,
             Map<String, QuestionInfo> dimensionMetadata,
-            Long maturityModelId
+            Long maturityModelId,
+            Map<String, Object> responses
     ) {
         MaturityModel model = maturityModelId != null
                 ? maturityModelRepository.findById(maturityModelId).orElse(null)
@@ -2284,7 +2313,8 @@ public class AssessmentService {
             if (info == null || score == null) {
                 return;
             }
-            boolean normalizedQuestion = "boolean".equalsIgnoreCase(info.getType())
+            boolean normalizedQuestion = NotApplicableAnswers.isAnswer(responses.get(responseKey))
+                    || "boolean".equalsIgnoreCase(info.getType())
                     || "likert".equalsIgnoreCase(info.getType())
                     || "multiple_choice".equalsIgnoreCase(info.getType())
                     || "multiple_selection".equalsIgnoreCase(info.getType())
@@ -2563,7 +2593,7 @@ public class AssessmentService {
         if (!isAnswered(responseValue)) {
             return false;
         }
-        return "open_answer".equals(questionInfo.getType());
+        return "open_answer".equals(questionInfo.getType()) && !NotApplicableAnswers.isAnswer(responseValue);
     }
 
     private boolean isAnswered(Object value) {
@@ -2845,6 +2875,7 @@ public class AssessmentService {
         JsonNode before = previous.response();
         JsonNode after = next.response();
         if (before == null || after == null) return before == after;
+        if (NotApplicableAnswers.isAnswer(before) || NotApplicableAnswers.isAnswer(after)) return before.equals(after);
         if ("boolean".equals(question.getType())) {
             Boolean answer = parseBooleanAnswer(objectMapper.convertValue(before, Object.class));
             return answer != null && answer.equals(parseBooleanAnswer(objectMapper.convertValue(after, Object.class)));

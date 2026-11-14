@@ -163,7 +163,39 @@ export default function QuestionEditor({
                   />
                   Required answer
                 </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={question.allowNotApplicable ?? false}
+                    onChange={(event) => onChange({
+                      ...question,
+                      allowNotApplicable: event.target.checked,
+                    })}
+                    className="rounded border-gray-300 text-blue-600"
+                  />
+                  Allow N/A (Not applicable)
+                </label>
               </div>
+              {question.allowNotApplicable && (
+                <label className={labelClass}>
+                  N/A score *
+                  <input
+                    id={`question-${question.clientKey}-not-applicable-score`}
+                    type="number"
+                    min={0}
+                    max={1}
+                    step="any"
+                    required
+                    className={inputClass}
+                    value={question.notApplicableScore ?? ""}
+                    onChange={(event) => onChange({
+                      ...question,
+                      notApplicableScore: event.target.value === "" ? null : Number(event.target.value),
+                    })}
+                  />
+                  <span className="text-xs font-normal text-gray-500">Score between 0 and 1 awarded when N/A is selected.</span>
+                </label>
+              )}
             </div>
             <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-5 py-4 sm:px-6">
               <button type="button" onClick={onDelete} disabled={practice.questions.length <= 1}

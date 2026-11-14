@@ -77,6 +77,8 @@ public class MaturityModelEditorDTO {
         private String dependsOnQuestionCode;
         private DependencyCondition dependencyCondition;
         private Boolean required;
+        private Boolean allowNotApplicable;
+        private Double notApplicableScore;
         private Boolean booleanCorrectAnswer;
         private List<QuestionChoiceDTO> choices;
         private Integer scalePointCount;

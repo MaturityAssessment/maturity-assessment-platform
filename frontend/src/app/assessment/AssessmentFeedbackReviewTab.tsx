@@ -1,5 +1,7 @@
 "use client";
 
+import type { QuestionResponseValue } from "@/components/assessment/question-card";
+
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -35,7 +37,7 @@ type AssessmentFeedbackReviewTabProps = {
   routeContext?: AssessmentRouteContext | null;
   questionEvaluations?: AssessmentResponse["questionEvaluations"];
   respondentUpdatedResponseKeys: ReadonlySet<string>;
-  onInputChange: (field: string, value: string | number | number[] | undefined) => void;
+  onInputChange: (field: string, value: QuestionResponseValue) => void;
   onClearAnswer: (field: string) => void;
   evidenceFiles?: AssessmentEvidenceByField;
   onEvidenceItemsChange?: (field: string, items: AssessmentEvidenceInputItem[]) => void;

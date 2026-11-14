@@ -119,6 +119,21 @@ class LocalAgentEvaluationServiceTest {
     }
 
     @Test
+    void notApplicableOpenAnswerSuppliesCuratorScoreWithoutRequiringManualScoring() {
+        var model = model(false);
+        var question = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getQuestions().getFirst();
+        question.setAllowNotApplicable(true);
+        question.setNotApplicableScore(0.65);
+        var answer = Map.of("notApplicable", true);
+        List<?> questions = ReflectionTestUtils.invokeMethod(service, "buildReviewQuestions",
+                model, Map.of(RESPONSE_KEY, answer), List.of(), 5);
+        Map<?, ?> payload = ReflectionTestUtils.invokeMethod(service, "questionPayload", questions.getFirst(), List.of());
+        assertEquals(answer, payload.get("answer"));
+        assertEquals(0.65, payload.get("notApplicableScore"));
+        assertEquals(false, payload.get("requiresManualScore"));
+    }
+
+    @Test
     void missingConfigurationStopsBeforeLoadingAssessment() {
         doThrow(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "disabled"))
                 .when(localAgentClient)

@@ -139,3 +139,29 @@ test("ambiguous historical choices ask for an explicit option when they control 
   assert.match(html, /Please select an answer option again/);
   assert.equal((html.match(/checked=""/g) ?? []).length, 0);
 });
+
+test("N/A is optional, mutually exclusive with normal answers, and respects review locks", () => {
+  assert.doesNotMatch(renderToStaticMarkup(card()), /N\/A \(Not applicable\)/);
+  const calls: unknown[] = [];
+  const configured = { ...question, allowNotApplicable: true, notApplicableScore: 0.65 };
+  const element = card({ question: configured, value: 1, onInputChange: (...args: unknown[]) => calls.push(args) });
+  const [normal, option] = element.props.children.props.children;
+  const checkbox = option.props.children[0];
+  assert.equal(checkbox.props.checked, false);
+  checkbox.props.onChange({ target: { checked: true } });
+  assert.deepEqual(calls.pop(), ["D_M_10_1", { notApplicable: true }]);
+  normal.props.onChange(0);
+  assert.deepEqual(calls.pop(), ["D_M_10_1", 0]);
+  const selected = card({ question: configured, value: { notApplicable: true }, onInputChange: (...args: unknown[]) => calls.push(args) });
+  const [blankInput, selectedOption] = selected.props.children.props.children;
+  assert.equal(blankInput.props.value, undefined);
+  assert.equal(selectedOption.props.children[0].props.checked, true);
+  assert.equal(selected.props.complete, true);
+  selectedOption.props.children[0].props.onChange({ target: { checked: false } });
+  assert.deepEqual(calls.pop(), ["D_M_10_1", undefined]);
+  for (const overrides of [{ readOnly: true }, { disabled: true }, { evaluation: { validationStatus: "ACCEPTED" } }, { evaluation: { validationStatus: "ADJUSTED" } }]) {
+    const locked = card({ question: configured, value: { notApplicable: true }, ...overrides });
+    assert.equal(locked.props.children.props.children[1].props.children[0].props.disabled, true);
+    assert.equal(locked.props.onClear, undefined);
+  }
+});

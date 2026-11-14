@@ -81,6 +81,9 @@ export interface Question {
   required?: boolean; // Whether this question must be answered
   /** Boolean answer that receives normalized score 1; the other receives 0. */
   booleanCorrectAnswer?: boolean;
+  allowNotApplicable?: boolean;
+  /** Normalized score (0 to 1) awarded when N/A is selected. */
+  notApplicableScore?: number | null;
   /** Options use score for multiple_choice and rawValue for multiple_selection. */
   choices?: QuestionChoice[];
   /** Independent configuration for Scale (internally `likert`) questions. */
@@ -204,6 +207,10 @@ export interface Dimension {
   /** 0-based order within the model (from API / persisted). */
   sortOrder?: number;
   modules: Module[];
+}
+
+export interface NotApplicableAnswer {
+  notApplicable: true;
 }
 
 export interface AssessmentData {
@@ -603,6 +610,8 @@ export interface ModelEditorQuestion {
   dependencyCondition?: DependencyCondition | null;
   required: boolean;
   booleanCorrectAnswer: boolean;
+  allowNotApplicable?: boolean;
+  notApplicableScore?: number | null;
   choices?: QuestionChoice[];
   scalePointCount: number;
   scaleMinLabel: string;

@@ -1,5 +1,7 @@
 "use client";
 
+import type { QuestionResponseValue } from "@/components/assessment/question-card";
+
 import AssessmentLogsTab from "./AssessmentLogsTab";
 import EvidenceLifecyclePanel from "@/components/assessment/EvidenceLifecyclePanel";
 import { useMemo, type ReactNode } from "react";
@@ -102,7 +104,7 @@ type AssessmentDashboardProps = {
   showLeaveAction?: boolean;
   onReview: () => void;
   onRetrySave: () => void;
-  onInputChange: (field: string, value: string | number | number[] | undefined) => void;
+  onInputChange: (field: string, value: QuestionResponseValue) => void;
   onClearAnswer: (field: string) => void;
   onEvidenceItemsChange: (
     field: string,

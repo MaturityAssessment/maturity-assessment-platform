@@ -398,7 +398,16 @@ rules affect calculated results, not which REST endpoints are available.
 ## Question types
 
 Common question fields are `code`, `weight`, `text`, `type`, `help`,
-`dependsOnQuestionCode`, `dependencyCondition` and `required`.
+`dependsOnQuestionCode`, `dependencyCondition`, `required`, `allowNotApplicable`
+and `notApplicableScore`.
+
+`allowNotApplicable` defaults to false. Enabling it adds an N/A answer and requires
+a finite `notApplicableScore` between 0 and 1, including zero. The configured
+score participates in the normal weighted aggregation; N/A counts as answered.
+These fields survive editor/model-version and workbook round-trips. Workbook
+columns are `questionAllowNotApplicable` and `questionNotApplicableScore`.
+See the [assessment request](assessments.md#assessment-request) for the tagged
+N/A response format.
 
 Dependencies target one Yes / No, Multiple choice, or Scale question in the same
 practice. Set `dependencyCondition` to one of:

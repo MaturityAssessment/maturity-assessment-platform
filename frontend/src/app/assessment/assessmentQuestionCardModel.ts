@@ -1,3 +1,4 @@
+import { isNotApplicableAnswer } from "../../lib/notApplicable.ts";
 import type {
   Question,
   QuestionEvaluationResponse,
@@ -87,7 +88,9 @@ export function buildQuestionCardFeedback(
     result:
       evaluation.manualScore == null
         ? undefined
-        : formatEvaluatorResult(question, evaluation.manualScore),
+        : isNotApplicableAnswer(evaluation.response)
+          ? `Evaluator score: ${evaluation.manualScore}`
+          : formatEvaluatorResult(question, evaluation.manualScore),
   };
 }
 

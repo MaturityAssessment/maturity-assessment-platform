@@ -19,6 +19,8 @@ public class QuestionDTO {
     private String dependsOnQuestionCode; // Stable editor/API dependency reference
     private DependencyCondition dependencyCondition;
     private Boolean required;
+    private Boolean allowNotApplicable;
+    private Double notApplicableScore;
     /** For boolean questions, the answer that receives normalized score 1. */
     private Boolean booleanCorrectAnswer;
     /** Options: multiple_choice uses normalized score; multiple_selection uses cumulative rawValue. */

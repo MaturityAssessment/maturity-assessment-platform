@@ -280,7 +280,7 @@ class AssessmentServiceLifecycleTest {
                 org.springframework.test.util.ReflectionTestUtils.invokeMethod(assessmentService,
                         "calculateDimensionResultsFromScores", Map.of(
                                 "D1_M1_101_1001", 1.0, "D1_M1_101_1002", 0.25, "D1_M1_102_1003", 0.75,
-                                "D1_M2_103_1004", 0.0, "D2_M3_104_1005", 1.0), MODEL_ID);
+                                "D1_M2_103_1004", 0.0, "D2_M3_104_1005", 1.0), MODEL_ID, Map.of());
         assertEquals(1, reevaluated.size());
         assertEquals(85.0, reevaluated.getFirst().getPercentageScore());
         assertEquals(3, reevaluated.getFirst().getTotalQuestions());
@@ -1560,6 +1560,106 @@ class AssessmentServiceLifecycleTest {
         );
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"boolean", "likert", "multiple_choice", "multiple_selection", "numeric", "percentage", "open_answer"})
+    void notApplicableUsesCuratorScoreAndPersistsDistinctAnswer(String type) throws Exception {
+        String key = "D1_M1_101_1001";
+        var model = autoModelWithNumericQuestion();
+        model.setAutoEvaluated(false);
+        var question = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getQuestions().getFirst();
+        question.setType(type);
+        question.setRequired(true);
+        question.setAllowNotApplicable(true);
+        question.setNotApplicableScore(0.65);
+        question.setSelectionOptions("[{\"label\":\"A\",\"rawValue\":1}]");
+        var draft = draftAssessment();
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
+                USER_ID, MODEL_ID, AssessmentStatus.DRAFT)).thenReturn(Optional.of(draft));
+        when(dimensionResultRepository.findByAssessmentId(ASSESSMENT_ID)).thenReturn(List.of());
+        var answer = Map.of("notApplicable", true);
+        var response = assessmentService.createAssessment(request(Map.of(key, answer)), user);
+        assertEquals("PENDING_REVIEW", response.getStatus());
+        assertEquals(65.0, response.getDimensionResults().getFirst().getPercentageScore());
+        assertEquals(1, response.getDimensionResults().getFirst().getTotalQuestions());
+        verify(questionEvaluationRepository).saveAll(argThat(items -> {
+            var rows = new java.util.ArrayList<QuestionEvaluation>();
+            items.forEach(rows::add);
+            return rows.size() == 1 && rows.getFirst().getInitialScore().equals(0.65)
+                    && rows.getFirst().getResponse().equals(new ObjectMapper().valueToTree(answer))
+                    && rows.getFirst().getChoiceIndex() == null;
+        }));
+    }
+
+    @Test
+    void notApplicableIsRejectedWhenDisabledOrMalformed() throws Exception {
+        var model = autoModelWithNumericQuestion();
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        for (var answer : List.of(Map.of("notApplicable", true), Map.of("notApplicable", false),
+                Map.of("notApplicable", true, "score", 1))) {
+            var exception = assertThrows(ResponseStatusException.class,
+                    () -> assessmentService.createAssessment(request(Map.of("D1_M1_101_1001", answer)), user));
+            assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        }
+        verify(questionEvaluationRepository, never()).saveAll(any());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(doubles = {0, 0.65, 1})
+    void acceptingNotApplicableOpenAnswerKeepsNormalizedScoreWithoutManualScore(double score) throws Exception {
+        String key = "D1_M1_101_1001";
+        var model = manualModelWithOpenQuestion();
+        var question = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getQuestions().getFirst();
+        question.setAllowNotApplicable(true);
+        question.setNotApplicableScore(score);
+        var assessment = pendingAssessment("{}");
+        var row = questionRow(assessment, key, Map.of("notApplicable", true), null);
+        row.setInitialScore(score);
+        when(questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of(row));
+        when(assessmentRepository.findById(ASSESSMENT_ID)).thenReturn(Optional.of(assessment));
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        var review = new QuestionEvaluationRequest();
+        review.setQuestionId(1001L);
+        review.setValidationStatus("ACCEPTED");
+        var request = new ManualEvaluationRequest();
+        request.setQuestionEvaluations(Map.of(key, review));
+        var response = assessmentService.evaluateAssessment(ASSESSMENT_ID, request, user);
+        assertEquals("COMPLETED", response.getStatus());
+        assertEquals(score * 100, response.getDimensionResults().getFirst().getPercentageScore());
+        assertNull(row.getManualScore());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"boolean", "multiple_choice", "open_answer"})
+    void adjustedNotApplicableUsesNormalizedScoreRegardlessOfQuestionType(String type) {
+        String key = "D1_M1_101_1001";
+        var model = manualModelWithOpenQuestion();
+        var question = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getQuestions().getFirst();
+        question.setType(type);
+        question.setAllowNotApplicable(true);
+        question.setNotApplicableScore(0.65);
+        var assessment = pendingAssessment("{}");
+        var row = questionRow(assessment, key, Map.of("notApplicable", true), null);
+        row.setInitialScore(0.65);
+        when(questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of(row));
+        when(assessmentRepository.findById(ASSESSMENT_ID)).thenReturn(Optional.of(assessment));
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        var review = new QuestionEvaluationRequest();
+        review.setValidationStatus("ADJUSTED");
+        review.setReviewerNote("Adjusted after checking applicability.");
+        var request = new ManualEvaluationRequest();
+        request.setQuestionEvaluations(Map.of(key, review));
+        for (double invalid : new double[] {-0.1, 1.1, Double.NaN}) {
+            review.setManualScore(invalid);
+            assertThrows(ResponseStatusException.class,
+                    () -> assessmentService.evaluateAssessment(ASSESSMENT_ID, request, user));
+        }
+        review.setManualScore(0.35);
+        var response = assessmentService.evaluateAssessment(ASSESSMENT_ID, request, user);
+        assertEquals(35.0, response.getDimensionResults().getFirst().getPercentageScore());
+        assertEquals(0.35, row.getManualScore());
     }
 
     @Test

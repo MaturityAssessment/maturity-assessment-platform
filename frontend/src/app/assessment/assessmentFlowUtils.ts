@@ -1,5 +1,7 @@
 "use client";
 
+import { isNotApplicableAnswer } from "../../lib/notApplicable.ts";
+
 import type { AssessmentData, Question } from "@/api/types";
 import type { AssessmentPracticeStep } from "./AssessmentStep";
 import {
@@ -42,6 +44,7 @@ export function getQuestionResponseBounds(question: Question) {
 
 export function isQuestionResponseValid(question: Question, value: unknown) {
   if (!isAnswered(value)) return true;
+  if (isNotApplicableAnswer(value)) return question.allowNotApplicable === true;
   if (question.type === "multiple_choice") return getSingleChoiceIndex(question, value) !== undefined;
   if (question.type === "multiple_selection") {
     return Array.isArray(value) && new Set(value).size === value.length && value.every(

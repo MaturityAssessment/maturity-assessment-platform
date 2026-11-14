@@ -377,3 +377,18 @@ test("fresh module and upcoming practices show neutral progress instead of missi
   const afterLeaving = renderToStaticMarkup(createElement(ModuleOverview, { ...props, navigationModules: [{ ...module, warningIssues: warnings, practices: [departed, started] }] }));
   assert.match(afterLeaving, /3 required answers missing/);
 });
+
+test("reviewing N/A shows its normalized score and uses normalized adjustments for any question type", () => {
+  for (const type of ["boolean", "likert", "multiple_choice", "multiple_selection", "numeric", "percentage", "open_answer"]) {
+    const row = { ...question, question: { ...question.question, type, allowNotApplicable: true, notApplicableScore: 0.65 },
+      responseValue: { notApplicable: true }, initialScore: 0.65, requiresManualScore: false };
+    const accepted = renderToStaticMarkup(createElement(Controls, { question: row,
+      review: { validationStatus: "ACCEPTED", reviewerNote: "" }, scoreOptions: [], onChange: noOp }));
+    assert.match(accepted, /Initial N\/A score: 0.65/);
+    assert.doesNotMatch(accepted, /Incorrect|Manual score/);
+    const adjusted = renderToStaticMarkup(createElement(Controls, { question: row,
+      review: { validationStatus: "ADJUSTED", manualScore: 0.5, reviewerNote: "Reason" }, scoreOptions: [], onChange: noOp }));
+    assert.match(adjusted, /Manual normalized score/);
+    assert.match(adjusted, /min="0" max="1"/);
+  }
+});

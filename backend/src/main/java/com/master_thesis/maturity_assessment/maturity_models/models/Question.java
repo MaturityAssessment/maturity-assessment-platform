@@ -53,6 +53,13 @@ public class Question {
     @Column(name = "required", nullable = false, columnDefinition = "boolean default false")
     private Boolean required = false;
 
+    @Column(name = "allow_not_applicable", nullable = false)
+    private Boolean allowNotApplicable = false;
+
+    /** Normalized score for the optional N/A answer. */
+    @Column(name = "not_applicable_score")
+    private Double notApplicableScore;
+
     /** For boolean questions, the answer that receives normalized score 1. */
     @Column(name = "boolean_correct_answer", nullable = false)
     private Boolean booleanCorrectAnswer = true;

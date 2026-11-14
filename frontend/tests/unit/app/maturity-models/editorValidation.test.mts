@@ -93,3 +93,28 @@ test("dependency conditions survive hydration, and parent edits require explicit
   child.dependencyCondition = { type: "likert", points: [5] }; assert.equal(dependencyIssues().length, 0);
   parent.scalePointCount = 4; assert.equal(dependencyIssues().length, 1);
 });
+
+test("N/A requires a finite normalized score only when enabled and survives editor round trips", async () => {
+  const { hydrateDocument, serializeDocument } = await import("../../../../src/app/maturity-models/editor/model/editorDocument.ts");
+  const document = createEmptyDocument();
+  const question = document.dimensions[0].modules[0].practices[0].questions[0];
+  question.text = "Is this applicable?";
+  assert.equal(question.allowNotApplicable, false);
+  const issues = () => validateDocument(document).filter((issue) => issue.field === `question-${question.clientKey}-not-applicable-score`);
+  question.allowNotApplicable = true;
+  for (const score of [null, undefined, NaN, Infinity, -0.1, 1.1]) {
+    question.notApplicableScore = score;
+    assert.equal(issues().length, 1);
+  }
+  for (const score of [0, 0.65, 1]) {
+    question.notApplicableScore = score;
+    assert.equal(issues().length, 0);
+    const hydrated = hydrateDocument(serializeDocument(document) as typeof document, false);
+    const restored = hydrated.dimensions[0].modules[0].practices[0].questions[0];
+    assert.equal(restored.allowNotApplicable, true);
+    assert.equal(restored.notApplicableScore, score);
+  }
+  question.allowNotApplicable = false;
+  assert.equal(issues().length, 0);
+  assert.equal(serializeDocument(document).dimensions[0].modules[0].practices[0].questions[0].notApplicableScore, null);
+});

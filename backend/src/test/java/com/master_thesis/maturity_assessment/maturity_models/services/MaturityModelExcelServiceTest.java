@@ -33,6 +33,19 @@ class MaturityModelExcelServiceTest {
     private final MaturityModelExcelService excelService = new MaturityModelExcelService(csvParsingService, objectMapper);
 
     @Test
+    void notApplicableConfigurationRoundTripsThroughWorkbook() throws Exception {
+        var model = buildSampleModel();
+        var question = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getQuestions().getFirst();
+        question.setAllowNotApplicable(true);
+        question.setNotApplicableScore(0.65);
+        var result = excelService.parseExcelWorkbook(new ByteArrayInputStream(excelService.exportMaturityModelToXlsx(model)));
+        assertTrue(result.isSuccess(), result.getErrorDetails());
+        var imported = result.getMaturityModel().getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getQuestions().getFirst();
+        assertTrue(imported.getAllowNotApplicable());
+        assertEquals(0.65, imported.getNotApplicableScore());
+    }
+
+    @Test
     void namedEvidenceRequirementsRoundTripThroughWorkbook() throws Exception {
         var model = buildSampleModel();
         var requirements = List.of(new com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement(

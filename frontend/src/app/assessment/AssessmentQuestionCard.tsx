@@ -1,5 +1,7 @@
 "use client";
 
+import { isNotApplicableAnswer, NOT_APPLICABLE_ANSWER } from "@/lib/notApplicable";
+
 import { dependencySummary, isDependencyParent } from "@/lib/questionDependencies";
 import type {
   Question,
@@ -53,7 +55,7 @@ interface AssessmentQuestionCardProps {
   onAskAssistant?: () => void;
   onInputChange: (
     field: string,
-    value: string | number | number[] | undefined
+    value: QuestionResponseValue
   ) => void;
   onClearAnswer: (field: string) => void;
 }
@@ -116,6 +118,7 @@ export default function AssessmentQuestionCard({
     onChange: (nextValue: QuestionResponseValue) =>
       onInputChange(fieldName, nextValue),
   };
+  const notApplicable = isNotApplicableAnswer(value);
   const numberValue = typeof value === "number" ? value : undefined;
   const bounds = getQuestionResponseBounds(question);
   let input;
@@ -225,7 +228,24 @@ export default function AssessmentQuestionCard({
       }
       anchors={anchors}
     >
-      {input}
+      {question.allowNotApplicable ? (
+        <div className="space-y-4">
+          {input}
+          <label className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold ${
+            notApplicable ? "border-indigo-500 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-500" : "border-slate-200 bg-white text-slate-700"
+          } ${interactionDisabled ? "cursor-not-allowed opacity-60" : "hover:border-indigo-300"}`}>
+            <input
+              type="checkbox"
+              name={`${fieldName}_not_applicable`}
+              checked={notApplicable}
+              disabled={interactionDisabled}
+              onChange={(event) => onInputChange(fieldName, event.target.checked ? NOT_APPLICABLE_ANSWER : undefined)}
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            N/A (Not applicable)
+          </label>
+        </div>
+      ) : input}
     </QuestionCard>
   );
 }

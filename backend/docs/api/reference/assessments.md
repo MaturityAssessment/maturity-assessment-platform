@@ -76,6 +76,15 @@ indexes outside the configured options are rejected with `400` on save or submit
 Use indexes from the assessment's exact model version; options with equal raw
 values remain distinct choices.
 
+For questions with `allowNotApplicable: true`, send `response: {"notApplicable": true}`
+and omit `choiceIndex`. This distinct N/A answer is supported for every question
+type, counts as an answer to required questions, and receives the curator's
+`notApplicableScore` in 0–1. Disabled or malformed N/A answers are rejected on
+save and submit. N/A does not activate dependent questions or waive practice
+evidence requirements. Evaluation returns the same tagged response and its
+normalized initial score; accepting N/A needs no manual score, including for
+open answers. An adjusted N/A score must also be in 0–1.
+
 Saves replace the complete answer map, not just changed keys. On returned
 assessments, accepted answers and their justifications must remain unchanged.
 Record flagged corrections in `respondentUpdatedResponseKeys`; submission fails

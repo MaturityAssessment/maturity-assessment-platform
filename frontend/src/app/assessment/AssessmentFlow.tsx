@@ -1,5 +1,7 @@
 "use client";
 
+import type { QuestionResponseValue } from "@/components/assessment/question-card";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CircleHelp } from "lucide-react";
@@ -659,7 +661,7 @@ export default function AssessmentFlow() {
     modulePrerequisiteStates.get(step.module)?.locked && step.practice.questions.some((question) =>
       field === getFieldName(step, question) || field === `${getFieldName(step, question)}_justification`));
 
-  const handleInputChange = (field: string, value: string | number | number[] | undefined) => {
+  const handleInputChange = (field: string, value: QuestionResponseValue) => {
     if (!capabilities.canEditResponses || acceptedResponseKeys.has(field) || isLockedResponseField(field)) return;
 
     const { formData: nextFormData, removedFields } = pruneDisabledQuestionData(

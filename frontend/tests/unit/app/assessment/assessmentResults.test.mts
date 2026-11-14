@@ -249,3 +249,16 @@ test("creates filesystem-safe export filenames", () => {
     "resiliencia-controls-assessment-44-results.xlsx"
   );
 });
+
+test("result exports preserve N/A labels and scores for every question type", () => {
+  for (const type of ["boolean", "likert", "multiple_choice", "multiple_selection", "numeric", "percentage", "open_answer"] as const) {
+    const step = makeStep("D1", "Governance", 101, type);
+    const key = "D1_M101_101_101";
+    const data = buildAssessmentResultsExportData({ ...assessment, questionEvaluations: { [key]: {
+      responseKey: key, questionId: 101, response: { notApplicable: true }, initialScore: 0.65,
+    } } }, model, [step]);
+    assert.equal(data.answers[0].answer, "N/A (Not applicable)");
+    assert.equal(data.answers[0].initialScore, 0.65);
+    assert.equal(data.answers[0].finalScore, 0.65);
+  }
+});

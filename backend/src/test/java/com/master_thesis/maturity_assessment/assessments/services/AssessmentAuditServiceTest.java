@@ -58,6 +58,18 @@ class AssessmentAuditServiceTest {
     }
 
     @Test
+    void notApplicableAnswerHasReadableAuditLabelAndUnchangedAutosavesProduceNoLog() {
+        var row = row(0);
+        var before = audit.responses(List.of(row));
+        row.setResponse(mapper.valueToTree(Map.of("notApplicable", true)));
+        audit.responsesChanged(assessment, before, List.of(row));
+        assertEquals("N/A (Not applicable)", entry().getAfterValue().get("answerLabel").asText());
+        reset(logs);
+        audit.responsesChanged(assessment, audit.responses(List.of(row)), List.of(row));
+        verifyNoInteractions(logs);
+    }
+
+    @Test
     void unchangedAutosaveIncludingEquivalentJsonNumbersProducesNoLog() {
         QuestionEvaluation row = row(1);
         var before = audit.responses(List.of(row));

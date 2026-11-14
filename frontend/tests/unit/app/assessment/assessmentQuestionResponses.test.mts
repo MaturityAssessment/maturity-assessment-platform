@@ -173,3 +173,53 @@ test("choice and scale dependencies preserve matching answers and prune nonmatch
   assert.equal(getAssessmentPracticeProgress(configured, pruned.formData, new Map()).totalEnabledQuestions, 1);
   assert.equal(Object.keys(collectQuestionResponses([configured], { ...answers, D1_M1_10_100: "choice:2" })).length, 1);
 });
+
+test("N/A survives save and reload for every answer type and completes required questions", async () => {
+  const { isQuestionResponseValid, getPracticeCompletionIssues } = await import("../../../../src/app/assessment/assessmentFlowUtils.ts");
+  const { formatQuestionResponseValue } = await import("../../../../src/app/assessment/evaluation/evaluationModel.ts");
+  for (const type of ["boolean", "likert", "multiple_choice", "multiple_selection", "numeric", "percentage", "open_answer"] as const) {
+    const question = { ...step.practice.questions[0], type, required: true, allowNotApplicable: true, notApplicableScore: 0.65 };
+    const configured = { ...step, practice: { ...step.practice, questions: [question] } };
+    const answer = { notApplicable: true };
+    const data = { D1_M1_10_100: answer };
+    const responses = collectQuestionResponses([configured], data);
+    assert.deepEqual(responses.D1_M1_10_100, { questionId: 100, response: answer });
+    assert.deepEqual(hydrateQuestionResponses({ answer: { responseKey: "D1_M1_10_100", ...responses.D1_M1_10_100 } }), data);
+    assert.equal(isQuestionResponseValid(question, answer), true);
+    assert.equal(isQuestionResponseValid({ ...question, allowNotApplicable: false }, answer), false);
+    assert.deepEqual(getPracticeCompletionIssues(configured, data, new Map()), {
+      missingRequiredAnswerCount: 0, invalidAnswerCount: 0, missingEvidenceCount: 0,
+    });
+    assert.equal(formatQuestionResponseValue(question, answer, []), "N/A (Not applicable)");
+  }
+  const plainText = collectQuestionResponses([step], { D1_M1_10_101: "N/A" });
+  assert.equal(plainText.D1_M1_10_101.response, "N/A");
+});
+
+test("N/A disables dependent questions regardless of its configured score", async () => {
+  const { pruneDisabledQuestionData } = await import("../../../../src/app/assessment/assessmentFlowUtils.ts");
+  const configured = structuredClone(step);
+  configured.practice.questions[0].allowNotApplicable = true;
+  configured.practice.questions[0].notApplicableScore = 1;
+  const data = { D1_M1_10_100: { notApplicable: true }, D1_M1_10_102: 4 };
+  const pruned = pruneDisabledQuestionData([configured], data);
+  assert.deepEqual(pruned.formData, { D1_M1_10_100: { notApplicable: true } });
+  assert.deepEqual(collectQuestionResponses([configured], data), {
+    D1_M1_10_100: { questionId: 100, response: { notApplicable: true } },
+  });
+});
+
+test("open-answer N/A can be accepted without a manual score in the evaluation model", async () => {
+  const { buildEvaluationModel, calculateProgress } = await import("../../../../src/app/assessment/evaluation/evaluationModel.ts");
+  const key = "D1_M1_10_101";
+  const configured = { ...step.practice.questions[1], allowNotApplicable: true, notApplicableScore: 0.65 };
+  const assessment = { id: 1, questionEvaluations: { [key]: { responseKey: key, questionId: 101,
+    response: { notApplicable: true }, initialScore: 0.65 } } };
+  const model = { dimensions: [{ ...step.dimension, modules: [{ ...step.module,
+    practices: [{ ...step.practice, questions: [configured] }] }] }] };
+  const evaluation = buildEvaluationModel(assessment as any, model as any, []);
+  assert.equal(evaluation.questions[0].requiresManualScore, false);
+  const progress = calculateProgress(evaluation.questions, { [key]: { validationStatus: "ACCEPTED", reviewerNote: "" } });
+  assert.equal(progress.missingManualScores, 0);
+  assert.equal(progress.reviewed, 1);
+});

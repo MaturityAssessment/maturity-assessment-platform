@@ -75,6 +75,45 @@ class MaturityModelServiceTest {
     }
 
     @Test
+    void notApplicableConfigurationRoundTripsThroughEditorAndNewVersions() {
+        var domain = domain();
+        var dto = updateDto(domain.getId(), null);
+        var question = dto.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getQuestions().getFirst();
+        question.setAllowNotApplicable(true);
+        question.setNotApplicableScore(0.65);
+        when(domainRepository.findById(domain.getId())).thenReturn(Optional.of(domain));
+        var saved = new ArrayList<MaturityModel>();
+        when(maturityModelRepository.saveAndFlush(any(MaturityModel.class))).thenAnswer(invocation -> {
+            MaturityModel model = invocation.getArgument(0); assignGeneratedIds(model); saved.add(model); return model;
+        });
+        when(maturityModelRepository.save(any(MaturityModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        var original = service.createMaturityModel(dto);
+        var source = saved.getFirst();
+        when(maturityModelRepository.findById(source.getId())).thenReturn(Optional.of(source));
+        when(maturityModelRepository.findByBaseModelIdOrderByVersionAsc(source.getId())).thenReturn(List.of(source));
+        var editor = service.prepareEditorDocument(original);
+        var editorQuestion = editor.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getQuestions().getFirst();
+        assertTrue(editorQuestion.getAllowNotApplicable());
+        assertEquals(0.65, editorQuestion.getNotApplicableScore());
+        var version = service.createVersionFromEditor(source.getId(), editor);
+        var copied = version.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getQuestions().getFirst();
+        assertTrue(copied.getAllowNotApplicable());
+        assertEquals(0.65, copied.getNotApplicableScore());
+    }
+
+    @Test
+    void enabledNotApplicableRequiresFiniteNormalizedScore() {
+        var dto = updateDto(domain().getId(), null);
+        var question = dto.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getQuestions().getFirst();
+        question.setAllowNotApplicable(true);
+        for (Double score : new Double[] {null, Double.NaN, Double.POSITIVE_INFINITY, -0.1, 1.1}) {
+            question.setNotApplicableScore(score);
+            var exception = assertThrows(IllegalOperationException.class, () -> service.createMaturityModel(dto));
+            assertEquals("INVALID_NOT_APPLICABLE_SCORE", exception.getErrorCode());
+        }
+    }
+
+    @Test
     void evidenceRequirementsAreValidatedAndCopiedIntoNewVersions() {
         var domain = domain();
         var dto = updateDto(domain.getId(), null);

@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.master_thesis.maturity_assessment.maturity_models.services.NotApplicableAnswers;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.*;
@@ -206,7 +208,9 @@ public class AssessmentAuditService {
         ObjectNode snapshot = (ObjectNode) item.value().deepCopy();
         JsonNode response = snapshot.get("response");
         String label = response.isTextual() ? response.asText() : response.toString();
-        if (question != null) {
+        if (NotApplicableAnswers.isAnswer(response)) {
+            label = "N/A (Not applicable)";
+        } else if (question != null) {
             switch (question.getType()) {
                 case "boolean" -> label = (response.asBoolean() || "1".equals(response.asText())) ? "Yes" : "No";
                 case "percentage" -> label += "%";

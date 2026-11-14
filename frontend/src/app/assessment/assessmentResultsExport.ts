@@ -1,3 +1,4 @@
+import { isNotApplicableAnswer } from "../../lib/notApplicable.ts";
 import type {
   AssessmentResponse,
   Evidence,
@@ -151,6 +152,8 @@ function formatQuestionAnswer(
   if (value === undefined || value === null || value === "") {
     return "Not answered";
   }
+
+  if (isNotApplicableAnswer(value)) return "N/A (Not applicable)";
 
   if (question.type === "boolean") {
     if (Number(value) === 1) return "Yes";

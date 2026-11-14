@@ -58,6 +58,8 @@ public class CsvMaturityModelRow {
 
     private String questionRequired;
     private String questionBooleanCorrectAnswer;
+    private String questionAllowNotApplicable;
+    private String questionNotApplicableScore;
     /** JSON array of {"label","score"} when questionType is multiple_choice. */
     private String questionChoices;
     /** Legacy Scale point count column accepted for backward-compatible imports. */

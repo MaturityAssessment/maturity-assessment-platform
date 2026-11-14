@@ -1,3 +1,4 @@
+import { isNotApplicableAnswer } from "../../lib/notApplicable.ts";
 import type {
   AssessmentData,
   AssessmentResponse,
@@ -36,7 +37,7 @@ export function collectQuestionResponses(
         responses[fieldName] = {
           questionId: question.id,
           ...(choiceIndex !== undefined ? { choiceIndex } : {}),
-          response: choiceIndex !== undefined ? question.choices![choiceIndex].score :
+          response: isNotApplicableAnswer(value) ? value : choiceIndex !== undefined ? question.choices![choiceIndex].score :
             question.type === "open_answer" || question.type === "multiple_selection"
               ? value
               : Number(value) || 0,

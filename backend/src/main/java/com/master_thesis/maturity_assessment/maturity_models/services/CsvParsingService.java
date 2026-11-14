@@ -176,6 +176,15 @@ public class CsvParsingService {
         validateBoolean(row.getModuleMandatoryBadge(), "moduleMandatoryBadge", lineNumber, errors);
         validateBoolean(row.getPracticeRequiresEvidence(), "practiceRequiresEvidence", lineNumber, errors);
         validateBoolean(row.getQuestionRequired(), "questionRequired", lineNumber, errors);
+        validateBoolean(row.getQuestionAllowNotApplicable(), "questionAllowNotApplicable", lineNumber, errors);
+        if (parseBoolean(row.getQuestionAllowNotApplicable(), false)) {
+            try {
+                double score = Double.parseDouble(row.getQuestionNotApplicableScore() == null ? "" : row.getQuestionNotApplicableScore().trim());
+                if (!Double.isFinite(score) || score < 0 || score > 1) throw new NumberFormatException();
+            } catch (NumberFormatException exception) {
+                errors.add("Row " + lineNumber + ": questionNotApplicableScore must be between 0 and 1 when N/A is allowed");
+            }
+        }
         validateBoolean(row.getQuestionBooleanCorrectAnswer(), "questionBooleanCorrectAnswer", lineNumber, errors);
         if (!isBlank(row.getQuestionBooleanCorrectAnswer()) && !"boolean".equalsIgnoreCase(row.getQuestionType())) {
             errors.add("Row " + lineNumber + ": questionBooleanCorrectAnswer must be empty unless questionType is boolean");
@@ -501,6 +510,10 @@ public class CsvParsingService {
             questionDTO.setType(qType);
             questionDTO.setHelp(blankToNull(row.getQuestionHelp()));
             questionDTO.setRequired(parseBoolean(row.getQuestionRequired(), false));
+            questionDTO.setAllowNotApplicable(parseBoolean(row.getQuestionAllowNotApplicable(), false));
+            if (Boolean.TRUE.equals(questionDTO.getAllowNotApplicable())) {
+                questionDTO.setNotApplicableScore(Double.parseDouble(row.getQuestionNotApplicableScore().trim()));
+            }
             if ("boolean".equals(qType)) {
                 questionDTO.setBooleanCorrectAnswer(parseBoolean(row.getQuestionBooleanCorrectAnswer(), true));
             }

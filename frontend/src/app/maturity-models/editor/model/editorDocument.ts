@@ -79,6 +79,8 @@ export function emptyQuestion(ordinal: number): ModelEditorQuestion {
     help: "",
     required: false,
     booleanCorrectAnswer: true,
+    allowNotApplicable: false,
+    notApplicableScore: null,
     scalePointCount: 5,
     scaleMinLabel: "",
     scaleMaxLabel: "",
@@ -232,6 +234,8 @@ export function hydrateDocument(
             choices: question.choices?.map((choice) => ({ ...choice, ...(question.type === "multiple_choice" ? { id: choice.id || key() } : {}) })),
             required: question.required ?? false,
             booleanCorrectAnswer: question.booleanCorrectAnswer ?? true,
+            allowNotApplicable: question.allowNotApplicable ?? false,
+            notApplicableScore: question.notApplicableScore ?? null,
             scalePointCount: question.scalePointCount ?? 5,
             scaleMinLabel: question.scaleMinLabel ?? "",
             scaleMaxLabel: question.scaleMaxLabel ?? "",
@@ -328,6 +332,8 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
                     code: question.code.trim(),
                     text: question.text.trim(),
                     help: question.help.trim(),
+                    allowNotApplicable: question.allowNotApplicable ?? false,
+                    notApplicableScore: question.allowNotApplicable ? question.notApplicableScore : null,
                     dependsOnQuestionCode:
                       question.dependsOnQuestionCode || undefined,
                   })

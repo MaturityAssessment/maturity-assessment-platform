@@ -33,3 +33,18 @@ const meta = { title: "Maturity models/Question dependencies", component: Depend
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Interactive: Story = {};
+
+function NotApplicableExample() {
+  const [question, setQuestion] = useState<ReturnType<typeof emptyQuestion>>(() => ({
+    ...emptyQuestion(1), text: "Is this process documented?", allowNotApplicable: true, notApplicableScore: 0.5,
+  }));
+  const [open, setOpen] = useState(true);
+  return <>
+    <button className="rounded border px-4 py-2" onClick={() => setOpen(true)}>Open question editor</button>
+    {open && <QuestionEditor question={question} questionIndex={0}
+      practice={{ ...emptyPractice(1, 1), questions: [question] }} maxLevel={5}
+      onChange={setQuestion} onClose={() => setOpen(false)} onDelete={() => setOpen(false)} />}
+  </>;
+}
+
+export const NotApplicable: Story = { render: () => <NotApplicableExample /> };

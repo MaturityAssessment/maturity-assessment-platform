@@ -36,6 +36,8 @@ import org.springframework.util.StreamUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.master_thesis.maturity_assessment.maturity_models.services.NotApplicableAnswers;
+
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -324,10 +326,11 @@ public class LocalAgentEvaluationService {
         draft.setValidationStatus(status.name());
 
         Double manualScore = nullableDouble(node.path("manualScore"));
-        boolean booleanQuestion = "boolean".equalsIgnoreCase(question.type());
-        boolean scaleQuestion = "likert".equalsIgnoreCase(question.type());
-        boolean multipleChoiceQuestion = "multiple_choice".equalsIgnoreCase(question.type());
-        boolean rangeQuestion = "multiple_selection".equalsIgnoreCase(question.type()) || "numeric".equalsIgnoreCase(question.type())
+        boolean notApplicable = NotApplicableAnswers.isAnswer(question.answer());
+        boolean booleanQuestion = !notApplicable && "boolean".equalsIgnoreCase(question.type());
+        boolean scaleQuestion = !notApplicable && "likert".equalsIgnoreCase(question.type());
+        boolean multipleChoiceQuestion = !notApplicable && "multiple_choice".equalsIgnoreCase(question.type());
+        boolean rangeQuestion = notApplicable || "multiple_selection".equalsIgnoreCase(question.type()) || "numeric".equalsIgnoreCase(question.type())
                 || "percentage".equalsIgnoreCase(question.type());
         Double scoreCandidate = manualScore;
         boolean configuredMultipleChoiceScore = !multipleChoiceQuestion || manualScore == null
@@ -411,7 +414,8 @@ public class LocalAgentEvaluationService {
                                 question.getRangeHighValueIsMaximum() == null
                                         || question.getRangeHighValueIsMaximum(),
                                 Boolean.TRUE.equals(practice.getRequiresEvidence()),
-                                "open_answer".equalsIgnoreCase(question.getType()) && isAnswered(answer),
+                                "open_answer".equalsIgnoreCase(question.getType()) && isAnswered(answer)
+                                        && !NotApplicableAnswers.isAnswer(answer),
                                 dimension.getDimensionId(),
                                 dimension.getName(),
                                 module.getCode(),
@@ -419,6 +423,7 @@ public class LocalAgentEvaluationService {
                                 practice.getId(),
                                 practice.getName(),
                                 answer,
+                                question.getNotApplicableScore(),
                                 parseChoices(question),
                                 resolveScalePointCount(question),
                                 question.getScaleMinLabel(),
@@ -552,6 +557,10 @@ public class LocalAgentEvaluationService {
         payload.put("practiceId", question.practiceId());
         payload.put("requiresManualScore", question.requiresManualScore());
         payload.put("answer", question.answer());
+        if (NotApplicableAnswers.isAnswer(question.answer())) {
+            payload.put("notApplicableScore", question.notApplicableScore());
+            payload.put("notApplicableGuidance", "N/A is an answered question with the curator-defined normalized score. Accepting it requires no manual score; adjustments must be between 0 and 1.");
+        }
         payload.put("choices", question.choices());
         payload.put("scalePointCount", question.scalePointCount());
         payload.put("scaleMinLabel", nullToEmpty(question.scaleMinLabel()));
@@ -840,6 +849,7 @@ public class LocalAgentEvaluationService {
             Long practiceId,
             String practiceName,
             Object answer,
+            Double notApplicableScore,
             List<Map<String, Object>> choices,
             int scalePointCount,
             String scaleMinLabel,

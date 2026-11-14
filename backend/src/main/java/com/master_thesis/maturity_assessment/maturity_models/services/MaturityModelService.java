@@ -548,6 +548,8 @@ public class MaturityModelService {
                 dto.setType(question.getType());
                 dto.setHelp(question.getHelp());
                 dto.setRequired(question.getRequired() != null ? question.getRequired() : false);
+                dto.setAllowNotApplicable(Boolean.TRUE.equals(question.getAllowNotApplicable()));
+                dto.setNotApplicableScore(question.getNotApplicableScore());
                 dto.setBooleanCorrectAnswer(
                                 question.getBooleanCorrectAnswer() != null ? question.getBooleanCorrectAnswer() : true);
                 dto.setScalePointCount(question.getScalePointCount());
@@ -693,6 +695,8 @@ public class MaturityModelService {
                 question.setType(dto.getType());
                 question.setHelp(dto.getHelp());
                 question.setRequired(dto.getRequired() != null && dto.getRequired());
+                question.setAllowNotApplicable(Boolean.TRUE.equals(dto.getAllowNotApplicable()));
+                question.setNotApplicableScore(Boolean.TRUE.equals(dto.getAllowNotApplicable()) ? dto.getNotApplicableScore() : null);
                 question.setBooleanCorrectAnswer(
                                 dto.getBooleanCorrectAnswer() != null ? dto.getBooleanCorrectAnswer() : true);
                 if (TYPE_MULTIPLE_CHOICE.equalsIgnoreCase(dto.getType())) {
@@ -803,6 +807,8 @@ public class MaturityModelService {
                                                 editorQuestion.setDependsOnQuestionCode(question.getDependsOnQuestionCode());
                                                 editorQuestion.setDependencyCondition(question.getDependencyCondition());
                                                 editorQuestion.setRequired(question.getRequired());
+                                                editorQuestion.setAllowNotApplicable(question.getAllowNotApplicable());
+                                                editorQuestion.setNotApplicableScore(question.getNotApplicableScore());
                                                 editorQuestion.setBooleanCorrectAnswer(question.getBooleanCorrectAnswer());
                                                 editorQuestion.setChoices(question.getChoices());
                                                 editorQuestion.setScalePointCount(question.getScalePointCount());
@@ -894,6 +900,8 @@ public class MaturityModelService {
                                                 question.setDependsOnQuestionCode(editorQuestion.getDependsOnQuestionCode());
                                                 question.setDependencyCondition(editorQuestion.getDependencyCondition());
                                                 question.setRequired(editorQuestion.getRequired());
+                                                question.setAllowNotApplicable(editorQuestion.getAllowNotApplicable());
+                                                question.setNotApplicableScore(editorQuestion.getNotApplicableScore());
                                                 question.setBooleanCorrectAnswer(editorQuestion.getBooleanCorrectAnswer());
                                                 question.setChoices(editorQuestion.getChoices());
                                                 question.setScalePointCount(editorQuestion.getScalePointCount());
@@ -1554,6 +1562,13 @@ public class MaturityModelService {
                                                                         "Question weight must be non-negative and greater than zero for required questions.");
                                                 }
                                                 validateQuestionType(questionDTO);
+                                                if (Boolean.TRUE.equals(questionDTO.getAllowNotApplicable())) {
+                                                        Double score = questionDTO.getNotApplicableScore();
+                                                        if (score == null || !Double.isFinite(score) || score < 0 || score > 1) {
+                                                                throw new IllegalOperationException("INVALID_NOT_APPLICABLE_SCORE",
+                                                                                "N/A requires a normalized score between 0 and 1.");
+                                                        }
+                                                }
                                                 if ("multiple_selection".equals(questionDTO.getType())) {
                                                         MultipleSelectionScoring.validateOptions(questionDTO.getChoices());
                                                 }

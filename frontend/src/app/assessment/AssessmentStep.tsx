@@ -1,5 +1,7 @@
 "use client";
 
+import type { QuestionResponseValue } from "@/components/assessment/question-card";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
@@ -71,7 +73,7 @@ interface AssessmentStepProps {
   onModuleOverview: () => void;
   onNextModule: (() => void) | null;
   onPracticeSelect: (practiceKey: string) => void;
-  onInputChange: (field: string, value: string | number | number[] | undefined) => void;
+  onInputChange: (field: string, value: QuestionResponseValue) => void;
   onClearAnswer: (field: string) => void;
   onEvidenceItemsChange: (
     field: string,
