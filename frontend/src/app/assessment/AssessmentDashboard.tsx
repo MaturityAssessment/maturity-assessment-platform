@@ -91,6 +91,7 @@ type AssessmentDashboardProps = {
   evaluatorInsight?: string | null;
   questionEvaluations?: AssessmentResponse["questionEvaluations"];
   respondentUpdatedResponseKeys: ReadonlySet<string>;
+  warningPracticeKeys?: ReadonlySet<string>;
   tourInvitation: AssessmentTourInvitationContent | null;
   onStartTour: () => void;
   onDismissTourInvitation: () => void;
@@ -146,6 +147,7 @@ export default function AssessmentDashboard({
   evaluatorInsight,
   questionEvaluations,
   respondentUpdatedResponseKeys,
+  warningPracticeKeys,
   tourInvitation,
   onStartTour,
   onDismissTourInvitation,
@@ -168,7 +170,8 @@ export default function AssessmentDashboard({
         formData,
         evidenceFiles,
         questionEvaluations,
-        respondentUpdatedResponseKeys
+        respondentUpdatedResponseKeys,
+        warningPracticeKeys
       ),
     [
       evidenceFiles,
@@ -177,6 +180,7 @@ export default function AssessmentDashboard({
       practiceSteps,
       questionEvaluations,
       respondentUpdatedResponseKeys,
+      warningPracticeKeys,
     ]
   );
   const feedbackItemCount = summary.flaggedCount + summary.adjustedCount;
@@ -553,8 +557,8 @@ function OverviewTab({
                         <span title={getDimensionDescription(dimension)} className="mt-1 block truncate text-sm leading-5 text-slate-500">
                           {getDimensionDescription(dimension)}
                         </span>
-                        {!completed && dimension.status !== "not-started" && (
-                          <AssessmentCompletionNotice issues={dimension} className="mt-1" />
+                        {!completed && (
+                          <AssessmentCompletionNotice issues={dimension.warningIssues} className="mt-1" />
                         )}
                       </span>
 
@@ -892,7 +896,7 @@ function ProgressCard({
         summary={summary}
         showFeedbackSegments={changesRequested}
       />
-      <AssessmentCompletionNotice issues={summary} className="mt-3 rounded-lg bg-amber-50 px-3 py-2" />
+      <AssessmentCompletionNotice issues={summary.warningIssues} className="mt-3 rounded-lg bg-amber-50 px-3 py-2" />
 
       <dl className="mt-3 space-y-2">
         <ProgressLegendRow

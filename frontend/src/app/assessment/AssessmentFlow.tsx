@@ -54,6 +54,7 @@ import {
 import {
   getFieldName,
   getAssessmentPracticeProgress,
+  getAssessmentCompletionWarnings,
   sumAssessmentCompletionIssues,
   isAnswered,
   isDependentQuestionDisabled,
@@ -135,6 +136,8 @@ export default function AssessmentFlow() {
   );
   const [isPreparingReview, setIsPreparingReview] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [departedPracticeKeys, setDepartedPracticeKeys] = useState<ReadonlySet<string>>(new Set());
+  const previousPracticeKey = useRef<string | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [isSavingAndLeaving, setIsSavingAndLeaving] = useState(false);
   const [isLoadingDraft, setIsLoadingDraft] = useState(true);
@@ -200,6 +203,19 @@ export default function AssessmentFlow() {
     [maturityModel, pathname]
   );
   const activePracticeStep = activePracticeLocation?.step ?? null;
+  useEffect(() => {
+    const currentKey = activePracticeStep?.key ?? null;
+    const previousKey = previousPracticeKey.current;
+    if (previousKey && previousKey !== currentKey) {
+      setDepartedPracticeKeys(keys => new Set([...keys, previousKey]));
+    }
+    previousPracticeKey.current = currentKey;
+  }, [activePracticeStep?.key]);
+  const warningPracticeKeys = useMemo(() => {
+    const keys = new Set(departedPracticeKeys);
+    if (activePracticeStep) keys.delete(activePracticeStep.key);
+    return keys;
+  }, [departedPracticeKeys, activePracticeStep]);
   const activeModuleLocation = useMemo(
     () =>
       maturityModel
@@ -253,7 +269,8 @@ export default function AssessmentFlow() {
         formData,
         evidenceFiles,
         loadedAssessment?.questionEvaluations,
-        respondentUpdatedResponseKeys
+        respondentUpdatedResponseKeys,
+        warningPracticeKeys
       ),
     [
       activeDimension,
@@ -263,6 +280,7 @@ export default function AssessmentFlow() {
       practiceSteps,
       loadedAssessment?.questionEvaluations,
       respondentUpdatedResponseKeys,
+      warningPracticeKeys,
     ]
   );
   const nextModule =
@@ -855,6 +873,8 @@ export default function AssessmentFlow() {
           .map((evaluation) => evaluation.responseKey)
       )
     );
+    previousPracticeKey.current = null;
+    setDepartedPracticeKeys(new Set());
     setFormData(hydrateQuestionResponses(draft.questionEvaluations));
     const restoredEvidence = hydrateEvidenceByField(
       draft.evidence,
@@ -1242,6 +1262,7 @@ export default function AssessmentFlow() {
           model={maturityModel}
           lockedPracticeKeys={new Set(practiceSteps.filter((step) => !capabilities.canEvaluate && modulePrerequisiteStates.get(step.module)?.locked).map((step) => step.key))}
           practiceSteps={practiceSteps}
+          warningPracticeKeys={warningPracticeKeys}
           formData={formData}
           evidenceFiles={evidenceFiles}
           activeTab={visibleDashboardTab}
@@ -1592,7 +1613,8 @@ function buildDimensionNavigationModules(
   formData: AssessmentData,
   evidenceFiles: AssessmentEvidenceByField,
   questionEvaluations: AssessmentResponse["questionEvaluations"],
-  respondentUpdatedResponseKeys: ReadonlySet<string>
+  respondentUpdatedResponseKeys: ReadonlySet<string>,
+  warningPracticeKeys: ReadonlySet<string>
 ): AssessmentNavigationModule[] {
   if (!dimension || dimensionIndex < 0) return [];
 
@@ -1605,11 +1627,13 @@ function buildDimensionNavigationModules(
       formData,
       evidenceFiles,
       questionEvaluations,
-      respondentUpdatedResponseKeys
+      respondentUpdatedResponseKeys,
+      warningPracticeKeys
     );
 
     return {
       ...sumAssessmentCompletionIssues(practices),
+      warningIssues: sumAssessmentCompletionIssues(practices.map(practice => practice.warningIssues!)),
       key: getModuleKey(dimensionIndex, moduleIndex, module.code),
       name: module.name,
       number: moduleIndex + 1,
@@ -1646,7 +1670,8 @@ function buildModuleNavigationItems(
   formData: AssessmentData,
   evidenceFiles: AssessmentEvidenceByField,
   questionEvaluations: AssessmentResponse["questionEvaluations"],
-  respondentUpdatedResponseKeys: ReadonlySet<string>
+  respondentUpdatedResponseKeys: ReadonlySet<string>,
+  warningPracticeKeys: ReadonlySet<string>
 ): AssessmentNavigationPractice[] {
   return moduleSteps.map((step, index) => {
     const progress = getAssessmentPracticeProgress(
@@ -1666,6 +1691,7 @@ function buildModuleNavigationItems(
       description: step.practice.description,
       order: index,
       ...progress,
+      warningIssues: getAssessmentCompletionWarnings(progress, warningPracticeKeys.has(step.key)),
       outstandingFlaggedCount: review.outstandingFlaggedCount,
     };
   });

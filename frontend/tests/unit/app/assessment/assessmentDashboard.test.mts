@@ -338,3 +338,31 @@ test("summarizes evaluator feedback overall and by dimension", () => {
   assert.equal(summary.dimensions[0].outstandingFlaggedCount, 1);
   assert.equal(summary.dimensions[0].adjustedCount, 1);
 });
+
+
+test("dimension warnings only include practices the respondent has moved past", () => {
+  const formData = { D1_M1_10_100: false };
+  const current = buildAssessmentDashboardSummary(model, steps, formData, emptyEvidence);
+  assert.equal(current.dimensions[0].missingRequiredAnswerCount, 1);
+  assert.equal(current.dimensions[0].warningIssues.missingRequiredAnswerCount, 0);
+  assert.equal(current.warningIssues.missingRequiredAnswerCount, 0);
+  assert.equal(current.dimensions[0].requiredComplete, false);
+
+  const departed = buildAssessmentDashboardSummary(model, steps, formData, emptyEvidence, {}, new Set(), new Set([steps[0].key]));
+  assert.equal(departed.dimensions[0].warningIssues.missingRequiredAnswerCount, 1);
+  assert.equal(departed.warningIssues.missingRequiredAnswerCount, 1);
+  assert.equal(departed.answeredCount, current.answeredCount);
+
+  const skipped = buildAssessmentDashboardSummary(model, steps, {}, emptyEvidence, {}, new Set(), new Set([steps[0].key]));
+  assert.equal(skipped.dimensions[0].status, "not-started");
+  assert.equal(skipped.warningIssues.missingRequiredAnswerCount, 2);
+});
+
+
+test("dashboard warning totals exclude upcoming practices in the same dimension", () => {
+  const upcoming = { ...steps[0], key: "upcoming", practice: { ...practice, id: 11 } };
+  const summary = buildAssessmentDashboardSummary(model, [...steps, upcoming], {}, emptyEvidence, {}, new Set(), new Set([steps[0].key]));
+  assert.equal(summary.dimensions[0].missingRequiredAnswerCount, 4);
+  assert.equal(summary.dimensions[0].warningIssues.missingRequiredAnswerCount, 2);
+  assert.equal(summary.warningIssues.missingRequiredAnswerCount, 2);
+});

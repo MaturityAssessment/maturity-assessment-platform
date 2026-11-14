@@ -9,6 +9,7 @@ import {
 } from "./assessmentFlowUtils";
 
 export type AssessmentNavigationPractice = AssessmentCompletionIssues & {
+  warningIssues?: AssessmentCompletionIssues;
   reviewProgress?: string;
   key: string;
   name: string;
@@ -24,6 +25,7 @@ export type AssessmentNavigationPractice = AssessmentCompletionIssues & {
 export type AssessmentNavigationModule = AssessmentCompletionIssues & {
   locked?: boolean;
   missingPrerequisites?: string[];
+  warningIssues?: AssessmentCompletionIssues;
   reviewProgress?: string;
   key: string;
   name: string;
@@ -160,7 +162,7 @@ function ModuleButton({
   compact?: boolean;
   onSelect: (moduleKey: string) => void;
 }) {
-  const completionIssue = module.reviewProgress ? "" : getAssessmentCompletionIssueLabel(module);
+  const completionIssue = module.reviewProgress ? "" : module.warningIssues && getAssessmentCompletionIssueLabel(module.warningIssues);
   const supportingLabel = module.locked
     ? `Complete first: ${(module.missingPrerequisites ?? []).join(", ")}`
     : module.totalPractices === 0
@@ -283,16 +285,18 @@ function PracticeList({
       )}
     >
       {practices.map((practice, index) => {
-        const state = getAssessmentPracticeRailState(
+        const railState = getAssessmentPracticeRailState(
           index,
           activeIndex,
           practice.isRequiredComplete
         );
+        const completionIssue = practice.reviewProgress ? "" : practice.warningIssues && getAssessmentCompletionIssueLabel(practice.warningIssues);
+        const state = railState === "behind-incomplete" && !completionIssue && !practice.reviewProgress
+          ? "following" : railState;
         const active = state === "current";
         const complete = state === "completed";
         const behindIncomplete = state === "behind-incomplete";
         const progressLabel = practice.reviewProgress || `${practice.answeredCount}/${practice.totalEnabledQuestions} answered`;
-        const completionIssue = practice.reviewProgress ? "" : getAssessmentCompletionIssueLabel(practice);
         const supportingLabel =
           practice.outstandingFlaggedCount > 0
             ? `${practice.outstandingFlaggedCount} change${

@@ -112,6 +112,18 @@ export interface AssessmentCompletionIssues {
   missingEvidenceCount: number;
 }
 
+// Warning visibility must not change completion or submission validation.
+export function getAssessmentCompletionWarnings(
+  issues: AssessmentCompletionIssues,
+  showWarnings: boolean
+): AssessmentCompletionIssues {
+  return showWarnings ? issues : {
+    missingRequiredAnswerCount: 0,
+    invalidAnswerCount: 0,
+    missingEvidenceCount: 0,
+  };
+}
+
 export function getPracticeCompletionIssues(
   step: AssessmentPracticeStep,
   formData: AssessmentData,

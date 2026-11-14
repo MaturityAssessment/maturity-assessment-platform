@@ -217,11 +217,11 @@ test("editing references in an open editor preserves a file identity received fr
 
 const NavigationMenu = load(resolve(sourceRoot, "app/assessment/AssessmentNavigationMenu.tsx")).default;
 const ModuleOverview = load(resolve(sourceRoot, "app/assessment/AssessmentModuleOverview.tsx")).default;
-const completionPractice = { key: "practice-1", name: "Control practice", order: 0, answeredCount: 6, totalEnabledQuestions: 6, isRequiredComplete: false, isFullyAnswered: false, outstandingFlaggedCount: 0, missingRequiredAnswerCount: 0, invalidAnswerCount: 0, missingEvidenceCount: 1 };
-const completionModule = { key: "module-1", name: "Control module", number: 1, answeredCount: 6, totalQuestions: 6, completedPracticeCount: 0, totalPractices: 1, isRequiredComplete: false, isFullyAnswered: false, outstandingFlaggedCount: 0, missingRequiredAnswerCount: 0, invalidAnswerCount: 0, missingEvidenceCount: 1, practices: [completionPractice] };
+const completionPractice = { warningIssues: { missingRequiredAnswerCount: 0, invalidAnswerCount: 0, missingEvidenceCount: 1 }, key: "practice-1", name: "Control practice", order: 0, answeredCount: 6, totalEnabledQuestions: 6, isRequiredComplete: false, isFullyAnswered: false, outstandingFlaggedCount: 0, missingRequiredAnswerCount: 0, invalidAnswerCount: 0, missingEvidenceCount: 1 };
+const completionModule = { warningIssues: completionPractice.warningIssues, key: "module-1", name: "Control module", number: 1, answeredCount: 6, totalQuestions: 6, completedPracticeCount: 0, totalPractices: 1, isRequiredComplete: false, isFullyAnswered: false, outstandingFlaggedCount: 0, missingRequiredAnswerCount: 0, invalidAnswerCount: 0, missingEvidenceCount: 1, practices: [completionPractice] };
 const navigationProps = { dimensionName: "Governance", modules: [completionModule], activeModuleKey: "module-1", activePracticeKey: "practice-1", onModuleSelect: noOp, onPracticeSelect: noOp };
 
-test("respondent navigation names missing evidence for current and previously visited practices", () => {
+test("respondent navigation names evidence blockers when warning issues are supplied", () => {
   const html = renderToStaticMarkup(createElement(NavigationMenu, navigationProps));
   assert.match(html, /aria-label="Module 1, Control module, Required evidence missing"/);
   assert.match(html, /aria-label="Control practice, Current · Required evidence missing"/);
@@ -239,8 +239,8 @@ test("module overview keeps answer progress while explaining the evidence blocke
 });
 
 test("navigation clears evidence warnings once supplied and preserves evaluator progress", () => {
-  const readyPractice = { ...completionPractice, missingEvidenceCount: 0, isRequiredComplete: true, isFullyAnswered: true };
-  const readyModule = { ...completionModule, missingEvidenceCount: 0, isRequiredComplete: true, isFullyAnswered: true, practices: [readyPractice] };
+  const readyPractice = { ...completionPractice, warningIssues: undefined, missingEvidenceCount: 0, isRequiredComplete: true, isFullyAnswered: true };
+  const readyModule = { ...completionModule, warningIssues: undefined, missingEvidenceCount: 0, isRequiredComplete: true, isFullyAnswered: true, practices: [readyPractice] };
   const html = renderToStaticMarkup(createElement(NavigationMenu, { ...navigationProps, modules: [readyModule] }));
   assert.doesNotMatch(html, /Required evidence missing/);
   assert.match(html, /All questions answered/);
@@ -358,4 +358,22 @@ test("lifecycle warnings appear below the chart only on overview with outdated e
   const evaluatorSidebar = evaluator.slice(evaluator.indexOf("<aside"), evaluator.indexOf("</aside>") + 8);
   assert.match(evaluatorSidebar, /aria-label="Evidence lifecycle"/);
   assert.ok(evaluatorSidebar.indexOf("Overall review progress") < evaluatorSidebar.indexOf('aria-label="Evidence lifecycle"'));
+});
+
+
+test("fresh module and upcoming practices show neutral progress instead of missing answers", () => {
+  const fresh = { ...completionPractice, warningIssues: undefined, answeredCount: 0, missingRequiredAnswerCount: 3, missingEvidenceCount: 0 };
+  const started = { ...fresh, key: "started", answeredCount: 1 };
+  const module = { ...completionModule, warningIssues: undefined, answeredCount: 1, missingRequiredAnswerCount: 5, practices: [fresh, started] };
+  const props = { modelName: "Model", dimension: { name: "Governance" }, module: { name: "Control module" }, moduleNumber: 1, moduleCount: 1, navigationModules: [module], activeModuleKey: "module-1", onOverview: noOp, onModuleSelect: noOp, onPracticeSelect: noOp };
+  const overview = renderToStaticMarkup(createElement(ModuleOverview, props));
+  assert.doesNotMatch(overview, /required answers? missing|Required evidence missing/);
+  assert.match(overview, /Not started/);
+  const navigation = renderToStaticMarkup(createElement(NavigationMenu, { ...navigationProps, modules: [module], activePracticeKey: "started" }));
+  assert.doesNotMatch(navigation, /required answers? missing|Incomplete ·|Required evidence missing/);
+  assert.match(navigation, /Current · 1\/6 answered/);
+  const warnings = { missingRequiredAnswerCount: 3, invalidAnswerCount: 0, missingEvidenceCount: 0 };
+  const departed = { ...fresh, warningIssues: warnings };
+  const afterLeaving = renderToStaticMarkup(createElement(ModuleOverview, { ...props, navigationModules: [{ ...module, warningIssues: warnings, practices: [departed, started] }] }));
+  assert.match(afterLeaving, /3 required answers missing/);
 });

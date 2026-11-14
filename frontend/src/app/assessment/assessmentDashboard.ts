@@ -11,6 +11,7 @@ import {
   isPracticeRequiredComplete,
   isDependentQuestionDisabled,
   getPracticeCompletionIssues,
+  getAssessmentCompletionWarnings,
   sumAssessmentCompletionIssues,
   type AssessmentCompletionIssues,
 } from "./assessmentFlowUtils.ts";
@@ -25,6 +26,7 @@ export type AssessmentDimensionSummary = AssessmentCompletionIssues & {
   key: string;
   dimension: Dimension;
   practiceCount: number;
+  warningIssues: AssessmentCompletionIssues;
   answeredCount: number;
   totalCount: number;
   unansweredCount: number;
@@ -37,6 +39,7 @@ export type AssessmentDimensionSummary = AssessmentCompletionIssues & {
 };
 
 export type AssessmentDashboardSummary = AssessmentCompletionIssues & {
+  warningIssues: AssessmentCompletionIssues;
   answeredCount: number;
   totalCount: number;
   unansweredCount: number;
@@ -57,7 +60,8 @@ export function buildAssessmentDashboardSummary(
   formData: AssessmentData,
   evidenceByField: EvidenceByField,
   questionEvaluations: Record<string, QuestionEvaluationResponse> = {},
-  respondentUpdatedResponseKeys: ReadonlySet<string> = new Set()
+  respondentUpdatedResponseKeys: ReadonlySet<string> = new Set(),
+  warningPracticeKeys: ReadonlySet<string> = new Set()
 ): AssessmentDashboardSummary {
   const dimensions = model.dimensions.map((dimension, dimensionIndex) => {
     const dimensionSteps = practiceSteps.filter(
@@ -109,6 +113,11 @@ export function buildAssessmentDashboardSummary(
     return {
       ...sumAssessmentCompletionIssues(dimensionSteps.map((step) =>
         getPracticeCompletionIssues(step, formData, evidenceByField))),
+      warningIssues: sumAssessmentCompletionIssues(dimensionSteps.map(step =>
+        getAssessmentCompletionWarnings(
+          getPracticeCompletionIssues(step, formData, evidenceByField),
+          warningPracticeKeys.has(step.key)
+        ))),
       key: dimension.id || `dimension-${dimensionIndex}`,
       dimension,
       practiceCount: dimensionSteps.length,
@@ -154,6 +163,7 @@ export function buildAssessmentDashboardSummary(
 
   return {
     ...totals,
+    warningIssues: sumAssessmentCompletionIssues(dimensions.map(dimension => dimension.warningIssues)),
     ...sumAssessmentCompletionIssues(
       dimensions.filter((dimension) => dimension.status !== "not-started")
     ),
