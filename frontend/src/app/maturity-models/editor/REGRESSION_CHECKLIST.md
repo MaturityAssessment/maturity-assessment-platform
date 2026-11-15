@@ -172,3 +172,20 @@ or question configuration.
   contribute zero to completion and no score to aggregation.
 - Results and exports show completion and withholding. Withheld elements have no
   score or maturity level. Equality with either minimum passes.
+
+## Conditional gating
+
+- Rules use version 1 with outer AND selection conditions and same-child AND
+  comparisons; changing one scope must not silently change the other.
+- Every selector/reference displays and stores the full hierarchical identifier.
+  Parent renames, prefix swaps, hydration and revert preserve target identities.
+- Deleting a target leaves a blocking reference error rather than retargeting the
+  item inheriting its code. Option deletions/type changes invalidate incompatible
+  answer predicates.
+- Block question coverage/count, wrong units/operators, incompatible answer
+  values, OR/NOT, and relative/out-of-owner/descendant references.
+- Literal inputs retain invalid drafts as blocking errors. Choice predicates use
+  stable option IDs even when scores/labels repeat.
+- Preserve rules through drafts, source review, model versions and Excel.
+- Withhold wins over all flags; referenced missing values compare false, even
+  with inequality. Visible empty selections retain Any/Every/No semantics.

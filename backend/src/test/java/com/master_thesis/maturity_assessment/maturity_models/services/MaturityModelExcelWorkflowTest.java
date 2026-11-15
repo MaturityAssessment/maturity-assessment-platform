@@ -69,6 +69,19 @@ class MaturityModelExcelWorkflowTest {
         practice.setChildStateGatingRules(List.of(stateRule));
         module.setChildStateGatingRules(List.of(stateRule));
         dimension.setChildStateGatingRules(List.of(stateRule));
+        try {
+            var condition = new ObjectMapper().readValue("""
+                    {"version":1,"effect":"flagForReview","when":{"kind":"and","conditions":[
+                      {"kind":"children","quantifier":"any","selection":{},"where":{"kind":"and","conditions":[
+                        {"kind":"comparison","field":"score","operator":"<","right":{"kind":"literal","value":0.5}}
+                      ]}}
+                    ]}}
+                    """, com.master_thesis.maturity_assessment.maturity_models.models.ConditionalGatingRule.class);
+            practice.setConditionalGatingRules(List.of(condition));
+            module.setConditionalGatingRules(List.of(condition));
+            dimension.setConditionalGatingRules(List.of(condition));
+        } catch (Exception exception) { throw new AssertionError(exception); }
+
         practice.getQuestions().getFirst().setBooleanCorrectAnswer(false);
         // Both forms of dependency references can arrive from model exports.
         practice.getQuestions().getFirst().setId(501L);
@@ -245,6 +258,7 @@ class MaturityModelExcelWorkflowTest {
     @Test
     void invalidEdits_returnActionableErrors() throws Exception {
         for (String[] change : List.of(
+                new String[]{"Practices", "practiceConditionalGatingRules", "[{\"version\":1,\"effect\":\"withheld\",\"when\":{\"kind\":\"and\",\"conditions\":[{\"kind\":\"children\",\"quantifier\":\"any\",\"selection\":{\"codes\":[\"Q1_APD\"]},\"where\":{\"kind\":\"and\",\"conditions\":[{\"kind\":\"comparison\",\"field\":\"score\",\"operator\":\"<\",\"right\":{\"kind\":\"literal\",\"value\":0.5}}]}}]}}]", "full identifiers"},
                 new String[]{"Model", "modelAggregationRule", "invalid", "modelAggregationRule"},
                 new String[]{"Dimensions", "dimensionMappingRules", "not JSON", "dimensionMappingRules"},
                 new String[]{"Practices", "practiceMinimumCoverage", "101", "practiceMinimumCoverage"},

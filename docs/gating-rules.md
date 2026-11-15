@@ -70,3 +70,102 @@ minimum wins over all flag effects, regardless of rule order. A flag retains the
 score, maturity level and completion percentages; it contributes normally to
 parent aggregation and completion. The flag itself has no review workflow or
 other operational consequence. It is stored and displayed in results/exports.
+
+## Conditional rules (V56)
+
+`conditionalGatingRules` adds a versioned, typed condition tree alongside the
+existing minima and child-state rules. These configurations remain independent;
+any matching withhold effect or failed minimum wins over every flag effect.
+Conditional rules are supported on practices, modules and dimensions.
+
+```json
+{
+  "version": 1,
+  "when": {
+    "kind": "and",
+    "conditions": [{
+      "kind": "children",
+      "quantifier": "any",
+      "selection": {"codes": ["D1.M1.P1", "D1.M1.P2"]},
+      "where": {
+        "kind": "and",
+        "conditions": [
+          {"kind": "comparison", "field": "coverage", "operator": ">",
+           "right": {"kind": "literal", "value": 70}},
+          {"kind": "comparison", "field": "score", "operator": "==",
+           "right": {"kind": "field", "code": "D1.M1.P3", "field": "score"}}
+        ]
+      }
+    }]
+  },
+  "effect": "flagForReview"
+}
+```
+
+This rule is owned by `D1.M1`. One of P1/P2 must have both coverage above 70%
+and the same score as P3. A separate entry in the outer `conditions` array is a
+separate quantified selection; different children can satisfy those entries.
+Every outer entry must pass. Every comparison in a child's `where` must pass on
+that same child. OR, NOT, nested selections, expressions, arithmetic, maturity
+levels and cross-owner references are rejected in version 1.
+
+All `code` and `codes` values use the full, case-sensitive public path:
+`dimension.module`, `dimension.module.practice`, or
+`dimension.module.practice.question`. Relative suffixes are invalid. References
+are confined to direct children of the rule owner, so children always finish
+evaluation before their parent reads them. Omit `codes` to select all visible
+direct children. Explicit lists must be nonempty, contain distinct valid full
+paths, and may select a subset. The editor rewrites references by item identity
+when codes or ancestor codes change, including simultaneous prefix swaps. A
+deleted target stays invalid instead of retargeting the child that inherits its
+code. Model saves reject dangling references. Renaming through the API or Excel
+requires updating the full paths in the same document.
+
+Fields and operators:
+
+| Field | Available on | Operators | Literal format |
+| --- | --- | --- | --- |
+| `score` | All child types | `< <= == != >= >` | Normalized number, 0–1 |
+| `coverage` | Practices/modules | `< <= == != >= >` | Percentage, 0–100 |
+| `includedCount` | Practices/modules | `< <= == != >= >` | Existing completion percentage, 0–100 |
+| `state` | All child types | `is isNot` | `computed`, `withheld`, `flagForReview`; questions also `unanswered`, `unscored` |
+| `answered` | Questions | `== !=` | Boolean |
+| `answer` | Questions | Depends on response type | Raw answer, described below |
+
+The right operand is either `{"kind":"literal","value":...}` or
+`{"kind":"field","code":"full.path","field":"score"}`. Field references
+are limited to the **same numeric field** on one direct child. They read its
+final value, even if that child was not part of the left-hand selection.
+
+Boolean answers use true/false and equality. Scale, numeric and percentage answers
+use integer thresholds within the configured response range and numeric
+operators. Text answers use case-sensitive, exact equality/inequality. Single
+choice answers use stable option IDs with equality/inequality. Multiple selection
+uses `contains` with one option ID or `containsAny`/`containsAll` with a nonempty
+array of distinct IDs. IDs, not labels, indexes or assigned scores, identify the
+options; multiple-selection choices now also preserve stable IDs. An empty
+selection response remains an answered question with an empty ID set. N/A uses
+`{"notApplicable":true}` with equality/inequality when N/A is enabled. N/A's
+configured numeric score remains independently available through `score`.
+Legacy choice answers without an option index can be identified only if their
+score uniquely identifies an option; ambiguous answers have no comparable answer
+identity. Accepted string representations of boolean/integer answers are
+normalized by question type; numeric-looking free text remains text.
+
+Missing operands make **every comparison false**, including `!=` and `isNot`.
+A withheld score is absent, not zero. Its stored coverage/includedCount remain
+readable. A reference to an unpresented child is absent. Unpresented children are
+removed from selections; Any is false and Every/No are true on an empty runtime
+selection. A flag retains its score and still matches `state is computed`.
+Numeric comparisons use tolerance 1e-9 for normalized scores and 1e-7 for
+percentage metrics. Rounding for display never determines rule matching.
+
+Unknown object fields, unsupported versions, mixed/incompatible answer types,
+invalid operators, missing required values and wrong units are rejected with
+`INVALID_GATING_RULES`. Explicit answer selections can restrict mixed question
+sets to compatible types. Model validation permits at most 100 conditional
+rules per owner, 50 selection clauses per rule and 50 comparisons per clause.
+Excel appends optional `dimensionConditionalGatingRules`,
+`moduleConditionalGatingRules`, and `practiceConditionalGatingRules` JSON columns;
+older workbooks default to empty rules. V56 adds JSONB columns with empty-array
+defaults, preserving all existing models and assessment results.

@@ -84,6 +84,17 @@ class MaturityModelExcelPersistenceIntegrationTest {
         condition.setType("likert"); condition.setPoints(List.of(3, 4, 5));
         dependent.setDependencyCondition(condition);
 
+        String firstQuestion = dimension.getCode() + "." + module.getCode() + "." + practice.getCode() + "." + practice.getQuestions().getFirst().getCode();
+        String secondQuestion = dimension.getCode() + "." + module.getCode() + "." + practice.getCode() + "." + practice.getQuestions().getLast().getCode();
+        var conditional = new ObjectMapper().readValue("""
+                {"version":1,"effect":"flagForReview","when":{"kind":"and","conditions":[
+                  {"kind":"children","quantifier":"any","selection":{"codes":["%s"]},"where":{"kind":"and","conditions":[
+                    {"kind":"comparison","field":"score","operator":"<","right":{"kind":"field","code":"%s","field":"score"}}
+                  ]}}
+                ]}}
+                """.formatted(firstQuestion, secondQuestion), ConditionalGatingRule.class);
+        practice.setConditionalGatingRules(List.of(conditional));
+
         var original = models.createFromEditor(editor);
         entityManager.flush();
         entityManager.clear();
@@ -125,6 +136,7 @@ class MaturityModelExcelPersistenceIntegrationTest {
         assertTrue(savedPractice.getRequiresEvidence());
         assertEquals(practice.getEvidenceRequirements(), savedPractice.getEvidenceRequirements());
         assertEquals(practice.getMinimumCoverage(), savedPractice.getMinimumCoverage());
+        assertEquals(List.of(conditional), savedPractice.getConditionalGatingRules());
         assertEquals("Edited question from Excel", savedPractice.getQuestions().getFirst().getText());
         assertEquals(condition, savedPractice.getQuestions().get(1).getDependencyCondition());
         assertEquals(savedPractice.getQuestions().getFirst().getCode(), savedPractice.getQuestions().getLast().getDependsOnQuestionCode());

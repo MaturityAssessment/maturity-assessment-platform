@@ -152,7 +152,7 @@ export default function DimensionEditor({
           {
             id: "gating",
             label: "Gating rules",
-            count: (dimension.childStateGatingRules?.length ?? 0) + Number(dimension.minimumCoverage > 0) + Number(dimension.minimumIncludedCount > 0),
+            count: (dimension.conditionalGatingRules?.length ?? 0) + (dimension.childStateGatingRules?.length ?? 0) + Number(dimension.minimumCoverage > 0) + Number(dimension.minimumIncludedCount > 0),
             content: (
               <GatingRuleField
                 idPrefix={`dimension-${dimension.clientKey}`}
@@ -160,6 +160,8 @@ export default function DimensionEditor({
                 isPractice={false}
                 childType="module"
                 childStateGatingRules={dimension.childStateGatingRules}
+                conditionalGatingRules={dimension.conditionalGatingRules}
+                childOptions={dimension.modules.map(item => ({ code: `${dimension.code}.${item.code}`, name: item.name }))}
                 minimumCoverage={dimension.minimumCoverage}
                 minimumIncludedCount={dimension.minimumIncludedCount}
                 onChange={(thresholds) => update({ ...dimension, ...thresholds })}

@@ -16,7 +16,7 @@ public final class QuestionDependencies {
     public record Answer(Object value, Integer choiceIndex) {}
 
     public static void normalizeChoices(QuestionDTO question) {
-        if (!"multiple_choice".equalsIgnoreCase(question.getType()) || question.getChoices() == null) return;
+        if (!("multiple_choice".equalsIgnoreCase(question.getType()) || "multiple_selection".equalsIgnoreCase(question.getType())) || question.getChoices() == null) return;
         Set<String> ids = new HashSet<>();
         for (QuestionChoiceDTO choice : question.getChoices()) {
             if (choice == null) fail(question, "has an invalid answer option.");

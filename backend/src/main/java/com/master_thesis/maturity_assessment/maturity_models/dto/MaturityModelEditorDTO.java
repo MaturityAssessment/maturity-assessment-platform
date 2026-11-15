@@ -35,6 +35,8 @@ public class MaturityModelEditorDTO {
         private Double minimumIncludedCount = 0.0;
 
         private List<com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule> childStateGatingRules = new java.util.ArrayList<>();
+
+        private List<com.master_thesis.maturity_assessment.maturity_models.models.ConditionalGatingRule> conditionalGatingRules = new java.util.ArrayList<>();
         private List<EditorModuleDTO> modules = new ArrayList<>();
     }
 
@@ -57,6 +59,8 @@ public class MaturityModelEditorDTO {
         private Double minimumIncludedCount = 0.0;
 
         private List<com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule> childStateGatingRules = new java.util.ArrayList<>();
+
+        private List<com.master_thesis.maturity_assessment.maturity_models.models.ConditionalGatingRule> conditionalGatingRules = new java.util.ArrayList<>();
         private List<EditorPracticeDTO> practices = new ArrayList<>();
     }
 
@@ -73,6 +77,8 @@ public class MaturityModelEditorDTO {
         private Double minimumIncludedCount = 0.0;
 
         private List<com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule> childStateGatingRules = new java.util.ArrayList<>();
+
+        private List<com.master_thesis.maturity_assessment.maturity_models.models.ConditionalGatingRule> conditionalGatingRules = new java.util.ArrayList<>();
         private List<EditorQuestionDTO> questions = new ArrayList<>();
     }
 

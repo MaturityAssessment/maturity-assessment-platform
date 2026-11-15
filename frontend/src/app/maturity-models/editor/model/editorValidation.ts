@@ -1,3 +1,4 @@
+import { conditionalGatingIssues, gatingChildren } from "./conditionalGating.ts";
 import { dependencyConditionError } from "../../../../lib/questionDependencies.ts";
 import type {
   MaturityModelEditorDocument,
@@ -203,6 +204,9 @@ export function validateDocument(
         selection: dimensionSelection,
       });
     }
+    for (const message of conditionalGatingIssues(dimension.conditionalGatingRules, gatingChildren(document, dimension.clientKey))) {
+      add({ step: "structure", severity: "error", message, selection: dimensionSelection });
+    }
     if (
       hasGatingThresholdIssues(dimension)
     ) {
@@ -268,6 +272,9 @@ export function validateDocument(
           selection: moduleSelection,
         });
       }
+      for (const message of conditionalGatingIssues(module.conditionalGatingRules, gatingChildren(document, module.clientKey))) {
+        add({ step: "structure", severity: "error", message, selection: moduleSelection });
+      }
       if (
         hasGatingThresholdIssues(module)
       ) {
@@ -284,6 +291,9 @@ export function validateDocument(
           type: "practice",
           key: practice.clientKey,
         };
+        for (const message of conditionalGatingIssues(practice.conditionalGatingRules, gatingChildren(document, practice.clientKey))) {
+          add({ step: "structure", severity: "error", message, selection: practiceSelection });
+        }
         if (
           hasGatingThresholdIssues(practice)
         ) {

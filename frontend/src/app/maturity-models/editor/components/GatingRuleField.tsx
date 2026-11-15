@@ -1,14 +1,17 @@
-import type { AggregationRule, ChildStateGatingRule } from "@/api/types";
+import ConditionalGatingField from "./ConditionalGatingField";
+import type { GatingChildOption } from "../model/conditionalGating";
+import type { AggregationRule, ChildStateGatingRule, ConditionalGatingRule } from "@/api/types";
 import { inputClass, labelClass } from "./FormFields";
 
-type Thresholds = { minimumCoverage: number; minimumIncludedCount: number; childStateGatingRules?: ChildStateGatingRule[] };
+type Thresholds = { minimumCoverage: number; minimumIncludedCount: number; conditionalGatingRules?: ConditionalGatingRule[]; childStateGatingRules?: ChildStateGatingRule[] };
 
 export default function GatingRuleField({
-  idPrefix, aggregationRule, isPractice, minimumCoverage, minimumIncludedCount, childType = "question", childStateGatingRules = [], onChange,
+  idPrefix, aggregationRule, isPractice, minimumCoverage, minimumIncludedCount, childType = "question", childStateGatingRules = [], conditionalGatingRules = [], childOptions = [], onChange,
 }: Thresholds & {
   idPrefix: string;
   aggregationRule: AggregationRule;
   isPractice: boolean;
+  childOptions?: GatingChildOption[];
   childType?: "question" | "practice" | "module";
   onChange: (thresholds: Thresholds) => void;
 }) {
@@ -75,6 +78,7 @@ export default function GatingRuleField({
           </div>
         </fieldset>)}
       </section>
+      <ConditionalGatingField value={conditionalGatingRules} childOptions={childOptions} childType={childType} onChange={rules => onChange({ minimumCoverage, minimumIncludedCount, childStateGatingRules, conditionalGatingRules: rules })} />
       <p className="mt-3 text-xs leading-5 text-gray-500">A result equal to the minimum passes. An element with no included children is withheld even when both minima are disabled.</p>
     </fieldset>
   );

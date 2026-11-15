@@ -2501,6 +2501,63 @@ class AssessmentServiceLifecycleTest {
         assertEquals("flagForReview", element(submitForGating(model, answers), "dimension", "D1").state());
     }
 
+    private com.master_thesis.maturity_assessment.maturity_models.models.ConditionalGatingRule conditionalRule(String code, String field, String operator, String rightJson, String effect) throws Exception {
+        return new ObjectMapper().readValue("""
+                {"version":1,"effect":"%s","when":{"kind":"and","conditions":[
+                  {"kind":"children","quantifier":"any","selection":{"codes":["%s"]},
+                   "where":{"kind":"and","conditions":[{"kind":"comparison","field":"%s","operator":"%s","right":%s}]}}
+                ]}}
+                """.formatted(effect, code, field, operator, rightJson), com.master_thesis.maturity_assessment.maturity_models.models.ConditionalGatingRule.class);
+    }
+
+    @Test
+    void conditionalGatingReadsFinalDirectChildScoresAndWithholdsBeforeParentAggregation() throws Exception {
+        MaturityModel model = hierarchicalAggregationModel();
+        var dimension = model.getDimensions().getFirst();
+        var target = dimension.getModules().getFirst();
+        target.setConditionalGatingRules(List.of(conditionalRule("D1.M1.P1", "score", "<",
+                "{\"kind\":\"field\",\"code\":\"D1.M1.P2\",\"field\":\"score\"}", "withheld")));
+        var response = submitForGating(model, partialHierarchyAnswers());
+        assertEquals("withheld", element(response, "module", "M1").state());
+        assertNull(element(response, "module", "M1").normalizedScore());
+        assertEquals(50.0, element(response, "dimension", "D1").includedCount());
+        assertEquals(1.0, element(response, "dimension", "D1").normalizedScore());
+    }
+
+    @Test
+    void conditionalAnswerRulesUseTheRawAnswerRatherThanItsAssignedScore() throws Exception {
+        MaturityModel model = booleanScoringModel();
+        var p = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        // Q1002 is configured with false as its correct answer; its raw false answer scores 1.
+        p.setConditionalGatingRules(List.of(conditionalRule("D1.M1.P1.Q1002", "answer", "==",
+                "{\"kind\":\"literal\",\"value\":false}", "flagForReview")));
+        var response = submitForGating(model, Map.of("D1_M1_101_1001", true, "D1_M1_101_1002", false));
+        assertEquals("flagForReview", element(response, "practice", "P1").state());
+        assertEquals(1.0, element(response, "practice", "P1").normalizedScore());
+        assertEquals(100.0, response.getIncludedCount());
+        p.setMinimumIncludedCount(100.0);
+        response = submitForGating(model, Map.of("D1_M1_101_1002", false));
+        assertEquals("withheld", element(response, "practice", "P1").state()); // minimum wins over flag
+    }
+
+    @Test
+    void conditionalAnswerRulesDistinguishOptionsWithIdenticalScoresAndExcludeUnpresentedQuestions() throws Exception {
+        MaturityModel model = booleanScoringModel();
+        var p = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        var parent = p.getQuestions().getFirst(); parent.setType("multiple_choice");
+        parent.setChoiceOptions("[{\"id\":\"a\",\"label\":\"First\",\"score\":0.5},{\"id\":\"b\",\"label\":\"Second\",\"score\":0.5}]");
+        p.setConditionalGatingRules(List.of(conditionalRule("D1.M1.P1.Q1001", "answer", "==", "{\"kind\":\"literal\",\"value\":\"b\"}", "withheld")));
+        var draft = draftAssessment();
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(USER_ID, MODEL_ID, AssessmentStatus.DRAFT)).thenReturn(Optional.of(draft));
+        when(dimensionResultRepository.findByAssessmentId(ASSESSMENT_ID)).thenReturn(List.of());
+        var incoming = request(Map.of("D1_M1_101_1001", 0.5));
+        incoming.getQuestionResponses().get("D1_M1_101_1001").setChoiceIndex(0);
+        assertEquals("computed", element(assessmentService.createAssessment(incoming, user), "practice", "P1").state());
+        incoming.getQuestionResponses().get("D1_M1_101_1001").setChoiceIndex(1);
+        assertEquals("withheld", element(assessmentService.createAssessment(incoming, user), "practice", "P1").state());
+    }
+
     private Question question(Long id) {
         Question question = new Question();
         question.setId(id);

@@ -520,3 +520,18 @@ are `withheld`/`flagForReview`. Invalid rules return `400 INVALID_GATING_RULES`.
 Rules inspect visible direct children only. Flagged children also match computed
 and retain their score and completion contributions. Withholding from any rule
 or minimum always wins. Flags do not trigger review actions.
+
+### Conditional gating (V56)
+
+Practices, modules and dimensions accept `conditionalGatingRules`, an optional
+array defaulting to empty. Rules contain `version: 1`, an AND-only `when` tree,
+and `effect: "withheld" | "flagForReview"`. Every selection uses Any/Every/No;
+its comparisons all bind to the same child. Different selection clauses bind
+independently. Full public references such as `D1.M1.P1` or `D1.M1.P1.Q1` are
+required in both selection `codes` and right-operand `code`. References must
+identify direct children of the rule owner. Questions expose score, answer,
+state and answered; aggregate children expose score, state, coverage and
+includedCount. Only matching numeric fields can be compared by reference.
+
+Invalid schemas, fields, operators, values or references return
+`400 INVALID_GATING_RULES`. See the [schema, examples and evaluation semantics](../../../../docs/gating-rules.md#conditional-rules-v56).

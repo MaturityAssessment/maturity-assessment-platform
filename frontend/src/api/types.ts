@@ -157,6 +157,7 @@ export interface Practice {
   weight?: number;
   aggregationRule?: AggregationRule;
   childStateGatingRules?: ChildStateGatingRule[];
+  conditionalGatingRules?: ConditionalGatingRule[];
   minimumCoverage?: number;
   minimumIncludedCount?: number;
   questions: Question[];
@@ -181,6 +182,7 @@ export interface Module {
   weight?: number; // For aggregation, defaults to 1.0
   aggregationRule?: AggregationRule;
   childStateGatingRules?: ChildStateGatingRule[];
+  conditionalGatingRules?: ConditionalGatingRule[];
   minimumCoverage?: number;
   minimumIncludedCount?: number;
   /** 0-based order within the dimension (from API / persisted). */
@@ -196,6 +198,7 @@ export interface Dimension {
   aggregationRule?: AggregationRule;
   mappingRules?: MappingRule[];
   childStateGatingRules?: ChildStateGatingRule[];
+  conditionalGatingRules?: ConditionalGatingRule[];
   minimumCoverage?: number;
   minimumIncludedCount?: number;
   /** 0-based order within the model (from API / persisted). */
@@ -634,6 +637,7 @@ export interface ModelEditorPractice {
   weight: number;
   aggregationRule: AggregationRule;
   childStateGatingRules?: ChildStateGatingRule[];
+  conditionalGatingRules?: ConditionalGatingRule[];
   minimumCoverage: number;
   minimumIncludedCount: number;
   questions: ModelEditorQuestion[];
@@ -659,6 +663,7 @@ export interface ModelEditorModule {
   weight: number;
   aggregationRule: AggregationRule;
   childStateGatingRules?: ChildStateGatingRule[];
+  conditionalGatingRules?: ConditionalGatingRule[];
   minimumCoverage: number;
   minimumIncludedCount: number;
   practices: ModelEditorPractice[];
@@ -674,6 +679,7 @@ export interface ModelEditorDimension {
   aggregationRule: AggregationRule;
   mappingRules: MappingRule[];
   childStateGatingRules?: ChildStateGatingRule[];
+  conditionalGatingRules?: ConditionalGatingRule[];
   minimumCoverage: number;
   minimumIncludedCount: number;
   modules: ModelEditorModule[];
@@ -751,5 +757,23 @@ export interface AssessmentElementResult {
 export interface ChildStateGatingRule {
   quantifier: "any" | "every" | "no";
   state: "computed" | "withheld";
+  effect: "withheld" | "flagForReview";
+}
+
+export type GatingNumericField = "score" | "coverage" | "includedCount";
+export type GatingField = GatingNumericField | "state" | "answer" | "answered";
+export type GatingOperator = "<" | "<=" | "==" | "!=" | ">=" | ">" | "is" | "isNot" | "contains" | "containsAny" | "containsAll";
+export type GatingOperand = { kind: "literal"; value: number | string | boolean | string[] | { notApplicable: true } }
+  | { kind: "field"; code: string; field: GatingNumericField };
+export interface GatingComparison { kind: "comparison"; field: GatingField; operator: GatingOperator; right: GatingOperand }
+export interface GatingChildCondition {
+  kind: "children";
+  quantifier: "any" | "every" | "no";
+  selection: { codes?: string[] };
+  where: { kind: "and"; conditions: GatingComparison[] };
+}
+export interface ConditionalGatingRule {
+  version: 1;
+  when: { kind: "and"; conditions: GatingChildCondition[] };
   effect: "withheld" | "flagForReview";
 }

@@ -423,3 +423,11 @@ test("child-state gating controls use the direct child type and show flagged res
   const result = renderToStaticMarkup(createElement(Completion, { elements: [{ elementType: "module", name: "Module", state: "flagForReview", includedCount: 75, coverage: 75 }] }));
   assert.match(result, /Flag for review/); assert.match(result, /75\.0%/);
 });
+
+test("conditional creation controls expose full references and distinguish selection conditions from same-child comparisons", () => {
+  const Conditional = load(resolve(sourceRoot, "app/maturity-models/editor/components/ConditionalGatingField.tsx")).default;
+  const html = renderToStaticMarkup(createElement(Conditional, { childType: "practice", childOptions: [{ code: "D1.M1.P1", name: "First" }, { code: "D1.M1.P2", name: "Second" }], value: [{ version: 1, effect: "flagForReview", when: { kind: "and", conditions: [{ kind: "children", quantifier: "any", selection: { codes: ["D1.M1.P1"] }, where: { kind: "and", conditions: [{ kind: "comparison", field: "score", operator: "==", right: { kind: "field", code: "D1.M1.P2", field: "score" } }] } }] } }], onChange: noOp }));
+  assert.match(html, /D1\.M1\.P1/); assert.match(html, /D1\.M1\.P2/);
+  assert.match(html, /Add comparison for this child/); assert.match(html, /add selection condition/);
+  assert.match(html, /Full code identifier/);
+});

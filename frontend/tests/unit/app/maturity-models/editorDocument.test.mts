@@ -167,8 +167,8 @@ test("multiple selection raw values survive editor serialization and hydration",
   const question = document.dimensions[0].modules[0].practices[0].questions[0];
   question.type = "multiple_selection";
   question.choices = [
-    { label: "Policy", score: 0, rawValue: 2.5 },
-    { label: "Training", score: 0, rawValue: 7.5 },
+    { id: "policy", label: "Policy", score: 0, rawValue: 2.5 },
+    { id: "training", label: "Training", score: 0, rawValue: 7.5 },
   ];
   const serialized = serializeDocument(document);
   const restored = hydrateDocument(serialized as unknown as typeof document, false);

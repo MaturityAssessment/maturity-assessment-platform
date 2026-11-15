@@ -22,5 +22,7 @@ public class PracticeDTO {
 
     private List<com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule> childStateGatingRules = new java.util.ArrayList<>();
 
+    private List<com.master_thesis.maturity_assessment.maturity_models.models.ConditionalGatingRule> conditionalGatingRules = new java.util.ArrayList<>();
+
     private List<QuestionDTO> questions;
 }

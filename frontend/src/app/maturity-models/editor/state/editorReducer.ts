@@ -1,3 +1,4 @@
+import { repairConditionalReferences } from "../model/conditionalGating.ts";
 import type { MaturityModelEditorDocument } from "@/api/types";
 import type {
   EditorEntryChoice,
@@ -75,7 +76,7 @@ export function editorReducer(
     case "replaceDocument":
       return {
         ...state,
-        document: action.document,
+        document: state.document ? repairConditionalReferences(state.document, action.document) : action.document,
         selection:
           action.selection === undefined ? state.selection : action.selection,
         dirty: true,

@@ -1,3 +1,4 @@
+import { encodeConditionalReferences, decodeConditionalReferences } from "./conditionalGating.ts";
 import { MODULE_BADGE_REFERENCE_FIELDS } from "./moduleBadges.ts";
 import { moduleRelationshipIssues, normalizeModuleRelationships, synchronizeModuleRelationships, SYMMETRIC_RELATION_FIELDS } from "./moduleRelationships.ts";
 import { hasValidModulePrerequisiteOrder, MODULE_PREREQUISITE_ORDER_MESSAGE, visibleModuleDependents } from "./modulePrerequisites.ts";
@@ -114,6 +115,8 @@ export function revertEditorChange(current: MaturityModelEditorDocument, baselin
   }
 
   const source = structuredClone(baseline);
+  encodeConditionalReferences(next);
+  encodeConditionalReferences(source);
   encodeReferences(next.dimensions);
   encodeReferences(source.dimensions);
   const siblings = list(next, entry);
@@ -155,6 +158,7 @@ export function revertEditorChange(current: MaturityModelEditorDocument, baselin
     }
   }
   finishReferences(next.dimensions, deleted);
+  decodeConditionalReferences(next);
   for (const dimension of next.dimensions) {
     const edited = dimension.modules.find((module) => module.clientKey === entry.item?.key);
     dimension.modules = edited ? synchronizeModuleRelationships(dimension.modules, edited.code) : normalizeModuleRelationships(dimension.modules);

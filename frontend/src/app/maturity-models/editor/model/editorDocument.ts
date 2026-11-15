@@ -7,6 +7,7 @@ import type {
   ModelEditorPractice,
   ModelEditorQuestion,
 } from "@/api/types";
+import { repairConditionalReferences } from "./conditionalGating.ts";
 import { normalizeModuleRelationships } from "./moduleRelationships.ts";
 import { codePrefix, renumberSiblingCodes } from "./editorCodes.ts";
 
@@ -84,6 +85,7 @@ export function emptyPractice(
     minimumCoverage: 0,
     minimumIncludedCount: 0,
     childStateGatingRules: [],
+    conditionalGatingRules: [],
     requiresEvidence: false,
     evidenceRequirements: [],
     questions: [emptyQuestion(questionOrdinal)],
@@ -105,6 +107,7 @@ export function emptyModule(
     minimumCoverage: 0,
     minimumIncludedCount: 0,
     childStateGatingRules: [],
+    conditionalGatingRules: [],
     visible: true,
     prerequisiteModuleCodes: [],
     coRequisiteModuleCodes: [],
@@ -133,6 +136,7 @@ export function emptyDimension(
     minimumCoverage: 0,
     minimumIncludedCount: 0,
     childStateGatingRules: [],
+    conditionalGatingRules: [],
     modules: [
       emptyModule(moduleOrdinal, practiceOrdinal, questionOrdinal),
     ],
@@ -184,6 +188,7 @@ export function hydrateDocument(
       minimumCoverage: dimension.minimumCoverage ?? 0,
       minimumIncludedCount: dimension.minimumIncludedCount ?? 0,
       childStateGatingRules: (dimension.childStateGatingRules ?? []).map(rule => ({ ...rule })),
+      conditionalGatingRules: structuredClone(dimension.conditionalGatingRules ?? []),
       mappingRules:
         dimension.mappingRules?.length === levels.length
           ? dimension.mappingRules.map((rule, index) => ({
@@ -208,6 +213,7 @@ export function hydrateDocument(
         minimumCoverage: module.minimumCoverage ?? 0,
         minimumIncludedCount: module.minimumIncludedCount ?? 0,
         childStateGatingRules: (module.childStateGatingRules ?? []).map(rule => ({ ...rule })),
+        conditionalGatingRules: structuredClone(module.conditionalGatingRules ?? []),
         practices: (module.practices ?? []).map((practice) => ({
           ...withoutLegacyGating(practice),
           description: practice.description ?? "",
@@ -222,13 +228,14 @@ export function hydrateDocument(
           minimumCoverage: practice.minimumCoverage ?? 0,
           minimumIncludedCount: practice.minimumIncludedCount ?? 0,
           childStateGatingRules: (practice.childStateGatingRules ?? []).map(rule => ({ ...rule })),
+          conditionalGatingRules: structuredClone(practice.conditionalGatingRules ?? []),
           questions: (practice.questions ?? []).map((question) => ({
             ...question,
             clientKey: question.clientKey || key(),
             codeLocked: false,
             weight: question.weight ?? 1,
             help: question.help ?? "",
-            choices: question.choices?.map((choice) => ({ ...choice, ...(question.type === "multiple_choice" ? { id: choice.id || key() } : {}) })),
+            choices: question.choices?.map((choice) => ({ ...choice, ...(["multiple_choice", "multiple_selection"].includes(question.type) ? { id: choice.id || key() } : {}) })),
             required: question.required ?? false,
             booleanCorrectAnswer: question.booleanCorrectAnswer ?? true,
             allowNotApplicable: question.allowNotApplicable ?? false,
@@ -247,6 +254,7 @@ export function hydrateDocument(
       })),
     })),
   };
+  const beforeRenumber = structuredClone(document);
   // Initialize prefixes once; subsequent structural edits renumber only siblings.
   document.dimensions = renumberSiblingCodes(document.dimensions, "D").items;
   for (const dimension of document.dimensions) {
@@ -268,7 +276,7 @@ export function hydrateDocument(
       }
     }
   }
-  return document;
+  return repairConditionalReferences(beforeRenumber, document);
 }
 
 // Keep configured weights when switching rules; unfinished unused weights must
@@ -301,6 +309,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
         minimumCoverage: dimension.minimumCoverage ?? 0,
         minimumIncludedCount: dimension.minimumIncludedCount ?? 0,
         childStateGatingRules: (dimension.childStateGatingRules ?? []).map(rule => ({ ...rule })),
+        conditionalGatingRules: structuredClone(dimension.conditionalGatingRules ?? []),
         modules: dimension.modules.map(
           ({ clientKey: _moduleKey, codeLocked: _moduleLocked, ...module }) => ({
             ...withoutLegacyGating(module),
@@ -318,6 +327,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
             minimumCoverage: module.minimumCoverage ?? 0,
             minimumIncludedCount: module.minimumIncludedCount ?? 0,
             childStateGatingRules: (module.childStateGatingRules ?? []).map(rule => ({ ...rule })),
+            conditionalGatingRules: structuredClone(module.conditionalGatingRules ?? []),
             practices: module.practices.map(
               ({
                 clientKey: _practiceKey,
@@ -334,6 +344,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
                 minimumCoverage: practice.minimumCoverage ?? 0,
                 minimumIncludedCount: practice.minimumIncludedCount ?? 0,
                 childStateGatingRules: (practice.childStateGatingRules ?? []).map(rule => ({ ...rule })),
+                conditionalGatingRules: structuredClone(practice.conditionalGatingRules ?? []),
                 questions: practice.questions.map(
                   ({
                     clientKey: _questionKey,

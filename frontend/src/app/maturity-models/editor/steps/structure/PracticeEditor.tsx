@@ -1,3 +1,4 @@
+import { gatingChildren } from "../../model/conditionalGating";
 import PracticeEvidenceEditor from "./PracticeEvidenceEditor";
 import { useMemo, useState } from "react";
 import { ArrowLeftIcon, PlusIcon } from "@heroicons/react/24/outline";
@@ -198,7 +199,7 @@ export default function PracticeEditor({
           {
             id: "gating",
             label: "Gating rules",
-            count: (practice.childStateGatingRules?.length ?? 0) + Number(practice.minimumCoverage > 0) + Number(practice.minimumIncludedCount > 0),
+            count: (practice.conditionalGatingRules?.length ?? 0) + (practice.childStateGatingRules?.length ?? 0) + Number(practice.minimumCoverage > 0) + Number(practice.minimumIncludedCount > 0),
             content: (
               <GatingRuleField
                 idPrefix={`practice-${practice.clientKey}`}
@@ -206,6 +207,8 @@ export default function PracticeEditor({
                 isPractice={true}
                 childType="question"
                 childStateGatingRules={practice.childStateGatingRules}
+                conditionalGatingRules={practice.conditionalGatingRules}
+                childOptions={gatingChildren(document, practice.clientKey)}
                 minimumCoverage={practice.minimumCoverage}
                 minimumIncludedCount={practice.minimumIncludedCount}
                 onChange={(thresholds) => update({ ...practice, ...thresholds })}

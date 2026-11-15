@@ -716,3 +716,10 @@ psql -U postgres -d maturity-db < maturity-db-backup.sql
 NOT NULL, default `[]`, constrained to a JSON array. Each object has `quantifier`,
 `state` and `effect`. Assessment snapshots and dimension `score_state` can now
 contain `flagForReview`, retaining scores and normal aggregation participation.
+
+### Conditional gating (V56)
+
+`practices`, `modules`, and `dimensions` have `conditional_gating_rules` JSONB,
+NOT NULL, default `[]`, constrained to a JSON array. The versioned condition
+schema and full-path reference/type validation are enforced on model writes.
+These rules coexist with completion thresholds and child-state rules.

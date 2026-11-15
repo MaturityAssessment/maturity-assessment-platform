@@ -205,7 +205,7 @@ export default function ModuleEditor({
           {
             id: "gating",
             label: "Gating rules",
-            count: (module.childStateGatingRules?.length ?? 0) + Number(module.minimumCoverage > 0) + Number(module.minimumIncludedCount > 0),
+            count: (module.conditionalGatingRules?.length ?? 0) + (module.childStateGatingRules?.length ?? 0) + Number(module.minimumCoverage > 0) + Number(module.minimumIncludedCount > 0),
             content: (
               <GatingRuleField
                 idPrefix={`module-${module.clientKey}`}
@@ -213,6 +213,8 @@ export default function ModuleEditor({
                 isPractice={false}
                 childType="practice"
                 childStateGatingRules={module.childStateGatingRules}
+                conditionalGatingRules={module.conditionalGatingRules}
+                childOptions={module.practices.map(item => ({ code: `${dimension.code}.${module.code}.${item.code}`, name: item.name }))}
                 minimumCoverage={module.minimumCoverage}
                 minimumIncludedCount={module.minimumIncludedCount}
                 onChange={(thresholds) => update({ ...module, ...thresholds })}

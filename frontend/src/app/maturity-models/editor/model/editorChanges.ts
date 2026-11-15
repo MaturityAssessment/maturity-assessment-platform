@@ -1,3 +1,4 @@
+import { gatingIndex, mapGatingReferences } from "./conditionalGating.ts";
 import type { MaturityModelEditorDocument, ModelEditorDimension, ModelEditorModule, ModelEditorPractice, ModelEditorQuestion } from "@/api/types";
 import { codeSuffix } from "./editorCodes.ts";
 
@@ -25,7 +26,7 @@ const locationPath = (location: ChangeLocation[]) => location.map(item => `${ite
 const title = (item: Item) => `${item.code} — ${("text" in item ? item.text : item.name) || "Untitled"}`;
 const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const human = (value: string) => value.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().replace(/^./, c => c.toUpperCase());
-const labels: Record<string, string> = { allowNotApplicable: "Allow N/A", notApplicableScore: "N/A score", mandatoryBadge: "Mandatory badge", reinforcesModuleCodes: "Reinforces", substitutesModuleCodes: "Substitutes", coRequisiteModuleCodes: "Co-requisite modules", mutexModuleCodes: "Mutually exclusive modules", prerequisiteModuleCodes: "Prerequisite modules", visible: "Visible in assessments", text: "Question text", help: "Help text", autoEvaluated: "Automatic evaluation", domainId: "Domain", aggregationRule: "Aggregation", requiresEvidence: "Evidence required", evidenceRequirements: "Evidence requirements", instructions: "Acceptance criteria", format: "Accepted formats", frequency: "Frequency", maxAgeDays: "Maximum evidence age (days)", dependsOnQuestionCode: "Depends on question", dependencyCondition: "Dependency condition", mappingRules: "Maturity mapping", childStateGatingRules: "Child-state gating rules", minimumCoverage: "Minimum coverage (%)", minimumIncludedCount: "Minimum included count (%)", changelogMarkdown: "Release notes" };
+const labels: Record<string, string> = { allowNotApplicable: "Allow N/A", notApplicableScore: "N/A score", mandatoryBadge: "Mandatory badge", reinforcesModuleCodes: "Reinforces", substitutesModuleCodes: "Substitutes", coRequisiteModuleCodes: "Co-requisite modules", mutexModuleCodes: "Mutually exclusive modules", prerequisiteModuleCodes: "Prerequisite modules", visible: "Visible in assessments", text: "Question text", help: "Help text", autoEvaluated: "Automatic evaluation", domainId: "Domain", aggregationRule: "Aggregation", requiresEvidence: "Evidence required", evidenceRequirements: "Evidence requirements", instructions: "Acceptance criteria", format: "Accepted formats", frequency: "Frequency", maxAgeDays: "Maximum evidence age (days)", dependsOnQuestionCode: "Depends on question", dependencyCondition: "Dependency condition", mappingRules: "Maturity mapping", conditionalGatingRules: "Conditional gating rules", childStateGatingRules: "Child-state gating rules", minimumCoverage: "Minimum coverage (%)", minimumIncludedCount: "Minimum included count (%)", changelogMarkdown: "Release notes" };
 function display(value: unknown): string {
   if (value === undefined || value === null || value === "") return "Not provided";
   if (typeof value === "boolean") return value ? "Yes" : "No";
@@ -35,7 +36,7 @@ function display(value: unknown): string {
 }
 type SemanticField = { value: unknown; text: string };
 type Fields = Record<string, SemanticField>;
-function fields(item: Item, siblings: Item[]): Fields {
+function fields(item: Item, siblings: Item[], references?: Map<string, Item>): Fields {
   const result: Fields = {};
   const raw = item as unknown as Record<string, unknown>;
   const ignored = new Set(["clientKey", "codeLocked", "modules", "practices", "questions"]);
@@ -50,6 +51,9 @@ function fields(item: Item, siblings: Item[]): Fields {
     if ((key === "prerequisiteModuleCodes" || key === "coRequisiteModuleCodes" || key === "mutexModuleCodes" || key === "reinforcesModuleCodes" || key === "substitutesModuleCodes") && "practices" in item) {
       value = (item[key] ?? []).map(code => reference(code, siblings)?.clientKey ?? code).sort();
       text = (item[key] ?? []).map(code => { const target = reference(code, siblings); return target ? title(target) : code; }).join("\n") || "None";
+    }
+    if (key === "conditionalGatingRules" && "conditionalGatingRules" in item) {
+      value = mapGatingReferences(item.conditionalGatingRules ?? [], code => references?.get(code)?.clientKey ?? code);
     }
     if (key === "code") value = codeSuffix(String(value));
     if (key === "choices" && q) value = (q.choices ?? []).map(c => ({ label: c.label, ...(q.type === "multiple_selection" ? { rawValue: c.rawValue } : { score: c.score }) }));
@@ -81,7 +85,7 @@ function changed(before: Fields, after: Fields): ChangeField[] {
 function branch(item: Item, status: "added" | "removed", location: ChangeLocation[]): ChangeEntry {
   return { id: `${status}:${item.clientKey}`, title: title(item), path: locationPath(location), location, item: locationItem(item), status, fields: Object.entries(fields(item, [])).filter(([, field]) => !isEmpty(field.value)).map(([key, value]) => ({ label: labels[key] ?? human(key), before: status === "removed" ? value.text : "", after: status === "added" ? value.text : "", beforeEmpty: status === "added", afterEmpty: status === "removed" })), children: children(item).map(c => branch(c, status, [...location, locationItem(item)])) };
 }
-function compareItems(before: Item[], after: Item[], location: ChangeLocation[]): ChangeEntry[] {
+function compareItems(before: Item[], after: Item[], location: ChangeLocation[], oldReferences: Map<string, Item>, newReferences: Map<string, Item>): ChangeEntry[] {
   const path = locationPath(location);
   const entries: ChangeEntry[] = [];
   const old = new Map(before.map(i => [i.clientKey, i]));
@@ -89,9 +93,9 @@ function compareItems(before: Item[], after: Item[], location: ChangeLocation[])
   for (const item of after) {
     const previous = old.get(item.clientKey);
     if (!previous) { entries.push(branch(item, "added", location)); continue; }
-    const changes = changed(fields(previous, before), fields(item, after));
+    const changes = changed(fields(previous, before, oldReferences), fields(item, after, newReferences));
     if (changes.length) entries.push({ id: item.clientKey, title: title(item), path, location, item: locationItem(item), status: "updated", fields: changes });
-    entries.push(...compareItems(children(previous), children(item), [...location, locationItem(item)]));
+    entries.push(...compareItems(children(previous), children(item), [...location, locationItem(item)], oldReferences, newReferences));
   }
   for (const item of before) if (!next.has(item.clientKey)) entries.push(branch(item, "removed", location));
   const oldOrder = before.filter(i => next.has(i.clientKey));
@@ -116,7 +120,7 @@ export function compareDocuments(baseline: MaturityModelEditorDocument | null, c
     if ((!a || !b) && !differences.length) differences.push({ label: "Name", before: a ? display(a.name) : "", after: b ? display(b.name) : "", beforeEmpty: isEmpty(a?.name), afterEmpty: isEmpty(b?.name) });
     return group(`level:${number}`, `Level ${number}`, differences).map(e => ({ ...e, status: !a ? "added" as const : !b ? "removed" as const : e.status }));
   }) : [];
-  const structure = baseline ? compareItems(baseline.dimensions, current.dimensions, []) : current.dimensions.map(i => branch(i, "added", []));
+  const structure = baseline ? compareItems(baseline.dimensions, current.dimensions, [], gatingIndex(baseline).byCode, gatingIndex(current).byCode) : current.dimensions.map(i => branch(i, "added", []));
   const notes = changed(plainFields({ changelogMarkdown: baseline?.changelogMarkdown ?? "" }), plainFields({ changelogMarkdown: current.changelogMarkdown }));
   const counts = { updated: 0, added: 0, removed: 0, order: 0 };
   [...overviewEntries, ...scale, ...structure].forEach(e => counts[e.status]++);
