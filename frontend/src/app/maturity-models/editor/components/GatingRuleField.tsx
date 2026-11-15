@@ -1,17 +1,20 @@
-import type { AggregationRule } from "@/api/types";
+import type { AggregationRule, ChildStateGatingRule } from "@/api/types";
 import { inputClass, labelClass } from "./FormFields";
 
-type Thresholds = { minimumCoverage: number; minimumIncludedCount: number };
+type Thresholds = { minimumCoverage: number; minimumIncludedCount: number; childStateGatingRules?: ChildStateGatingRule[] };
 
 export default function GatingRuleField({
-  idPrefix, aggregationRule, isPractice, minimumCoverage, minimumIncludedCount, onChange,
+  idPrefix, aggregationRule, isPractice, minimumCoverage, minimumIncludedCount, childType = "question", childStateGatingRules = [], onChange,
 }: Thresholds & {
   idPrefix: string;
   aggregationRule: AggregationRule;
   isPractice: boolean;
+  childType?: "question" | "practice" | "module";
   onChange: (thresholds: Thresholds) => void;
 }) {
   const weightedMean = aggregationRule === "WEIGHTED_AVERAGE";
+  const updateRules = (rules: ChildStateGatingRule[]) => onChange({ minimumCoverage, minimumIncludedCount, childStateGatingRules: rules });
+  const updateRule = (index: number, change: Partial<ChildStateGatingRule>) => updateRules(childStateGatingRules.map((rule, position) => position === index ? { ...rule, ...change } : rule));
   return (
     <fieldset className="min-w-0">
       <legend className="text-lg font-semibold tracking-tight text-gray-950">Gating rules</legend>
@@ -42,6 +45,36 @@ export default function GatingRuleField({
           </span>
         </label>
       </div>
+      <section className="mt-6 space-y-4" aria-label="Child-state gating rules">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="font-semibold text-gray-950">Child-state rules</h3>
+          <button type="button" className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            onClick={() => updateRules([...childStateGatingRules, { quantifier: "any", state: "withheld", effect: "flagForReview" }])}>Add child-state rule</button>
+        </div>
+        <p className="text-sm leading-6 text-gray-500">Check visible direct children. Flag for review retains scoring and counts as score computed. Withhold always takes precedence, including when a minimum fails.</p>
+        {childStateGatingRules.length === 0 && <p className="text-sm text-gray-500">No child-state rules.</p>}
+        {childStateGatingRules.map((rule, index) => <fieldset key={index} className="rounded-xl border border-gray-200 bg-white p-4">
+          <legend className="px-1 text-sm font-semibold">Rule {index + 1}</legend>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className={labelClass}>If
+              <select className={inputClass} aria-label={`Rule ${index + 1} quantifier`} value={rule.quantifier} onChange={event => updateRule(index, { quantifier: event.target.value as ChildStateGatingRule["quantifier"] })}>
+                <option value="any">Any {childType}</option><option value="every">Every {childType}</option><option value="no">No {childType}</option>
+              </select>
+            </label>
+            <label className={labelClass}>Has state equal to
+              <select className={inputClass} aria-label={`Rule ${index + 1} child state`} value={rule.state} onChange={event => updateRule(index, { state: event.target.value as ChildStateGatingRule["state"] })}>
+                <option value="computed">Score computed</option><option value="withheld">Withhold</option>
+              </select>
+            </label>
+            <label className={labelClass}>Set this element’s state to
+              <select className={inputClass} aria-label={`Rule ${index + 1} effect`} value={rule.effect} onChange={event => updateRule(index, { effect: event.target.value as ChildStateGatingRule["effect"] })}>
+                <option value="withheld">Withhold</option><option value="flagForReview">Flag for review</option>
+              </select>
+            </label>
+            <button type="button" className="rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50" aria-label={`Delete child-state rule ${index + 1}`} onClick={() => updateRules(childStateGatingRules.filter((_, position) => position !== index))}>Delete</button>
+          </div>
+        </fieldset>)}
+      </section>
       <p className="mt-3 text-xs leading-5 text-gray-500">A result equal to the minimum passes. An element with no included children is withheld even when both minima are disabled.</p>
     </fieldset>
   );

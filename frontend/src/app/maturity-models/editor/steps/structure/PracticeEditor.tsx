@@ -198,12 +198,14 @@ export default function PracticeEditor({
           {
             id: "gating",
             label: "Gating rules",
-            count: Number(practice.minimumCoverage > 0) + Number(practice.minimumIncludedCount > 0),
+            count: (practice.childStateGatingRules?.length ?? 0) + Number(practice.minimumCoverage > 0) + Number(practice.minimumIncludedCount > 0),
             content: (
               <GatingRuleField
                 idPrefix={`practice-${practice.clientKey}`}
                 aggregationRule={practice.aggregationRule}
                 isPractice={true}
+                childType="question"
+                childStateGatingRules={practice.childStateGatingRules}
                 minimumCoverage={practice.minimumCoverage}
                 minimumIncludedCount={practice.minimumIncludedCount}
                 onChange={(thresholds) => update({ ...practice, ...thresholds })}

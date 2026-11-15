@@ -156,6 +156,7 @@ export interface Practice {
   description?: string;
   weight?: number;
   aggregationRule?: AggregationRule;
+  childStateGatingRules?: ChildStateGatingRule[];
   minimumCoverage?: number;
   minimumIncludedCount?: number;
   questions: Question[];
@@ -179,6 +180,7 @@ export interface Module {
   description?: string;
   weight?: number; // For aggregation, defaults to 1.0
   aggregationRule?: AggregationRule;
+  childStateGatingRules?: ChildStateGatingRule[];
   minimumCoverage?: number;
   minimumIncludedCount?: number;
   /** 0-based order within the dimension (from API / persisted). */
@@ -193,6 +195,7 @@ export interface Dimension {
   weight?: number;
   aggregationRule?: AggregationRule;
   mappingRules?: MappingRule[];
+  childStateGatingRules?: ChildStateGatingRule[];
   minimumCoverage?: number;
   minimumIncludedCount?: number;
   /** 0-based order within the model (from API / persisted). */
@@ -630,6 +633,7 @@ export interface ModelEditorPractice {
   description: string;
   weight: number;
   aggregationRule: AggregationRule;
+  childStateGatingRules?: ChildStateGatingRule[];
   minimumCoverage: number;
   minimumIncludedCount: number;
   questions: ModelEditorQuestion[];
@@ -654,6 +658,7 @@ export interface ModelEditorModule {
   description: string;
   weight: number;
   aggregationRule: AggregationRule;
+  childStateGatingRules?: ChildStateGatingRule[];
   minimumCoverage: number;
   minimumIncludedCount: number;
   practices: ModelEditorPractice[];
@@ -668,6 +673,7 @@ export interface ModelEditorDimension {
   weight: number;
   aggregationRule: AggregationRule;
   mappingRules: MappingRule[];
+  childStateGatingRules?: ChildStateGatingRule[];
   minimumCoverage: number;
   minimumIncludedCount: number;
   modules: ModelEditorModule[];
@@ -736,8 +742,14 @@ export interface AssessmentElementResult {
   questionCode: string | null;
   responseKey: string | null;
   name: string;
-  state: "computed" | "withheld" | "unanswered" | "unscored";
+  state: "computed" | "withheld" | "flagForReview" | "unanswered" | "unscored";
   normalizedScore: number | null;
   includedCount: number;
   coverage: number;
+}
+
+export interface ChildStateGatingRule {
+  quantifier: "any" | "every" | "no";
+  state: "computed" | "withheld";
+  effect: "withheld" | "flagForReview";
 }

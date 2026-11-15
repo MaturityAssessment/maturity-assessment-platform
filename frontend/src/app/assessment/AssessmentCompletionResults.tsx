@@ -21,7 +21,7 @@ export default function AssessmentCompletionResults({ elements }: {
             <span className="block">{element.name}</span>
             <span className="text-xs font-normal capitalize text-slate-500">{element.elementType} · {[element.dimensionId, element.moduleCode, element.practiceCode].filter(Boolean).join(" / ") || "Overall"}</span>
           </th>
-          <td className="px-3 py-3"><span className={element.state === "withheld" ? "font-medium text-amber-700" : "text-slate-600"}>{element.state === "withheld" ? "Withheld" : "Computed"}</span></td>
+          <td className="px-3 py-3"><span className={element.state === "withheld" ? "font-medium text-amber-700" : "text-slate-600"}>{element.state === "withheld" ? "Withheld" : element.state === "flagForReview" ? "Flag for review" : "Computed"}</span></td>
           <td className="px-3 py-3 text-right tabular-nums">{element.includedCount.toFixed(1)}%</td>
           <td className="px-3 py-3 text-right tabular-nums">{element.coverage.toFixed(1)}%</td>
         </tr>)}</tbody>

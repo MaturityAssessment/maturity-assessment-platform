@@ -447,6 +447,7 @@ public class CsvParsingService {
                 dimensionDTO.setMappingRules(parseRules(row.getDimensionMappingRules(), MappingRuleDTO.class, "dimensionMappingRules", rowNumber, errors));
                 dimensionDTO.setMinimumCoverage(parseGatingPercentage(row.getDimensionMinimumCoverage(), "dimensionMinimumCoverage", rowNumber, errors));
                 dimensionDTO.setMinimumIncludedCount(parseGatingPercentage(row.getDimensionMinimumIncludedCount(), "dimensionMinimumIncludedCount", rowNumber, errors));
+                dimensionDTO.setChildStateGatingRules(parseRules(row.getDimensionChildStateGatingRules(), com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule.class, "dimensionChildStateGatingRules", rowNumber, errors));
                 dimension = new DimensionAccumulator(dimensionDTO);
                 dimensions.put(dimensionKey, dimension);
             }
@@ -472,6 +473,7 @@ public class CsvParsingService {
                 moduleDTO.setAggregationRule(parseAggregationRule(row.getModuleAggregationRule(), "moduleAggregationRule", rowNumber, errors));
                 moduleDTO.setMinimumCoverage(parseGatingPercentage(row.getModuleMinimumCoverage(), "moduleMinimumCoverage", rowNumber, errors));
                 moduleDTO.setMinimumIncludedCount(parseGatingPercentage(row.getModuleMinimumIncludedCount(), "moduleMinimumIncludedCount", rowNumber, errors));
+                moduleDTO.setChildStateGatingRules(parseRules(row.getModuleChildStateGatingRules(), com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule.class, "moduleChildStateGatingRules", rowNumber, errors));
                 module = new ModuleAccumulator(moduleDTO);
                 dimension.modules.put(moduleKey, module);
             }
@@ -495,6 +497,7 @@ public class CsvParsingService {
                 practiceDTO.setAggregationRule(parseAggregationRule(row.getPracticeAggregationRule(), "practiceAggregationRule", rowNumber, errors));
                 practiceDTO.setMinimumCoverage(parseGatingPercentage(row.getPracticeMinimumCoverage(), "practiceMinimumCoverage", rowNumber, errors));
                 practiceDTO.setMinimumIncludedCount(parseGatingPercentage(row.getPracticeMinimumIncludedCount(), "practiceMinimumIncludedCount", rowNumber, errors));
+                practiceDTO.setChildStateGatingRules(parseRules(row.getPracticeChildStateGatingRules(), com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule.class, "practiceChildStateGatingRules", rowNumber, errors));
                 practice = new PracticeAccumulator(practiceDTO, row.getPracticeSortOrder());
                 module.practices.put(practiceKey, practice);
             }

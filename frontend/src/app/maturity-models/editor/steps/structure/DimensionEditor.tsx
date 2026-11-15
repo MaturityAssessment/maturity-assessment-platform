@@ -152,12 +152,14 @@ export default function DimensionEditor({
           {
             id: "gating",
             label: "Gating rules",
-            count: Number(dimension.minimumCoverage > 0) + Number(dimension.minimumIncludedCount > 0),
+            count: (dimension.childStateGatingRules?.length ?? 0) + Number(dimension.minimumCoverage > 0) + Number(dimension.minimumIncludedCount > 0),
             content: (
               <GatingRuleField
                 idPrefix={`dimension-${dimension.clientKey}`}
                 aggregationRule={dimension.aggregationRule}
                 isPractice={false}
+                childType="module"
+                childStateGatingRules={dimension.childStateGatingRules}
                 minimumCoverage={dimension.minimumCoverage}
                 minimumIncludedCount={dimension.minimumIncludedCount}
                 onChange={(thresholds) => update({ ...dimension, ...thresholds })}

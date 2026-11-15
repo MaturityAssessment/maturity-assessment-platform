@@ -709,3 +709,10 @@ psql -U postgres -d maturity-db < maturity-db-backup.sql
 3. **Enable Connection Pooling** - Configure HikariCP settings
 4. **Set Up Backups** - Regular automated backups
 5. **Configure File Storage** - External storage for evidence files (S3, etc.)
+
+### Child-state gating (V55)
+
+`practices`, `modules`, and `dimensions` have `child_state_gating_rules` JSONB,
+NOT NULL, default `[]`, constrained to a JSON array. Each object has `quantifier`,
+`state` and `effect`. Assessment snapshots and dimension `score_state` can now
+contain `flagForReview`, retaining scores and normal aggregation participation.

@@ -64,25 +64,25 @@ public class MaturityModelExcelService {
     private static final List<String> LEVELS_OPTIONAL_HEADERS = List.of("description");
 
     private static final List<String> DIMENSION_HEADERS = List.of("dimensionId", "dimensionName");
-    private static final List<String> DIMENSION_OPTIONAL_HEADERS = List.of("dimensionDescription", "dimensionWeight", "dimensionAggregationRule", "dimensionMappingRules", "dimensionMinimumCoverage", "dimensionMinimumIncludedCount");
+    private static final List<String> DIMENSION_OPTIONAL_HEADERS = List.of("dimensionDescription", "dimensionWeight", "dimensionAggregationRule", "dimensionMappingRules", "dimensionMinimumCoverage", "dimensionMinimumIncludedCount", "dimensionChildStateGatingRules");
     private static final List<String> DIMENSION_EXPORT_HEADERS = Stream.concat(DIMENSION_HEADERS.stream(), DIMENSION_OPTIONAL_HEADERS.stream()).toList();
 
     private static final List<String> MODULE_HEADERS = List.of(
             "dimensionId", "moduleCode", "moduleName", "moduleDescription"
     );
     private static final List<String> MODULE_OPTIONAL_HEADERS = List.of(
-            "dimensionName", "moduleWeight", "moduleAggregationRule", "moduleMinimumCoverage", "moduleMinimumIncludedCount", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes"
+            "dimensionName", "moduleWeight", "moduleAggregationRule", "moduleMinimumCoverage", "moduleMinimumIncludedCount", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes", "moduleChildStateGatingRules"
     );
-    private static final List<String> MODULE_EXPORT_HEADERS = Stream.concat(MODULE_HEADERS.stream(), Stream.of("moduleWeight", "moduleAggregationRule", "moduleMinimumCoverage", "moduleMinimumIncludedCount", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes")).toList();
+    private static final List<String> MODULE_EXPORT_HEADERS = Stream.concat(MODULE_HEADERS.stream(), Stream.of("moduleWeight", "moduleAggregationRule", "moduleMinimumCoverage", "moduleMinimumIncludedCount", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes", "moduleChildStateGatingRules")).toList();
 
     private static final List<String> PRACTICE_HEADERS = List.of(
             "dimensionId", "moduleCode", "practiceName", "practiceDescription"
     );
     private static final List<String> PRACTICE_OPTIONAL_HEADERS = List.of(
-            "practiceCode", "practiceId", "dimensionName", "moduleName", "practiceWeight", "practiceRequiresEvidence", "practiceAggregationRule", "practiceMinimumCoverage", "practiceMinimumIncludedCount", "practiceEvidenceRequirements"
+            "practiceCode", "practiceId", "dimensionName", "moduleName", "practiceWeight", "practiceRequiresEvidence", "practiceAggregationRule", "practiceMinimumCoverage", "practiceMinimumIncludedCount", "practiceEvidenceRequirements", "practiceChildStateGatingRules"
     );
     private static final List<String> PRACTICE_EXPORT_HEADERS = List.of(
-            "dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceMinimumCoverage", "practiceMinimumIncludedCount", "practiceEvidenceRequirements"
+            "dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceMinimumCoverage", "practiceMinimumIncludedCount", "practiceEvidenceRequirements", "practiceChildStateGatingRules"
     );
 
     private static final List<String> QUESTION_HEADERS = List.of(
@@ -248,6 +248,7 @@ public class MaturityModelExcelService {
                 m.setDimensionMappingRules(dim.get("dimensionMappingRules"));
                 m.setDimensionMinimumCoverage(dim.get("dimensionMinimumCoverage"));
                 m.setDimensionMinimumIncludedCount(dim.get("dimensionMinimumIncludedCount"));
+                m.setDimensionChildStateGatingRules(dim.get("dimensionChildStateGatingRules"));
 
                 m.setModuleCode(mod.get("moduleCode"));
                 m.setModuleName(mod.get("moduleName"));
@@ -263,6 +264,7 @@ public class MaturityModelExcelService {
                 m.setModuleAggregationRule(mod.get("moduleAggregationRule"));
                 m.setModuleMinimumCoverage(mod.get("moduleMinimumCoverage"));
                 m.setModuleMinimumIncludedCount(mod.get("moduleMinimumIncludedCount"));
+                m.setModuleChildStateGatingRules(mod.get("moduleChildStateGatingRules"));
 
                 m.setPracticeId(pr.get("practiceId"));
                 m.setPracticeCode(pr.get("practiceCode"));
@@ -272,6 +274,7 @@ public class MaturityModelExcelService {
                 m.setPracticeAggregationRule(pr.get("practiceAggregationRule"));
                 m.setPracticeMinimumCoverage(pr.get("practiceMinimumCoverage"));
                 m.setPracticeMinimumIncludedCount(pr.get("practiceMinimumIncludedCount"));
+                m.setPracticeChildStateGatingRules(pr.get("practiceChildStateGatingRules"));
 
                 m.setQuestionWeight(q.get("questionWeight"));
                 m.setQuestionCode(q.get("questionCode"));
@@ -708,6 +711,7 @@ public class MaturityModelExcelService {
             row.createCell(5).setCellValue(writeJson(dim.getMappingRules()));
             row.createCell(6).setCellValue(dim.getMinimumCoverage() == null ? 0.0 : dim.getMinimumCoverage());
             row.createCell(7).setCellValue(dim.getMinimumIncludedCount() == null ? 0.0 : dim.getMinimumIncludedCount());
+            row.createCell(8).setCellValue(writeJson(dim.getChildStateGatingRules()));
         }
     }
 
@@ -739,6 +743,7 @@ public class MaturityModelExcelService {
                 row.createCell(12).setCellValue(Boolean.TRUE.equals(mod.getMandatoryBadge()));
                 row.createCell(13).setCellValue(writeJson(mod.getReinforcesModuleCodes()));
                 row.createCell(14).setCellValue(writeJson(mod.getSubstitutesModuleCodes()));
+                row.createCell(15).setCellValue(writeJson(mod.getChildStateGatingRules()));
             }
         }
     }
@@ -771,6 +776,7 @@ public class MaturityModelExcelService {
                     row.createCell(8).setCellValue(pr.getMinimumCoverage() == null ? 0.0 : pr.getMinimumCoverage());
                     row.createCell(9).setCellValue(pr.getMinimumIncludedCount() == null ? 0.0 : pr.getMinimumIncludedCount());
                     row.createCell(10).setCellValue(writeJson(pr.getEvidenceRequirements()));
+                    row.createCell(11).setCellValue(writeJson(pr.getChildStateGatingRules()));
                 }
             }
         }
@@ -884,6 +890,7 @@ public class MaturityModelExcelService {
                 "Aggregation rules: AVERAGE, WEIGHTED_AVERAGE, MINIMUM, MAXIMUM, SUM, MEDIAN. Empty values use the application defaults. Weights must be positive; optional questions may have zero weight.",
                 "dimensionMappingRules: JSON array, one threshold per level, starting at zero, strictly increasing within 0..1. Example: [{\"levelNumber\":1,\"minimumScore\":0},{\"levelNumber\":2,\"minimumScore\":0.5}].",
                 "Gating thresholds: minimumCoverage and minimumIncludedCount are percentages from 0 to 100 (default 0, disabled). Coverage gates only weighted mean. A failed minimum withholds the element from parent aggregation.",
+                "Child-state rules: JSON array in dimensionChildStateGatingRules, moduleChildStateGatingRules or practiceChildStateGatingRules. Objects have quantifier (any/every/no), state (computed/withheld), effect (withheld/flagForReview). Withhold wins; flags retain scoring.",
                 "Question types: boolean, likert, open_answer, multiple_choice, multiple_selection, numeric, percentage. Leave type-specific columns empty for other types.",
                 "All question types: questionAllowNotApplicable enables N/A; questionNotApplicableScore is required when enabled and must be between 0 and 1.",
                 "boolean: questionBooleanCorrectAnswer is true or false (default true). practiceRequiresEvidence and questionRequired also use true/false.",

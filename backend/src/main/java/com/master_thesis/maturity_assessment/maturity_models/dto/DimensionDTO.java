@@ -16,6 +16,8 @@ public class DimensionDTO {
     private Double minimumCoverage = 0.0;
     private Double minimumIncludedCount = 0.0;
 
+    private List<com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule> childStateGatingRules = new java.util.ArrayList<>();
+
     /** Display order within the model (0-based); derived from JSON array order on write. */
     private Integer sortOrder;
 

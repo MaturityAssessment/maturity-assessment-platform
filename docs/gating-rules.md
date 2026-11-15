@@ -40,7 +40,7 @@ Submission and final evaluation store `elementResults` on the assessment as an
 immutable JSON snapshot of the calculation. Each visible question, practice,
 module, dimension and global result has its location, name, state, normalized
 score (nullable), `includedCount`, and `coverage`. States are `computed`,
-`withheld`, `unanswered` or `unscored`. Completion metrics use 0–100 and scores use
+`withheld`, `flagForReview`, `unanswered` or `unscored`. Completion metrics use 0–100 and scores use
 0–1. Dimension results and the assessment also expose their percentages and
 `scoreState` directly. Final evaluation replaces the preliminary snapshot using
 the effective reviewed scores.
@@ -48,3 +48,25 @@ the effective reviewed scores.
 This implements the low-coverage/too-few-inputs withholding purpose of section 9
 of the scoring profile, with the percentage formulas specified for this platform.
 It does not implement the profile's general condition language or other patterns.
+
+## Child-state rules
+
+Practices, modules and dimensions also store `childStateGatingRules` (default
+empty array), introduced by V55. Each rule is an object such as:
+
+```json
+{"quantifier":"any","state":"withheld","effect":"flagForReview"}
+```
+
+`quantifier` accepts `any`, `every` or `no`. `state` accepts `computed` or
+`withheld`. `effect` accepts `withheld` or `flagForReview`. Rules test visible
+direct children: questions for practices, practices for modules, and modules
+for dimensions. Unanswered or unscored questions match neither condition.
+Flagged children also match `computed`. Empty selections make `every` and `no`
+true, and `any` false.
+
+Rules run after children are evaluated. Any matching withhold effect or failing
+minimum wins over all flag effects, regardless of rule order. A flag retains the
+score, maturity level and completion percentages; it contributes normally to
+parent aggregation and completion. The flag itself has no review workflow or
+other operational consequence. It is stored and displayed in results/exports.

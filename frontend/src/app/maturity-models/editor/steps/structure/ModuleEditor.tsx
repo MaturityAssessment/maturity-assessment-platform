@@ -205,12 +205,14 @@ export default function ModuleEditor({
           {
             id: "gating",
             label: "Gating rules",
-            count: Number(module.minimumCoverage > 0) + Number(module.minimumIncludedCount > 0),
+            count: (module.childStateGatingRules?.length ?? 0) + Number(module.minimumCoverage > 0) + Number(module.minimumIncludedCount > 0),
             content: (
               <GatingRuleField
                 idPrefix={`module-${module.clientKey}`}
                 aggregationRule={module.aggregationRule}
                 isPractice={false}
+                childType="practice"
+                childStateGatingRules={module.childStateGatingRules}
                 minimumCoverage={module.minimumCoverage}
                 minimumIncludedCount={module.minimumIncludedCount}
                 onChange={(thresholds) => update({ ...module, ...thresholds })}

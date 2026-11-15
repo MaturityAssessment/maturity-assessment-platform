@@ -510,3 +510,13 @@ returned results instead of deriving them from a fixed five-level formula.
 `autoEvaluated`, `version`, `baseModelId`, `domainId`, `domainName`, `domainIconKey`,
 `domainColorKey`, `creatorName`, `createdAt`, `dimensionCount`, `moduleCount`,
 `totalQuestions`, and `levelCount`. It does not include the nested question hierarchy.
+
+### Child-state gating
+
+On practices, modules and dimensions, `childStateGatingRules` is an optional array
+(default empty). Example: `[{"quantifier":"any","state":"withheld","effect":"flagForReview"}]`.
+Quantifiers are `any`/`every`/`no`; tested states are `computed`/`withheld`; effects
+are `withheld`/`flagForReview`. Invalid rules return `400 INVALID_GATING_RULES`.
+Rules inspect visible direct children only. Flagged children also match computed
+and retain their score and completion contributions. Withholding from any rule
+or minimum always wins. Flags do not trigger review actions.

@@ -544,3 +544,8 @@ withheld children contribute zero to parent completion percentages. States
 An answered question awaiting review still counts as answered for completion.
 Existing assessments have null metrics until evaluated again. See the
 [gating calculations](../../../../docs/gating-rules.md) for formulas and defaults.
+
+`flagForReview` is an additional stored element/dimension state. It retains its
+score, maturity level, aggregation contribution and completion contribution, and
+also matches a child-state rule testing `computed`. It has no review-workflow
+consequence. Withholding takes precedence when multiple gating effects apply.

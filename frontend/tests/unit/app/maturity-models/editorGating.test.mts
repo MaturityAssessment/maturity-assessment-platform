@@ -25,3 +25,15 @@ test("invalid thresholds block saving and edits appear in change review", () => 
   assert.ok(changes.some(entry => entry.fields.some(field => field.label === "Minimum coverage (%)")));
   assert.ok(changes.some(entry => entry.fields.some(field => field.label === "Minimum included count (%)")));
 });
+
+test("child-state rules survive hydration/serialization and appear in review", async () => {
+  const { hydrateDocument, serializeDocument } = await import("../../../../src/app/maturity-models/editor/model/editorDocument.ts");
+  const baseline = createEmptyDocument();
+  const current = structuredClone(baseline);
+  current.dimensions[0].modules[0].childStateGatingRules = [{ quantifier: "no", state: "computed", effect: "withheld" }, { quantifier: "any", state: "withheld", effect: "flagForReview" }];
+  const serialized = serializeDocument(hydrateDocument(current, false));
+  assert.deepEqual(serialized.dimensions[0].modules[0].childStateGatingRules, current.dimensions[0].modules[0].childStateGatingRules);
+  assert.ok(compareDocuments(baseline, current).structure.some(entry => entry.fields.some(field => field.label === "Child-state gating rules")));
+  assert.equal(hasGatingThresholdIssues(current.dimensions[0].modules[0]), false);
+  assert.equal(hasGatingThresholdIssues({ childStateGatingRules: [{ quantifier: "any", state: "flagForReview", effect: "withheld" }] } as any), true);
+});

@@ -83,6 +83,7 @@ export function emptyPractice(
     aggregationRule: DEFAULT_AGGREGATION_RULE,
     minimumCoverage: 0,
     minimumIncludedCount: 0,
+    childStateGatingRules: [],
     requiresEvidence: false,
     evidenceRequirements: [],
     questions: [emptyQuestion(questionOrdinal)],
@@ -103,6 +104,7 @@ export function emptyModule(
     aggregationRule: DEFAULT_AGGREGATION_RULE,
     minimumCoverage: 0,
     minimumIncludedCount: 0,
+    childStateGatingRules: [],
     visible: true,
     prerequisiteModuleCodes: [],
     coRequisiteModuleCodes: [],
@@ -130,6 +132,7 @@ export function emptyDimension(
     mappingRules: defaultMappingRules(DEFAULT_LEVELS.length),
     minimumCoverage: 0,
     minimumIncludedCount: 0,
+    childStateGatingRules: [],
     modules: [
       emptyModule(moduleOrdinal, practiceOrdinal, questionOrdinal),
     ],
@@ -180,6 +183,7 @@ export function hydrateDocument(
         dimension.aggregationRule ?? DEFAULT_AGGREGATION_RULE,
       minimumCoverage: dimension.minimumCoverage ?? 0,
       minimumIncludedCount: dimension.minimumIncludedCount ?? 0,
+      childStateGatingRules: (dimension.childStateGatingRules ?? []).map(rule => ({ ...rule })),
       mappingRules:
         dimension.mappingRules?.length === levels.length
           ? dimension.mappingRules.map((rule, index) => ({
@@ -203,6 +207,7 @@ export function hydrateDocument(
         aggregationRule: module.aggregationRule ?? DEFAULT_AGGREGATION_RULE,
         minimumCoverage: module.minimumCoverage ?? 0,
         minimumIncludedCount: module.minimumIncludedCount ?? 0,
+        childStateGatingRules: (module.childStateGatingRules ?? []).map(rule => ({ ...rule })),
         practices: (module.practices ?? []).map((practice) => ({
           ...withoutLegacyGating(practice),
           description: practice.description ?? "",
@@ -216,6 +221,7 @@ export function hydrateDocument(
             practice.aggregationRule ?? DEFAULT_AGGREGATION_RULE,
           minimumCoverage: practice.minimumCoverage ?? 0,
           minimumIncludedCount: practice.minimumIncludedCount ?? 0,
+          childStateGatingRules: (practice.childStateGatingRules ?? []).map(rule => ({ ...rule })),
           questions: (practice.questions ?? []).map((question) => ({
             ...question,
             clientKey: question.clientKey || key(),
@@ -294,6 +300,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
         description: dimension.description.trim() || undefined,
         minimumCoverage: dimension.minimumCoverage ?? 0,
         minimumIncludedCount: dimension.minimumIncludedCount ?? 0,
+        childStateGatingRules: (dimension.childStateGatingRules ?? []).map(rule => ({ ...rule })),
         modules: dimension.modules.map(
           ({ clientKey: _moduleKey, codeLocked: _moduleLocked, ...module }) => ({
             ...withoutLegacyGating(module),
@@ -310,6 +317,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
             description: module.description.trim(),
             minimumCoverage: module.minimumCoverage ?? 0,
             minimumIncludedCount: module.minimumIncludedCount ?? 0,
+            childStateGatingRules: (module.childStateGatingRules ?? []).map(rule => ({ ...rule })),
             practices: module.practices.map(
               ({
                 clientKey: _practiceKey,
@@ -325,6 +333,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
                 description: practice.description.trim(),
                 minimumCoverage: practice.minimumCoverage ?? 0,
                 minimumIncludedCount: practice.minimumIncludedCount ?? 0,
+                childStateGatingRules: (practice.childStateGatingRules ?? []).map(rule => ({ ...rule })),
                 questions: practice.questions.map(
                   ({
                     clientKey: _questionKey,

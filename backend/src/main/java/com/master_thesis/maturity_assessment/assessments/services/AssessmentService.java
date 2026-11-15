@@ -1,5 +1,6 @@
 package com.master_thesis.maturity_assessment.assessments.services;
 
+import com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule;
 import com.master_thesis.maturity_assessment.assessments.dto.AssessmentRequest;
 import com.master_thesis.maturity_assessment.assessments.dto.AssessmentResponse;
 import com.master_thesis.maturity_assessment.assessments.dto.EvidenceDTO;
@@ -2215,13 +2216,13 @@ public class AssessmentService {
                                 question.getCode(), key, question.getText(), node));
                     }
                     ScoreNode node = aggregateNodes(questions, practice.getAggregationRule(), practice.getWeight(),
-                            practice.getMinimumCoverage(), practice.getMinimumIncludedCount());
+                            practice.getMinimumCoverage(), practice.getMinimumIncludedCount(), practice.getChildStateGatingRules());
                     practices.add(node);
                     elements.add(elementResult("practice", dimension.getDimensionId(), module.getCode(), practice.getCode(),
                             null, null, practice.getName(), node));
                 }
                 ScoreNode node = aggregateNodes(practices, module.getAggregationRule(), module.getWeight(),
-                        module.getMinimumCoverage(), module.getMinimumIncludedCount());
+                        module.getMinimumCoverage(), module.getMinimumIncludedCount(), module.getChildStateGatingRules());
                 modules.add(node);
                 elements.add(elementResult("module", dimension.getDimensionId(), module.getCode(), null,
                         null, null, module.getName(), node));
@@ -2229,7 +2230,7 @@ public class AssessmentService {
             // A dimension consisting entirely of explicitly hidden modules was not presented.
             if (modules.isEmpty()) continue;
             ScoreNode node = aggregateNodes(modules, dimension.getAggregationRule(), dimension.getWeight(),
-                    dimension.getMinimumCoverage(), dimension.getMinimumIncludedCount());
+                    dimension.getMinimumCoverage(), dimension.getMinimumIncludedCount(), dimension.getChildStateGatingRules());
             dimensionNodes.add(node);
             elements.add(elementResult("dimension", dimension.getDimensionId(), null, null, null, null, dimension.getName(), node));
             dimensions.add(toDimensionResult(dimension, node, maxLevel, model.getLevels()));
@@ -2245,7 +2246,13 @@ public class AssessmentService {
 
     private ScoreNode aggregateNodes(List<ScoreNode> children, AggregationRule rule, Double weight,
                                      Double minimumCoverage, Double minimumIncludedCount) {
-        List<ScoreNode> included = children.stream().filter(child -> child.score() != null && "computed".equals(child.state())).toList();
+        return aggregateNodes(children, rule, weight, minimumCoverage, minimumIncludedCount, List.of());
+    }
+
+    private ScoreNode aggregateNodes(List<ScoreNode> children, AggregationRule rule, Double weight,
+                                     Double minimumCoverage, Double minimumIncludedCount,
+                                     List<ChildStateGatingRule> stateRules) {
+        List<ScoreNode> included = children.stream().filter(child -> child.score() != null && ("computed".equals(child.state()) || "flagForReview".equals(child.state()))).toList();
         double includedCount = children.stream().mapToDouble(child -> "withheld".equals(child.state()) ? 0 : child.includedCount()).average().orElse(0);
         boolean weightedMean = rule == null || rule == AggregationRule.WEIGHTED_AVERAGE;
         double totalWeight = children.stream().mapToDouble(ScoreNode::weight).sum();
@@ -2255,12 +2262,28 @@ public class AssessmentService {
         boolean withheld = included.isEmpty()
                 || includedCount + 1e-7 < threshold(minimumIncludedCount)
                 || (weightedMean && coverage + 1e-7 < threshold(minimumCoverage));
+        boolean flagged = false;
+        for (var stateRule : stateRules == null ? List.<ChildStateGatingRule>of() : stateRules) {
+            java.util.function.Predicate<ScoreNode> matches = child -> "computed".equals(stateRule.state())
+                    ? "computed".equals(child.state()) || "flagForReview".equals(child.state())
+                    : "withheld".equals(child.state());
+            boolean matched = switch (stateRule.quantifier()) {
+                case "any" -> children.stream().anyMatch(matches);
+                case "every" -> children.stream().allMatch(matches);
+                case "no" -> children.stream().noneMatch(matches);
+                default -> false;
+            };
+            if (matched) {
+                withheld |= "withheld".equals(stateRule.effect());
+                flagged |= "flagForReview".equals(stateRule.effect());
+            }
+        }
         Double score = withheld ? null : maturityScoringService.aggregate(
                 included.stream().map(ScoreNode::score).toList(), included.stream().map(ScoreNode::weight).toList(), rule);
         return new ScoreNode(score == null ? null : maturityScoringService.roundAndClampNormalized(score), childWeight(weight),
                 children.stream().mapToInt(ScoreNode::totalQuestions).sum(),
                 children.stream().mapToDouble(ScoreNode::totalScore).sum(),
-                includedCount, coverage, withheld ? "withheld" : "computed");
+                includedCount, coverage, withheld ? "withheld" : flagged ? "flagForReview" : "computed");
     }
 
     private double threshold(Double percentage) {

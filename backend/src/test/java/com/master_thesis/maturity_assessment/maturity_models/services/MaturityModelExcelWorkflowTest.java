@@ -65,6 +65,10 @@ class MaturityModelExcelWorkflowTest {
         practice.setAggregationRule(AggregationRule.SUM);
         practice.setMinimumCoverage(80.0);
         practice.setMinimumIncludedCount(65.5);
+        var stateRule = new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule("any", "withheld", "flagForReview");
+        practice.setChildStateGatingRules(List.of(stateRule));
+        module.setChildStateGatingRules(List.of(stateRule));
+        dimension.setChildStateGatingRules(List.of(stateRule));
         practice.getQuestions().getFirst().setBooleanCorrectAnswer(false);
         // Both forms of dependency references can arrive from model exports.
         practice.getQuestions().getFirst().setId(501L);

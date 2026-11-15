@@ -411,3 +411,15 @@ test("gating controls use percentage thresholds and retain inactive coverage for
   assert.match(html, /max="100"/);
   assert.doesNotMatch(html, /Add rule|Set score to|specific child/);
 });
+
+test("child-state gating controls use the direct child type and show flagged results", () => {
+  const Gating = load(resolve(sourceRoot, "app/maturity-models/editor/components/GatingRuleField.tsx")).default;
+  const html = renderToStaticMarkup(createElement(Gating, { idPrefix: "module", aggregationRule: "AVERAGE", isPractice: false,
+    childType: "practice", minimumCoverage: 0, minimumIncludedCount: 0,
+    childStateGatingRules: [{ quantifier: "any", state: "withheld", effect: "flagForReview" }], onChange: noOp }));
+  assert.match(html, /Any practice/); assert.match(html, /Every practice/); assert.match(html, /No practice/);
+  assert.match(html, /Flag for review/); assert.match(html, /Withhold always takes precedence/);
+  const Completion = load(resolve(sourceRoot, "app/assessment/AssessmentCompletionResults.tsx")).default;
+  const result = renderToStaticMarkup(createElement(Completion, { elements: [{ elementType: "module", name: "Module", state: "flagForReview", includedCount: 75, coverage: 75 }] }));
+  assert.match(result, /Flag for review/); assert.match(result, /75\.0%/);
+});

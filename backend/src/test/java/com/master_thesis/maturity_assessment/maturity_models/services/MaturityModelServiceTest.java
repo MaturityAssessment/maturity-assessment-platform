@@ -765,6 +765,21 @@ class MaturityModelServiceTest {
     }
 
     @Test
+    void rejectsIncompleteAndUnsupportedChildStateRules() {
+        var invalid = java.util.Arrays.asList(null,
+                new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule("some", "computed", "withheld"),
+                new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule("any", "flagForReview", "withheld"),
+                new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule("any", "computed", "computed"),
+                new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule(null, "computed", "flagForReview"));
+        for (var rule : invalid) {
+            var dto = updateDto(domain().getId(), null);
+            dto.getDimensions().getFirst().setChildStateGatingRules(java.util.Collections.singletonList(rule));
+            assertEquals("INVALID_GATING_RULES", assertThrows(IllegalOperationException.class,
+                    () -> service.createMaturityModel(dto)).getErrorCode());
+        }
+    }
+
+    @Test
     void createMaturityModel_rejectsInvalidGatingPercentagesAtEveryLevel() {
         for (double value : new double[]{-0.01, 100.01, Double.NaN, Double.POSITIVE_INFINITY}) {
             for (int level = 0; level < 3; level++) {

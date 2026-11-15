@@ -226,7 +226,7 @@ function AssessmentResultsDocument({
           <SectionTitle>Completion and gating</SectionTitle>
           {data.elementResults.filter(element => element.elementType !== "question").map((element, index) => (
             <Text key={index} style={styles.tableCell}>
-              {element.name} ({element.elementType}): {element.state === "withheld" ? "Withheld" : "Computed"}; included count {element.includedCount.toFixed(1)}%; coverage {element.coverage.toFixed(1)}%
+              {element.name} ({element.elementType}): {element.state === "withheld" ? "Withheld" : element.state === "flagForReview" ? "Flag for review" : "Computed"}; included count {element.includedCount.toFixed(1)}%; coverage {element.coverage.toFixed(1)}%
             </Text>
           ))}
         </>}

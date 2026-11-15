@@ -46,6 +46,7 @@ import java.math.BigDecimal;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -2435,6 +2436,69 @@ class AssessmentServiceLifecycleTest {
         assertEquals(100.0, element(response, "practice", "P1").includedCount());
         assertEquals(0.0, element(response, "practice", "P1").normalizedScore());
         assertEquals("computed", response.getScoreState());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"any,computed,true", "every,computed,false", "no,computed,false",
+            "any,withheld,true", "every,withheld,false", "no,withheld,false"})
+    void childStateQuantifiersEvaluateMixedVisibleChildren(String quantifier, String state, boolean matches) {
+        MaturityModel model = hierarchicalAggregationModel();
+        var target = model.getDimensions().getFirst().getModules().getFirst();
+        target.getPractices().getFirst().setMinimumIncludedCount(51.0);
+        target.setChildStateGatingRules(List.of(new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule(quantifier, state, "flagForReview")));
+        AssessmentResponse response = submitForGating(model, partialHierarchyAnswers());
+        var result = element(response, "module", "M1");
+        assertEquals(matches ? "flagForReview" : "computed", result.state());
+        assertEquals(1.0, result.normalizedScore());
+        assertEquals(50.0, result.includedCount());
+    }
+
+    @Test
+    void flaggedChildrenKeepTheirScoresAndMatchComputedRulesAtTheNextLevel() {
+        MaturityModel model = hierarchicalAggregationModel();
+        var dimension = model.getDimensions().getFirst();
+        var target = dimension.getModules().getFirst();
+        target.setChildStateGatingRules(List.of(new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule("every", "computed", "flagForReview")));
+        dimension.setChildStateGatingRules(List.of(new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule("every", "computed", "flagForReview")));
+        AssessmentResponse response = submitForGating(model, partialHierarchyAnswers());
+        assertEquals("flagForReview", element(response, "module", "M1").state());
+        assertEquals("flagForReview", element(response, "dimension", "D1").state());
+        assertEquals(1.0, element(response, "dimension", "D1").normalizedScore());
+        assertEquals(87.5, element(response, "dimension", "D1").includedCount());
+        assertNotNull(response.getDimensionResults().getFirst().getMaturityLevel());
+        assertEquals(5.0, response.getOverallAverage());
+    }
+
+    @Test
+    void withholdingWinsOverFlagsRegardlessOfRuleOrderAndMinimumFailures() {
+        MaturityModel model = hierarchicalAggregationModel();
+        var target = model.getDimensions().getFirst().getModules().getFirst();
+        var flag = new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule("any", "computed", "flagForReview");
+        var withhold = new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule("no", "withheld", "withheld");
+        for (var rules : List.of(List.of(flag, withhold), List.of(withhold, flag))) {
+            target.setChildStateGatingRules(rules);
+            var result = element(submitForGating(model, partialHierarchyAnswers()), "module", "M1");
+            assertEquals("withheld", result.state()); assertNull(result.normalizedScore());
+        }
+        target.setChildStateGatingRules(List.of(flag));
+        target.setMinimumIncludedCount(100.0);
+        assertEquals("withheld", element(submitForGating(model, partialHierarchyAnswers()), "module", "M1").state());
+    }
+
+    @Test
+    void stateRulesIgnoreHiddenChildrenAndUnansweredQuestionsDoNotMatchComputed() {
+        MaturityModel model = booleanScoringModel();
+        var practice = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        var rule = new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule("every", "computed", "flagForReview");
+        practice.setChildStateGatingRules(List.of(rule));
+        assertEquals("computed", element(submitForGating(model, Map.of("D1_M1_101_1001", true)), "practice", "P1").state());
+        model = hierarchicalAggregationModel();
+        var dimension = model.getDimensions().getFirst();
+        dimension.getModules().getLast().setVisible(false);
+        dimension.setChildStateGatingRules(List.of(rule));
+        var answers = new java.util.HashMap<String, Object>(partialHierarchyAnswers());
+        answers.remove("D1_M2_103_1004");
+        assertEquals("flagForReview", element(submitForGating(model, answers), "dimension", "D1").state());
     }
 
     private Question question(Long id) {

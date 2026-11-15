@@ -62,6 +62,10 @@ public class Dimension {
     @Column(name = "minimum_included_count", nullable = false)
     private Double minimumIncludedCount = 0.0;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "child_state_gating_rules", columnDefinition = "jsonb", nullable = false)
+    private List<ChildStateGatingRule> childStateGatingRules = new java.util.ArrayList<>();
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

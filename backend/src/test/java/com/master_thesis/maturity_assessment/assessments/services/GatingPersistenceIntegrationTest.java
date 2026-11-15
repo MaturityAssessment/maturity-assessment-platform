@@ -29,6 +29,8 @@ class GatingPersistenceIntegrationTest {
         Dimension dimension = new Dimension();
         dimension.setDimensionId("D1"); dimension.setName("Dimension");
         dimension.setMinimumCoverage(82.5); dimension.setMinimumIncludedCount(60.0);
+        var rule = new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule("any", "withheld", "flagForReview");
+        dimension.setChildStateGatingRules(List.of(rule));
         entities.persist(dimension);
         Module module = new Module(); module.setCode("M1"); module.setName("Module"); module.setDimension(dimension);
         module.setMinimumCoverage(90.0); module.setMinimumIncludedCount(75.0); entities.persist(module);
@@ -44,13 +46,17 @@ class GatingPersistenceIntegrationTest {
         result.setAssessment(assessment); result.setDimensionId("D1"); result.setDimensionName("Dimension");
         result.setDimensionDescription(""); result.setTotalQuestions(2); result.setTotalScore(0.0);
         result.setScoreState("withheld"); result.setCoverage(25.0); result.setIncludedCount(50.0); entities.persist(result);
+        var flagged = new AssessmentElementResult("dimension", "D2", null, null, null, null, "Flagged",
+                "flagForReview", 0.75, 100, 100);
+        assessment.setElementResults(List.of(snapshot, flagged));
         entities.flush(); entities.clear();
         assertEquals(82.5, entities.find(Dimension.class, dimension.getId()).getMinimumCoverage());
         assertEquals(60.0, entities.find(Dimension.class, dimension.getId()).getMinimumIncludedCount());
         assertEquals(90.0, entities.find(Module.class, module.getId()).getMinimumCoverage());
         assertEquals(80.0, entities.find(Practice.class, practice.getId()).getMinimumIncludedCount());
         Assessment reloaded = entities.find(Assessment.class, assessment.getId());
-        assertEquals(List.of(snapshot), reloaded.getElementResults());
+        assertEquals(List.of(snapshot, flagged), reloaded.getElementResults());
+        assertEquals(List.of(rule), entities.find(Dimension.class, dimension.getId()).getChildStateGatingRules());
         assertNull(reloaded.getOverallAverage()); assertNull(reloaded.getOverallMaturityLevel());
         DimensionResult reloadedDimension = entities.find(DimensionResult.class, result.getId());
         assertEquals("withheld", reloadedDimension.getScoreState()); assertEquals(25.0, reloadedDimension.getCoverage());

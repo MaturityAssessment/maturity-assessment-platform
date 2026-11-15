@@ -40,6 +40,7 @@ See the [domain reference](./backend/docs/api/reference/domains.md).
 - Define between 2 and 12 named maturity levels and configure automatic or manual evaluation.
 - Edit a model by creating a new inactive version, with a changelog and stable public codes for model items.
 - Configure minimum coverage and minimum included count as percentages on practices, modules and dimensions. Failed minima withhold scores from parent aggregation; evaluation stores completion metrics and states at every visible element. See [gating calculations](docs/gating-rules.md).
+- Add Any/Every/No rules over visible direct-child states. Rules can withhold an aggregate or flag it for review; flags retain normal scoring, and withholding always wins.
 - Toggle module visibility from its editor or outline actions. Hidden modules remain editable and are excluded from assessments and evaluation for that version.
 - Set module prerequisites in the Relationships tab using earlier modules in the same dimension. Invalid reorders and visibility changes are blocked. Assessment modules stay locked until required prerequisite answers and evidence are complete; relocking preserves existing answers and evidence.
 - Define co-requisites and mutually exclusive modules in the same dimension. Co-requisite groups share visibility; mutually exclusive pairs allow at most one visible module. Changes preview affected visibility and preserve prerequisite consistency and completion threshold settings. Direct and indirect dependency conflicts are rejected; alternative modules may share a prerequisite.
