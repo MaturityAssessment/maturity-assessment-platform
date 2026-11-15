@@ -158,6 +158,7 @@ export interface Practice {
   aggregationRule?: AggregationRule;
   childStateGatingRules?: ChildStateGatingRule[];
   conditionalGatingRules?: ConditionalGatingRule[];
+  completionGatingMetadata?: { name?: string; description?: string };
   minimumCoverage?: number;
   minimumIncludedCount?: number;
   questions: Question[];
@@ -183,6 +184,7 @@ export interface Module {
   aggregationRule?: AggregationRule;
   childStateGatingRules?: ChildStateGatingRule[];
   conditionalGatingRules?: ConditionalGatingRule[];
+  completionGatingMetadata?: { name?: string; description?: string };
   minimumCoverage?: number;
   minimumIncludedCount?: number;
   /** 0-based order within the dimension (from API / persisted). */
@@ -199,6 +201,7 @@ export interface Dimension {
   mappingRules?: MappingRule[];
   childStateGatingRules?: ChildStateGatingRule[];
   conditionalGatingRules?: ConditionalGatingRule[];
+  completionGatingMetadata?: { name?: string; description?: string };
   minimumCoverage?: number;
   minimumIncludedCount?: number;
   /** 0-based order within the model (from API / persisted). */
@@ -638,6 +641,7 @@ export interface ModelEditorPractice {
   aggregationRule: AggregationRule;
   childStateGatingRules?: ChildStateGatingRule[];
   conditionalGatingRules?: ConditionalGatingRule[];
+  completionGatingMetadata?: { name?: string; description?: string };
   minimumCoverage: number;
   minimumIncludedCount: number;
   questions: ModelEditorQuestion[];
@@ -664,6 +668,7 @@ export interface ModelEditorModule {
   aggregationRule: AggregationRule;
   childStateGatingRules?: ChildStateGatingRule[];
   conditionalGatingRules?: ConditionalGatingRule[];
+  completionGatingMetadata?: { name?: string; description?: string };
   minimumCoverage: number;
   minimumIncludedCount: number;
   practices: ModelEditorPractice[];
@@ -680,6 +685,7 @@ export interface ModelEditorDimension {
   mappingRules: MappingRule[];
   childStateGatingRules?: ChildStateGatingRule[];
   conditionalGatingRules?: ConditionalGatingRule[];
+  completionGatingMetadata?: { name?: string; description?: string };
   minimumCoverage: number;
   minimumIncludedCount: number;
   modules: ModelEditorModule[];
@@ -755,6 +761,8 @@ export interface AssessmentElementResult {
 }
 
 export interface ChildStateGatingRule {
+  name?: string;
+  description?: string;
   quantifier: "any" | "every" | "no";
   state: "computed" | "withheld";
   effect: "withheld" | "flagForReview";
@@ -773,6 +781,8 @@ export interface GatingChildCondition {
   where: { kind: "and"; conditions: GatingComparison[] };
 }
 export interface ConditionalGatingRule {
+  name?: string;
+  description?: string;
   version: 1;
   when: { kind: "and"; conditions: GatingChildCondition[] };
   effect: "withheld" | "flagForReview";

@@ -1,85 +1,75 @@
+import CompletionThresholdFields from "./CompletionThresholdFields";
+import { useState } from "react";
+import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
+import { PlusIcon, PencilSquareIcon, TrashIcon, XMarkIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
 import ConditionalGatingField from "./ConditionalGatingField";
-import type { GatingChildOption } from "../model/conditionalGating";
+import { conditionalGatingIssues, type GatingChildOption } from "../model/conditionalGating";
 import type { AggregationRule, ChildStateGatingRule, ConditionalGatingRule } from "@/api/types";
 import { inputClass, labelClass } from "./FormFields";
 
-type Thresholds = { minimumCoverage: number; minimumIncludedCount: number; conditionalGatingRules?: ConditionalGatingRule[]; childStateGatingRules?: ChildStateGatingRule[] };
-
-export default function GatingRuleField({
-  idPrefix, aggregationRule, isPractice, minimumCoverage, minimumIncludedCount, childType = "question", childStateGatingRules = [], conditionalGatingRules = [], childOptions = [], onChange,
-}: Thresholds & {
-  idPrefix: string;
-  aggregationRule: AggregationRule;
-  isPractice: boolean;
-  childOptions?: GatingChildOption[];
-  childType?: "question" | "practice" | "module";
-  onChange: (thresholds: Thresholds) => void;
+type Values = { minimumCoverage: number; minimumIncludedCount: number; conditionalGatingRules?: ConditionalGatingRule[]; childStateGatingRules?: ChildStateGatingRule[]; completionGatingMetadata?: { name?: string; description?: string } };
+type Draft = { kind: "state" | "conditional"; index: number | null; name: string; description: string; state: ChildStateGatingRule; conditional: ConditionalGatingRule };
+const defaultRule = (): ConditionalGatingRule => ({ version: 1, effect: "flagForReview", when: { kind: "and", conditions: [{ kind: "children", quantifier: "any", selection: {}, where: { kind: "and", conditions: [{ kind: "comparison", field: "score", operator: "<", right: { kind: "literal", value: 0.7 } }] } }] } });
+const effectName = (effect: string) => effect === "withheld" ? "Withhold" : "Flag for review";
+export function conditionalSummary(rule: ConditionalGatingRule, childType: string, options: GatingChildOption[] = []) {
+  const literal = (value: unknown, field: string): string => {
+    if (typeof value === "boolean") return value ? "Yes" : "No";
+    if (typeof value === "object" && value && "notApplicable" in value) return "N/A";
+    if (Array.isArray(value)) return value.map(v => literal(v, field)).join(", ");
+    if (field === "score" && typeof value === "number") return `${Number((value * 100).toFixed(4))}%`;
+    if (typeof value === "string") return options.flatMap(option => option.question?.choices ?? []).find(choice => choice.id === value)?.label ?? value;
+    return String(value);
+  };
+  return rule.when.conditions.map(clause => `${{ any: "Any", every: "Every", no: "No" }[clause.quantifier]} ${clause.selection.codes?.join(", ") || childType} has (${clause.where.conditions.map(c => `${c.field === "includedCount" ? "included count" : c.field} ${c.operator === "isNot" ? "is not" : c.operator} ${c.right.kind === "field" ? `${c.right.field} of ${c.right.code}` : literal(c.right.value, c.field)}${["coverage", "includedCount"].includes(c.field) && c.right.kind === "literal" ? "%" : ""}`).join(" AND ")})`).join(" AND ");
+}
+export default function GatingRuleField({ idPrefix, aggregationRule, isPractice, childType = "question", childOptions = [], onChange, ...values }: Values & {
+  idPrefix: string; aggregationRule: AggregationRule; isPractice: boolean; childType?: "question" | "practice" | "module"; childOptions?: GatingChildOption[]; onChange: (values: Values) => void;
 }) {
-  const weightedMean = aggregationRule === "WEIGHTED_AVERAGE";
-  const updateRules = (rules: ChildStateGatingRule[]) => onChange({ minimumCoverage, minimumIncludedCount, childStateGatingRules: rules });
-  const updateRule = (index: number, change: Partial<ChildStateGatingRule>) => updateRules(childStateGatingRules.map((rule, position) => position === index ? { ...rule, ...change } : rule));
-  return (
-    <fieldset className="min-w-0">
-      <legend className="text-lg font-semibold tracking-tight text-gray-950">Gating rules</legend>
-      <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
-        Withhold this element when either active minimum is not met. A withheld element has no score or maturity level and its score is excluded from parent aggregation. Set a minimum to 0% to disable it.
-      </p>
-      <div className="mt-5 grid gap-6 rounded-xl border border-gray-200 bg-white p-4 @lg:p-5 @2xl:grid-cols-2">
-        <label className={labelClass} htmlFor={`${idPrefix}-minimum-coverage`}>
-          Minimum coverage (%)
-          <input id={`${idPrefix}-minimum-coverage`} type="number" min="0" max="100" step="any"
-            disabled={!weightedMean} className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-500`}
-            value={Number.isNaN(minimumCoverage) ? "" : minimumCoverage} onChange={(event) => onChange({ minimumCoverage: event.target.valueAsNumber, minimumIncludedCount })}
-            aria-describedby={`${idPrefix}-coverage-help`} />
-          <span id={`${idPrefix}-coverage-help`} className="text-xs font-normal leading-5 text-gray-500">
-            {weightedMean ? "Coverage measures completion using direct-child weights." : "Coverage gating applies only to weighted mean. This minimum is retained if you change the aggregation method."}
-          </span>
-        </label>
-        <label className={labelClass} htmlFor={`${idPrefix}-minimum-included-count`}>
-          Minimum included count (%)
-          <input id={`${idPrefix}-minimum-included-count`} type="number" min="0" max="100" step="any"
-            className={inputClass} value={Number.isNaN(minimumIncludedCount) ? "" : minimumIncludedCount}
-            onChange={(event) => onChange({ minimumCoverage, minimumIncludedCount: event.target.valueAsNumber })}
-            aria-describedby={`${idPrefix}-included-count-help`} />
-          <span id={`${idPrefix}-included-count-help`} className="text-xs font-normal leading-5 text-gray-500">
-            {isPractice
-              ? "Answered questions divided by all questions visible to the respondent. Required and optional questions both count; untriggered dependent questions do not."
-              : "The mean of direct-child included-count percentages. Every child counts, including withheld children, which contribute zero."}
-          </span>
-        </label>
-      </div>
-      <section className="mt-6 space-y-4" aria-label="Child-state gating rules">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="font-semibold text-gray-950">Child-state rules</h3>
-          <button type="button" className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-            onClick={() => updateRules([...childStateGatingRules, { quantifier: "any", state: "withheld", effect: "flagForReview" }])}>Add child-state rule</button>
-        </div>
-        <p className="text-sm leading-6 text-gray-500">Check visible direct children. Flag for review retains scoring and counts as score computed. Withhold always takes precedence, including when a minimum fails.</p>
-        {childStateGatingRules.length === 0 && <p className="text-sm text-gray-500">No child-state rules.</p>}
-        {childStateGatingRules.map((rule, index) => <fieldset key={index} className="rounded-xl border border-gray-200 bg-white p-4">
-          <legend className="px-1 text-sm font-semibold">Rule {index + 1}</legend>
-          <div className="flex flex-wrap items-end gap-3">
-            <label className={labelClass}>If
-              <select className={inputClass} aria-label={`Rule ${index + 1} quantifier`} value={rule.quantifier} onChange={event => updateRule(index, { quantifier: event.target.value as ChildStateGatingRule["quantifier"] })}>
-                <option value="any">Any {childType}</option><option value="every">Every {childType}</option><option value="no">No {childType}</option>
-              </select>
-            </label>
-            <label className={labelClass}>Has state equal to
-              <select className={inputClass} aria-label={`Rule ${index + 1} child state`} value={rule.state} onChange={event => updateRule(index, { state: event.target.value as ChildStateGatingRule["state"] })}>
-                <option value="computed">Score computed</option><option value="withheld">Withhold</option>
-              </select>
-            </label>
-            <label className={labelClass}>Set this element’s state to
-              <select className={inputClass} aria-label={`Rule ${index + 1} effect`} value={rule.effect} onChange={event => updateRule(index, { effect: event.target.value as ChildStateGatingRule["effect"] })}>
-                <option value="withheld">Withhold</option><option value="flagForReview">Flag for review</option>
-              </select>
-            </label>
-            <button type="button" className="rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50" aria-label={`Delete child-state rule ${index + 1}`} onClick={() => updateRules(childStateGatingRules.filter((_, position) => position !== index))}>Delete</button>
-          </div>
-        </fieldset>)}
-      </section>
-      <ConditionalGatingField value={conditionalGatingRules} childOptions={childOptions} childType={childType} onChange={rules => onChange({ minimumCoverage, minimumIncludedCount, childStateGatingRules, conditionalGatingRules: rules })} />
-      <p className="mt-3 text-xs leading-5 text-gray-500">A result equal to the minimum passes. An element with no included children is withheld even when both minima are disabled.</p>
-    </fieldset>
-  );
+  const [draft, setDraft] = useState<Draft | null>(null), [step, setStep] = useState(0);
+  const stateRules = values.childStateGatingRules ?? [], conditionalRules = values.conditionalGatingRules ?? [];
+  const open = (kind: Draft["kind"], index: number | null = null) => {
+    const state = kind === "state" && index != null ? stateRules[index] : { quantifier: "any" as const, state: "withheld" as const, effect: "flagForReview" as const };
+    const conditional = kind === "conditional" && index != null ? conditionalRules[index] : defaultRule();
+    const metadata = kind === "state" ? state : conditional;
+    setDraft(structuredClone({ kind, index, name: metadata?.name ?? (index == null ? "" : kind === "state" ? `Child-state rule ${index + 1}` : `Conditional rule ${index + 1}`), description: metadata?.description ?? "", state, conditional })); setStep(0);
+  };
+  const detailsValid = !!draft?.name.trim() && draft.name.length <= 255 && draft.description.length <= 2000;
+  const errors = !draft ? [] : draft.kind === "conditional" ? conditionalGatingIssues([draft.conditional], childOptions) : [];
+  const save = () => {
+    if (!draft || !detailsValid || errors.length) return;
+    const metadata = { name: draft.name.trim(), description: draft.description.trim() };
+    const next = { ...values };
+    if (draft.kind === "state") next.childStateGatingRules = draft.index == null ? [...stateRules, { ...draft.state, ...metadata }] : stateRules.map((r, i) => i === draft.index ? { ...draft.state, ...metadata } : r);
+    else next.conditionalGatingRules = draft.index == null ? [...conditionalRules, { ...draft.conditional, ...metadata }] : conditionalRules.map((r, i) => i === draft.index ? { ...draft.conditional, ...metadata } : r);
+    onChange(next); setDraft(null);
+  };
+  const row = (name: string, description: string, summary: string, effect: string, edit: () => void, remove?: () => void) => <div className="flex items-center gap-4 px-4 py-4 sm:px-5">
+    <div className="min-w-0 flex-1"><p className="truncate font-semibold text-gray-950">{name}</p><p className="mt-1 line-clamp-2 text-sm leading-5 text-gray-500" title={description || summary}>{summary}</p></div>
+    <span className={`hidden shrink-0 rounded-full px-2.5 py-1 text-xs font-medium sm:inline-flex ${effect === "Withhold" ? "bg-amber-50 text-amber-800" : "bg-blue-50 text-blue-700"}`}>{effect}</span>
+    <button type="button" onClick={edit} aria-label={`Edit ${name}`} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100"><PencilSquareIcon className="h-5 w-5" /></button>
+    {remove && <button type="button" onClick={remove} aria-label={`Delete ${name}`} className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-700"><TrashIcon className="h-5 w-5" /></button>}
+  </div>;
+  return <section aria-label="Gating rules" className="space-y-5">
+    <CompletionThresholdFields idPrefix={idPrefix} aggregationRule={aggregationRule} isPractice={isPractice}
+      minimumCoverage={values.minimumCoverage} minimumIncludedCount={values.minimumIncludedCount}
+      onChange={thresholds => onChange({ ...values, ...thresholds })} />
+    <section aria-label="Custom gating rules" className="space-y-5 border-t border-gray-100 pt-6">
+    <div className="flex items-start justify-between gap-4"><div><h3 className="text-lg font-semibold text-gray-950">Custom gating rules</h3><p className="mt-1 text-sm text-gray-500">Define when a result should be withheld or flagged for review.</p></div><button type="button" onClick={() => open("conditional")} className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"><PlusIcon className="h-4 w-4" />Create rule</button></div>
+    {(stateRules.length > 0 || conditionalRules.length > 0) && <div className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+      {stateRules.map((rule, i) => <div key={`state-${i}`}>{row(rule.name || `Child-state rule ${i + 1}`, rule.description || "", `${rule.quantifier} ${childType} has state ${rule.state}`, effectName(rule.effect), () => open("state", i), () => onChange({ ...values, childStateGatingRules: stateRules.filter((_, j) => j !== i) }))}</div>)}
+      {conditionalRules.map((rule, i) => <div key={`conditional-${i}`}>{row(rule.name || `Conditional rule ${i + 1}`, rule.description || "", conditionalSummary(rule, childType, childOptions), effectName(rule.effect), () => open("conditional", i), () => onChange({ ...values, conditionalGatingRules: conditionalRules.filter((_, j) => j !== i) }))}</div>)}
+    </div>}
+    {!stateRules.length && !conditionalRules.length && <p className="text-sm text-gray-400">No custom rules yet. Create a rule to add a condition.</p>}
+    </section>
+    <Dialog open={!!draft} onClose={() => setDraft(null)} className="relative z-50"><div className="fixed inset-0 bg-gray-950/40 backdrop-blur-sm" aria-hidden="true" /><div className="fixed inset-0 overflow-y-auto"><div className="flex min-h-full items-center justify-center p-4 sm:p-8"><DialogPanel className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+      {draft && <><div className="flex items-start justify-between border-b border-gray-100 px-6 py-5"><div><p className="text-xs font-medium uppercase tracking-wide text-blue-600">{draft.index == null ? "Create a rule" : "Edit rule"}</p><DialogTitle className="mt-1 text-xl font-semibold text-gray-950">{["Give your rule a purpose", "Define the condition", "Choose the outcome"][step]}</DialogTitle></div><button type="button" aria-label="Close rule editor" onClick={() => setDraft(null)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100"><XMarkIcon className="h-5 w-5" /></button></div>
+      <ol className="flex gap-6 border-b border-gray-100 px-6 py-4 text-sm">{["Details", "Conditions", "Outcome"].map((label, i) => <li key={label} aria-current={step === i ? "step" : undefined} className={step === i ? "font-semibold text-blue-700" : "text-gray-400"}><span className="mr-2">{i + 1}.</span>{label}</li>)}</ol>
+      <div className="max-h-[60vh] overflow-y-auto px-6 py-6">
+        {step === 0 && <div className="space-y-5"><label className={labelClass}>Rule name <span className="sr-only">(required)</span><input autoFocus required maxLength={255} className={inputClass} value={draft.name} placeholder="e.g. Flag incomplete practices" onChange={event => setDraft({ ...draft, name: event.target.value })} /></label><label className={labelClass}>Description <span className="text-xs font-normal text-gray-400">Optional</span><textarea rows={3} maxLength={2000} className={inputClass} value={draft.description} placeholder="Explain why this rule matters and when to use it." onChange={event => setDraft({ ...draft, description: event.target.value })} /></label>{draft.index == null && <fieldset><legend className="mb-2 text-sm font-medium">What should this rule check?</legend><div className="grid gap-3 sm:grid-cols-2">{(["conditional", "state"] as const).map(kind => <button key={kind} type="button" onClick={() => setDraft({ ...draft, kind })} aria-pressed={draft.kind === kind} className={`rounded-xl border p-4 text-left ${draft.kind === kind ? "border-blue-500 bg-blue-50" : "border-gray-200"}`}><span className="block font-medium">{kind === "conditional" ? "Compare child properties" : "Check child states"}</span><span className="mt-1 block text-xs leading-5 text-gray-500">{kind === "conditional" ? "Scores, answers and completion, with AND conditions." : "A simple Any / Every / No state condition."}</span></button>)}</div></fieldset>}</div>}
+        {step === 1 && (draft.kind === "state" ? <div className="grid gap-5 sm:grid-cols-2"><label className={labelClass}>If<select className={inputClass} value={draft.state.quantifier} onChange={e => setDraft({ ...draft, state: { ...draft.state, quantifier: e.target.value as ChildStateGatingRule["quantifier"] } })}><option value="any">Any {childType}</option><option value="every">Every {childType}</option><option value="no">No {childType}</option></select></label><label className={labelClass}>Has state<select className={inputClass} value={draft.state.state} onChange={e => setDraft({ ...draft, state: { ...draft.state, state: e.target.value as ChildStateGatingRule["state"] } })}><option value="computed">Score computed</option><option value="withheld">Withhold</option></select></label></div> : <ConditionalGatingField embedded value={[draft.conditional]} childOptions={childOptions} childType={childType} onChange={rules => setDraft({ ...draft, conditional: rules[0] })} />)}
+        {step === 2 && <div className="space-y-5"><label className={labelClass}>When the condition matches<select className={inputClass} value={draft.kind === "state" ? draft.state.effect : draft.conditional.effect} onChange={event => setDraft({ ...draft, state: { ...draft.state, effect: event.target.value as ChildStateGatingRule["effect"] }, conditional: { ...draft.conditional, effect: event.target.value as ConditionalGatingRule["effect"] } })}><option value="flagForReview">Flag for review</option><option value="withheld">Withhold</option></select></label><div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4"><h4 className="font-semibold">{draft.name}</h4>{draft.description && <p className="mt-1 text-sm text-gray-500">{draft.description}</p>}<p className="mt-3 break-words text-sm leading-6">{draft.kind === "conditional" ? conditionalSummary(draft.conditional, childType, childOptions) : `${draft.state.quantifier} ${childType} has state ${draft.state.state}`}</p></div><p className="text-xs leading-5 text-gray-500">Withhold always takes precedence. Flag for review keeps the score and its normal contribution to aggregation.</p></div>}
+        {errors.length > 0 && step > 0 && <div role="alert" className="mt-4 text-sm text-red-700">{errors.map(error => <p key={error}>{error}</p>)}</div>}
+      </div><div className="flex items-center justify-between border-t border-gray-100 bg-gray-50 px-6 py-4"><button type="button" onClick={() => setDraft(null)} className="text-sm text-gray-500">Cancel</button><div className="flex gap-3">{step > 0 && <button type="button" onClick={() => setStep(step - 1)} className="rounded-lg border bg-white px-4 py-2 text-sm">Back</button>}<button type="button" disabled={!detailsValid || step > 0 && errors.length > 0} onClick={() => step < 2 ? setStep(step + 1) : save()} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">{step < 2 ? "Continue" : "Save rule"}{step < 2 && <ArrowRightIcon className="h-4 w-4" />}</button></div></div></>}
+    </DialogPanel></div></div></Dialog>
+  </section>;
 }

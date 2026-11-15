@@ -31,6 +31,8 @@ public class MaturityModelEditorDTO {
         private Double weight;
         private AggregationRule aggregationRule;
         private List<MappingRuleDTO> mappingRules = new ArrayList<>();
+                private com.master_thesis.maturity_assessment.maturity_models.models.GatingRuleMetadata completionGatingMetadata;
+
         private Double minimumCoverage = 0.0;
         private Double minimumIncludedCount = 0.0;
 
@@ -55,6 +57,8 @@ public class MaturityModelEditorDTO {
         private String description;
         private Double weight;
         private AggregationRule aggregationRule;
+                private com.master_thesis.maturity_assessment.maturity_models.models.GatingRuleMetadata completionGatingMetadata;
+
         private Double minimumCoverage = 0.0;
         private Double minimumIncludedCount = 0.0;
 
@@ -73,6 +77,8 @@ public class MaturityModelEditorDTO {
         private String description;
         private Double weight;
         private AggregationRule aggregationRule;
+                private com.master_thesis.maturity_assessment.maturity_models.models.GatingRuleMetadata completionGatingMetadata;
+
         private Double minimumCoverage = 0.0;
         private Double minimumIncludedCount = 0.0;
 

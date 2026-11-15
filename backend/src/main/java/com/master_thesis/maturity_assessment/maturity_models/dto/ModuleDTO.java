@@ -22,6 +22,8 @@ public class ModuleDTO {
     private List<String> substitutesModuleCodes = new java.util.ArrayList<>();
     private Double weight;
     private AggregationRule aggregationRule;
+        private com.master_thesis.maturity_assessment.maturity_models.models.GatingRuleMetadata completionGatingMetadata;
+
     private Double minimumCoverage = 0.0;
     private Double minimumIncludedCount = 0.0;
 

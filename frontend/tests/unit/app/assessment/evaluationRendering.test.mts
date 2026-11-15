@@ -405,10 +405,11 @@ test("completion results show measured percentages and the withheld state", () =
 test("gating controls use percentage thresholds and retain inactive coverage for other methods", () => {
   const Gating = load(resolve(sourceRoot, "app/maturity-models/editor/components/GatingRuleField.tsx")).default;
   const html = renderToStaticMarkup(createElement(Gating, { idPrefix: "practice", aggregationRule: "MINIMUM", isPractice: true, minimumCoverage: 80, minimumIncludedCount: 60, onChange: noOp }));
-  assert.match(html, /Minimum coverage \(%\)/);
+  assert.match(html, /Completion thresholds/);
   assert.match(html, /Minimum included count \(%\)/);
+  assert.match(html, /aria-label="Custom gating rules"/);
   assert.match(html, /id="practice-minimum-coverage"[^>]*disabled=""[^>]*value="80"/);
-  assert.match(html, /max="100"/);
+  assert.doesNotMatch(html, /Edit Completion requirements/);
   assert.doesNotMatch(html, /Add rule|Set score to|specific child/);
 });
 
@@ -417,8 +418,8 @@ test("child-state gating controls use the direct child type and show flagged res
   const html = renderToStaticMarkup(createElement(Gating, { idPrefix: "module", aggregationRule: "AVERAGE", isPractice: false,
     childType: "practice", minimumCoverage: 0, minimumIncludedCount: 0,
     childStateGatingRules: [{ quantifier: "any", state: "withheld", effect: "flagForReview" }], onChange: noOp }));
-  assert.match(html, /Any practice/); assert.match(html, /Every practice/); assert.match(html, /No practice/);
-  assert.match(html, /Flag for review/); assert.match(html, /Withhold always takes precedence/);
+  assert.match(html, /Child-state rule 1/); assert.match(html, /any practice has state withheld/);
+  assert.match(html, /Flag for review/); assert.doesNotMatch(html, /<select/);
   const Completion = load(resolve(sourceRoot, "app/assessment/AssessmentCompletionResults.tsx")).default;
   const result = renderToStaticMarkup(createElement(Completion, { elements: [{ elementType: "module", name: "Module", state: "flagForReview", includedCount: 75, coverage: 75 }] }));
   assert.match(result, /Flag for review/); assert.match(result, /75\.0%/);

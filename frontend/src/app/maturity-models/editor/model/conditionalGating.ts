@@ -55,6 +55,7 @@ export function conditionalGatingIssues(rules: ConditionalGatingRule[] | undefin
   if (rules.length > 100) errors.push("At most 100 conditional rules are supported.");
   rules.forEach((rule, index) => {
     try {
+      if (rule.name != null && (!rule.name.trim() || rule.name.length > 255) || rule.description != null && rule.description.length > 2000) throw Error("Use a name of 1–255 characters and a description of at most 2000 characters.");
       if (rule.version !== 1 || !["withheld", "flagForReview"].includes(rule.effect) || rule.when.kind !== "and" || !rule.when.conditions.length || rule.when.conditions.length > 50) throw Error("Use version 1, AND conditions and a valid effect.");
       for (const clause of rule.when.conditions) {
         if (clause.kind !== "children" || !["any", "every", "no"].includes(clause.quantifier) || clause.where.kind !== "and" || !clause.where.conditions.length || clause.where.conditions.length > 50) throw Error("Complete each selection and its AND comparisons.");

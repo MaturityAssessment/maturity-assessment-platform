@@ -64,25 +64,25 @@ public class MaturityModelExcelService {
     private static final List<String> LEVELS_OPTIONAL_HEADERS = List.of("description");
 
     private static final List<String> DIMENSION_HEADERS = List.of("dimensionId", "dimensionName");
-    private static final List<String> DIMENSION_OPTIONAL_HEADERS = List.of("dimensionDescription", "dimensionWeight", "dimensionAggregationRule", "dimensionMappingRules", "dimensionMinimumCoverage", "dimensionMinimumIncludedCount", "dimensionChildStateGatingRules", "dimensionConditionalGatingRules");
+    private static final List<String> DIMENSION_OPTIONAL_HEADERS = List.of("dimensionDescription", "dimensionWeight", "dimensionAggregationRule", "dimensionMappingRules", "dimensionMinimumCoverage", "dimensionMinimumIncludedCount", "dimensionChildStateGatingRules", "dimensionConditionalGatingRules", "dimensionCompletionGatingMetadata");
     private static final List<String> DIMENSION_EXPORT_HEADERS = Stream.concat(DIMENSION_HEADERS.stream(), DIMENSION_OPTIONAL_HEADERS.stream()).toList();
 
     private static final List<String> MODULE_HEADERS = List.of(
             "dimensionId", "moduleCode", "moduleName", "moduleDescription"
     );
     private static final List<String> MODULE_OPTIONAL_HEADERS = List.of(
-            "dimensionName", "moduleWeight", "moduleAggregationRule", "moduleMinimumCoverage", "moduleMinimumIncludedCount", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes", "moduleChildStateGatingRules", "moduleConditionalGatingRules"
+            "dimensionName", "moduleWeight", "moduleAggregationRule", "moduleMinimumCoverage", "moduleMinimumIncludedCount", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes", "moduleChildStateGatingRules", "moduleConditionalGatingRules", "moduleCompletionGatingMetadata"
     );
-    private static final List<String> MODULE_EXPORT_HEADERS = Stream.concat(MODULE_HEADERS.stream(), Stream.of("moduleWeight", "moduleAggregationRule", "moduleMinimumCoverage", "moduleMinimumIncludedCount", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes", "moduleChildStateGatingRules", "moduleConditionalGatingRules")).toList();
+    private static final List<String> MODULE_EXPORT_HEADERS = Stream.concat(MODULE_HEADERS.stream(), Stream.of("moduleWeight", "moduleAggregationRule", "moduleMinimumCoverage", "moduleMinimumIncludedCount", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes", "moduleChildStateGatingRules", "moduleConditionalGatingRules", "moduleCompletionGatingMetadata")).toList();
 
     private static final List<String> PRACTICE_HEADERS = List.of(
             "dimensionId", "moduleCode", "practiceName", "practiceDescription"
     );
     private static final List<String> PRACTICE_OPTIONAL_HEADERS = List.of(
-            "practiceCode", "practiceId", "dimensionName", "moduleName", "practiceWeight", "practiceRequiresEvidence", "practiceAggregationRule", "practiceMinimumCoverage", "practiceMinimumIncludedCount", "practiceEvidenceRequirements", "practiceChildStateGatingRules", "practiceConditionalGatingRules"
+            "practiceCode", "practiceId", "dimensionName", "moduleName", "practiceWeight", "practiceRequiresEvidence", "practiceAggregationRule", "practiceMinimumCoverage", "practiceMinimumIncludedCount", "practiceEvidenceRequirements", "practiceChildStateGatingRules", "practiceConditionalGatingRules", "practiceCompletionGatingMetadata"
     );
     private static final List<String> PRACTICE_EXPORT_HEADERS = List.of(
-            "dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceMinimumCoverage", "practiceMinimumIncludedCount", "practiceEvidenceRequirements", "practiceChildStateGatingRules", "practiceConditionalGatingRules"
+            "dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceMinimumCoverage", "practiceMinimumIncludedCount", "practiceEvidenceRequirements", "practiceChildStateGatingRules", "practiceConditionalGatingRules", "practiceCompletionGatingMetadata"
     );
 
     private static final List<String> QUESTION_HEADERS = List.of(
@@ -250,6 +250,7 @@ public class MaturityModelExcelService {
                 m.setDimensionMinimumIncludedCount(dim.get("dimensionMinimumIncludedCount"));
                 m.setDimensionChildStateGatingRules(dim.get("dimensionChildStateGatingRules"));
                 m.setDimensionConditionalGatingRules(dim.get("dimensionConditionalGatingRules"));
+                m.setDimensionCompletionGatingMetadata(dim.get("dimensionCompletionGatingMetadata"));
 
                 m.setModuleCode(mod.get("moduleCode"));
                 m.setModuleName(mod.get("moduleName"));
@@ -267,6 +268,7 @@ public class MaturityModelExcelService {
                 m.setModuleMinimumIncludedCount(mod.get("moduleMinimumIncludedCount"));
                 m.setModuleChildStateGatingRules(mod.get("moduleChildStateGatingRules"));
                 m.setModuleConditionalGatingRules(mod.get("moduleConditionalGatingRules"));
+                m.setModuleCompletionGatingMetadata(mod.get("moduleCompletionGatingMetadata"));
 
                 m.setPracticeId(pr.get("practiceId"));
                 m.setPracticeCode(pr.get("practiceCode"));
@@ -278,6 +280,7 @@ public class MaturityModelExcelService {
                 m.setPracticeMinimumIncludedCount(pr.get("practiceMinimumIncludedCount"));
                 m.setPracticeChildStateGatingRules(pr.get("practiceChildStateGatingRules"));
                 m.setPracticeConditionalGatingRules(pr.get("practiceConditionalGatingRules"));
+                m.setPracticeCompletionGatingMetadata(pr.get("practiceCompletionGatingMetadata"));
 
                 m.setQuestionWeight(q.get("questionWeight"));
                 m.setQuestionCode(q.get("questionCode"));
@@ -716,6 +719,7 @@ public class MaturityModelExcelService {
             row.createCell(7).setCellValue(dim.getMinimumIncludedCount() == null ? 0.0 : dim.getMinimumIncludedCount());
             row.createCell(8).setCellValue(writeJson(dim.getChildStateGatingRules()));
                 row.createCell(9).setCellValue(writeJson(dim.getConditionalGatingRules()));
+                row.createCell(10).setCellValue(dim.getCompletionGatingMetadata() == null ? "" : writeJson(dim.getCompletionGatingMetadata()));
         }
     }
 
@@ -749,6 +753,7 @@ public class MaturityModelExcelService {
                 row.createCell(14).setCellValue(writeJson(mod.getSubstitutesModuleCodes()));
                 row.createCell(15).setCellValue(writeJson(mod.getChildStateGatingRules()));
                 row.createCell(16).setCellValue(writeJson(mod.getConditionalGatingRules()));
+                row.createCell(17).setCellValue(mod.getCompletionGatingMetadata() == null ? "" : writeJson(mod.getCompletionGatingMetadata()));
             }
         }
     }
@@ -783,6 +788,7 @@ public class MaturityModelExcelService {
                     row.createCell(10).setCellValue(writeJson(pr.getEvidenceRequirements()));
                     row.createCell(11).setCellValue(writeJson(pr.getChildStateGatingRules()));
                 row.createCell(12).setCellValue(writeJson(pr.getConditionalGatingRules()));
+                row.createCell(13).setCellValue(pr.getCompletionGatingMetadata() == null ? "" : writeJson(pr.getCompletionGatingMetadata()));
                 }
             }
         }

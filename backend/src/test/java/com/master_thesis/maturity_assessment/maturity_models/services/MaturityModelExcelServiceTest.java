@@ -211,10 +211,10 @@ class MaturityModelExcelServiceTest {
                     List.of("modelName", "modelDescription", "modelAutoEvaluated", "modelAggregationRule", "modelChangelogMarkdown"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_MODEL), fmt));
             assertEquals(
-                    List.of("dimensionId", "moduleCode", "moduleName", "moduleDescription", "moduleWeight", "moduleAggregationRule", "moduleMinimumCoverage", "moduleMinimumIncludedCount", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes", "moduleChildStateGatingRules", "moduleConditionalGatingRules"),
+                    List.of("dimensionId", "moduleCode", "moduleName", "moduleDescription", "moduleWeight", "moduleAggregationRule", "moduleMinimumCoverage", "moduleMinimumIncludedCount", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes", "moduleChildStateGatingRules", "moduleConditionalGatingRules", "moduleCompletionGatingMetadata"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_MODULES), fmt));
             assertEquals(
-                    List.of("dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceMinimumCoverage", "practiceMinimumIncludedCount", "practiceEvidenceRequirements", "practiceChildStateGatingRules", "practiceConditionalGatingRules"),
+                    List.of("dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceMinimumCoverage", "practiceMinimumIncludedCount", "practiceEvidenceRequirements", "practiceChildStateGatingRules", "practiceConditionalGatingRules", "practiceCompletionGatingMetadata"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_PRACTICES), fmt));
             assertEquals(
                     MaturityModelExcelService.QUESTION_EXPORT_HEADERS,

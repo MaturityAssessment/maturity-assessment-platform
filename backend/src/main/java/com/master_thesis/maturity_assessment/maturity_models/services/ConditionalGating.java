@@ -26,6 +26,8 @@ public final class ConditionalGating {
             var rule = rules.get(index);
             if (rule == null || !Integer.valueOf(1).equals(rule.version()) || !Set.of("withheld", "flagForReview").contains(rule.effect() == null ? "" : rule.effect()))
                 fail(at, "requires version 1 and effect withheld or flagForReview");
+            if (rule.name() != null && (rule.name().isBlank() || rule.name().length() > 255)) fail(at, "name must contain 1–255 characters");
+            if (rule.description() != null && rule.description().length() > 2000) fail(at, "description must contain at most 2000 characters");
             JsonNode root = rule.when();
             shape(root, at, Set.of("kind", "conditions"), Set.of());
             kind(root, "and", at); array(root.get("conditions"), at, 1, 50);

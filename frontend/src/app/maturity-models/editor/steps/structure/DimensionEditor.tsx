@@ -152,7 +152,7 @@ export default function DimensionEditor({
           {
             id: "gating",
             label: "Gating rules",
-            count: (dimension.conditionalGatingRules?.length ?? 0) + (dimension.childStateGatingRules?.length ?? 0) + Number(dimension.minimumCoverage > 0) + Number(dimension.minimumIncludedCount > 0),
+            count: (dimension.conditionalGatingRules?.length ?? 0) + (dimension.childStateGatingRules?.length ?? 0),
             content: (
               <GatingRuleField
                 idPrefix={`dimension-${dimension.clientKey}`}

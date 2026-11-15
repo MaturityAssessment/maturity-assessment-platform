@@ -169,3 +169,22 @@ Excel appends optional `dimensionConditionalGatingRules`,
 `moduleConditionalGatingRules`, and `practiceConditionalGatingRules` JSON columns;
 older workbooks default to empty rules. V56 adds JSONB columns with empty-array
 defaults, preserving all existing models and assessment results.
+
+## Rule editor and metadata (V57)
+
+The Gating tab separates baseline completion thresholds from the custom-rule list.
+Thresholds are edited directly in their own section; they have a fixed withhold
+effect and do not use names, descriptions or the custom-rule wizard. Existing
+completion metadata is preserved for compatibility. Custom rules use compact
+summary rows. Their creation and editing take place in
+a modal with Details → Conditions → Outcome steps. A nonblank name (maximum
+255 characters) is required for rules saved through this editor. Descriptions
+are optional, up to 2000 characters. Changes remain in a local draft until Save;
+Cancel, closing the dialog, or Escape discards them.
+
+State and conditional rules carry optional `name` and `description` properties.
+Legacy unnamed rules remain valid and receive readable fallback titles in the
+editor. Completion minima store the same information in
+`completionGatingMetadata`, backed by a nullable JSONB column added in V57 on
+practices, modules and dimensions. Excel includes an optional completion-metadata
+JSON column at each scope. Rule evaluation ignores this descriptive metadata.

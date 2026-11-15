@@ -189,6 +189,7 @@ export function hydrateDocument(
       minimumIncludedCount: dimension.minimumIncludedCount ?? 0,
       childStateGatingRules: (dimension.childStateGatingRules ?? []).map(rule => ({ ...rule })),
       conditionalGatingRules: structuredClone(dimension.conditionalGatingRules ?? []),
+      completionGatingMetadata: dimension.completionGatingMetadata ? { ...dimension.completionGatingMetadata } : undefined,
       mappingRules:
         dimension.mappingRules?.length === levels.length
           ? dimension.mappingRules.map((rule, index) => ({
@@ -214,6 +215,7 @@ export function hydrateDocument(
         minimumIncludedCount: module.minimumIncludedCount ?? 0,
         childStateGatingRules: (module.childStateGatingRules ?? []).map(rule => ({ ...rule })),
         conditionalGatingRules: structuredClone(module.conditionalGatingRules ?? []),
+        completionGatingMetadata: module.completionGatingMetadata ? { ...module.completionGatingMetadata } : undefined,
         practices: (module.practices ?? []).map((practice) => ({
           ...withoutLegacyGating(practice),
           description: practice.description ?? "",
@@ -229,6 +231,7 @@ export function hydrateDocument(
           minimumIncludedCount: practice.minimumIncludedCount ?? 0,
           childStateGatingRules: (practice.childStateGatingRules ?? []).map(rule => ({ ...rule })),
           conditionalGatingRules: structuredClone(practice.conditionalGatingRules ?? []),
+          completionGatingMetadata: practice.completionGatingMetadata ? { ...practice.completionGatingMetadata } : undefined,
           questions: (practice.questions ?? []).map((question) => ({
             ...question,
             clientKey: question.clientKey || key(),
@@ -310,6 +313,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
         minimumIncludedCount: dimension.minimumIncludedCount ?? 0,
         childStateGatingRules: (dimension.childStateGatingRules ?? []).map(rule => ({ ...rule })),
         conditionalGatingRules: structuredClone(dimension.conditionalGatingRules ?? []),
+        completionGatingMetadata: dimension.completionGatingMetadata ? { ...dimension.completionGatingMetadata } : undefined,
         modules: dimension.modules.map(
           ({ clientKey: _moduleKey, codeLocked: _moduleLocked, ...module }) => ({
             ...withoutLegacyGating(module),
@@ -328,6 +332,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
             minimumIncludedCount: module.minimumIncludedCount ?? 0,
             childStateGatingRules: (module.childStateGatingRules ?? []).map(rule => ({ ...rule })),
             conditionalGatingRules: structuredClone(module.conditionalGatingRules ?? []),
+            completionGatingMetadata: module.completionGatingMetadata ? { ...module.completionGatingMetadata } : undefined,
             practices: module.practices.map(
               ({
                 clientKey: _practiceKey,
@@ -345,6 +350,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
                 minimumIncludedCount: practice.minimumIncludedCount ?? 0,
                 childStateGatingRules: (practice.childStateGatingRules ?? []).map(rule => ({ ...rule })),
                 conditionalGatingRules: structuredClone(practice.conditionalGatingRules ?? []),
+                completionGatingMetadata: practice.completionGatingMetadata ? { ...practice.completionGatingMetadata } : undefined,
                 questions: practice.questions.map(
                   ({
                     clientKey: _questionKey,

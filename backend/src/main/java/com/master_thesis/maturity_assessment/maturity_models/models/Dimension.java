@@ -56,6 +56,10 @@ public class Dimension {
     @OrderBy("levelNumber ASC")
     private List<DimensionMappingRule> mappingRules;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "completion_gating_metadata", columnDefinition = "jsonb")
+    private GatingRuleMetadata completionGatingMetadata;
+
     @Column(name = "minimum_coverage", nullable = false)
     private Double minimumCoverage = 0.0;
 

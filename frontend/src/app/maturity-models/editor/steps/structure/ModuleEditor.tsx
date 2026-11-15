@@ -205,7 +205,7 @@ export default function ModuleEditor({
           {
             id: "gating",
             label: "Gating rules",
-            count: (module.conditionalGatingRules?.length ?? 0) + (module.childStateGatingRules?.length ?? 0) + Number(module.minimumCoverage > 0) + Number(module.minimumIncludedCount > 0),
+            count: (module.conditionalGatingRules?.length ?? 0) + (module.childStateGatingRules?.length ?? 0),
             content: (
               <GatingRuleField
                 idPrefix={`module-${module.clientKey}`}

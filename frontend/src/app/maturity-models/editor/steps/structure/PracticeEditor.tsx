@@ -199,7 +199,7 @@ export default function PracticeEditor({
           {
             id: "gating",
             label: "Gating rules",
-            count: (practice.conditionalGatingRules?.length ?? 0) + (practice.childStateGatingRules?.length ?? 0) + Number(practice.minimumCoverage > 0) + Number(practice.minimumIncludedCount > 0),
+            count: (practice.conditionalGatingRules?.length ?? 0) + (practice.childStateGatingRules?.length ?? 0),
             content: (
               <GatingRuleField
                 idPrefix={`practice-${practice.clientKey}`}

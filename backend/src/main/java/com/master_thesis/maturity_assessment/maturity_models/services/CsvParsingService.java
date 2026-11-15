@@ -449,6 +449,7 @@ public class CsvParsingService {
                 dimensionDTO.setMinimumIncludedCount(parseGatingPercentage(row.getDimensionMinimumIncludedCount(), "dimensionMinimumIncludedCount", rowNumber, errors));
                 dimensionDTO.setChildStateGatingRules(parseRules(row.getDimensionChildStateGatingRules(), com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule.class, "dimensionChildStateGatingRules", rowNumber, errors));
                 dimensionDTO.setConditionalGatingRules(parseRules(row.getDimensionConditionalGatingRules(), com.master_thesis.maturity_assessment.maturity_models.models.ConditionalGatingRule.class, "dimensionConditionalGatingRules", rowNumber, errors));
+                if (!isBlank(row.getDimensionCompletionGatingMetadata())) try { dimensionDTO.setCompletionGatingMetadata(objectMapper.readValue(row.getDimensionCompletionGatingMetadata(), com.master_thesis.maturity_assessment.maturity_models.models.GatingRuleMetadata.class)); } catch (Exception exception) { errors.add("Invalid dimensionCompletionGatingMetadata JSON"); }
                 dimension = new DimensionAccumulator(dimensionDTO);
                 dimensions.put(dimensionKey, dimension);
             }
@@ -476,6 +477,7 @@ public class CsvParsingService {
                 moduleDTO.setMinimumIncludedCount(parseGatingPercentage(row.getModuleMinimumIncludedCount(), "moduleMinimumIncludedCount", rowNumber, errors));
                 moduleDTO.setChildStateGatingRules(parseRules(row.getModuleChildStateGatingRules(), com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule.class, "moduleChildStateGatingRules", rowNumber, errors));
                 moduleDTO.setConditionalGatingRules(parseRules(row.getModuleConditionalGatingRules(), com.master_thesis.maturity_assessment.maturity_models.models.ConditionalGatingRule.class, "moduleConditionalGatingRules", rowNumber, errors));
+                if (!isBlank(row.getModuleCompletionGatingMetadata())) try { moduleDTO.setCompletionGatingMetadata(objectMapper.readValue(row.getModuleCompletionGatingMetadata(), com.master_thesis.maturity_assessment.maturity_models.models.GatingRuleMetadata.class)); } catch (Exception exception) { errors.add("Invalid moduleCompletionGatingMetadata JSON"); }
                 module = new ModuleAccumulator(moduleDTO);
                 dimension.modules.put(moduleKey, module);
             }
@@ -501,6 +503,7 @@ public class CsvParsingService {
                 practiceDTO.setMinimumIncludedCount(parseGatingPercentage(row.getPracticeMinimumIncludedCount(), "practiceMinimumIncludedCount", rowNumber, errors));
                 practiceDTO.setChildStateGatingRules(parseRules(row.getPracticeChildStateGatingRules(), com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule.class, "practiceChildStateGatingRules", rowNumber, errors));
                 practiceDTO.setConditionalGatingRules(parseRules(row.getPracticeConditionalGatingRules(), com.master_thesis.maturity_assessment.maturity_models.models.ConditionalGatingRule.class, "practiceConditionalGatingRules", rowNumber, errors));
+                if (!isBlank(row.getPracticeCompletionGatingMetadata())) try { practiceDTO.setCompletionGatingMetadata(objectMapper.readValue(row.getPracticeCompletionGatingMetadata(), com.master_thesis.maturity_assessment.maturity_models.models.GatingRuleMetadata.class)); } catch (Exception exception) { errors.add("Invalid practiceCompletionGatingMetadata JSON"); }
                 practice = new PracticeAccumulator(practiceDTO, row.getPracticeSortOrder());
                 module.practices.put(practiceKey, practice);
             }

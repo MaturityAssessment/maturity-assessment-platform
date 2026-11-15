@@ -424,6 +424,7 @@ public class MaturityModelService {
                 dto.setAggregationRule(resolveAggregationRule(dimension.getAggregationRule()));
                 dto.setMappingRules(toMappingRuleDtos(dimension.getMappingRules()));
                 dto.setMinimumCoverage(dimension.getMinimumCoverage() == null ? 0.0 : dimension.getMinimumCoverage());
+                dto.setCompletionGatingMetadata(dimension.getCompletionGatingMetadata());
                 dto.setMinimumIncludedCount(dimension.getMinimumIncludedCount() == null ? 0.0 : dimension.getMinimumIncludedCount());
                 dto.setChildStateGatingRules(dimension.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(dimension.getChildStateGatingRules()));
                 dto.setConditionalGatingRules(dimension.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(dimension.getConditionalGatingRules()));
@@ -459,6 +460,7 @@ public class MaturityModelService {
                 dimension.setSortOrder(sortOrder);
                 dimension.setMappingRules(toMappingRuleEntities(dto.getMappingRules(), dimension, levelCount));
                 dimension.setMinimumCoverage(dto.getMinimumCoverage() == null ? 0.0 : dto.getMinimumCoverage());
+                dimension.setCompletionGatingMetadata(dto.getCompletionGatingMetadata());
                 dimension.setMinimumIncludedCount(dto.getMinimumIncludedCount() == null ? 0.0 : dto.getMinimumIncludedCount());
                 dimension.setChildStateGatingRules(dto.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(dto.getChildStateGatingRules()));
                 dimension.setConditionalGatingRules(dto.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(dto.getConditionalGatingRules()));
@@ -494,6 +496,7 @@ public class MaturityModelService {
                 dto.setWeight(module.getWeight());
                 dto.setAggregationRule(resolveAggregationRule(module.getAggregationRule()));
                 dto.setMinimumCoverage(module.getMinimumCoverage() == null ? 0.0 : module.getMinimumCoverage());
+                dto.setCompletionGatingMetadata(module.getCompletionGatingMetadata());
                 dto.setMinimumIncludedCount(module.getMinimumIncludedCount() == null ? 0.0 : module.getMinimumIncludedCount());
                 dto.setChildStateGatingRules(module.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(module.getChildStateGatingRules()));
                 dto.setConditionalGatingRules(module.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(module.getConditionalGatingRules()));
@@ -531,6 +534,7 @@ public class MaturityModelService {
                 module.setDimension(dimension);
                 module.setSortOrder(sortOrder);
                 module.setMinimumCoverage(dto.getMinimumCoverage() == null ? 0.0 : dto.getMinimumCoverage());
+                module.setCompletionGatingMetadata(dto.getCompletionGatingMetadata());
                 module.setMinimumIncludedCount(dto.getMinimumIncludedCount() == null ? 0.0 : dto.getMinimumIncludedCount());
                 module.setChildStateGatingRules(dto.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(dto.getChildStateGatingRules()));
                 module.setConditionalGatingRules(dto.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(dto.getConditionalGatingRules()));
@@ -612,6 +616,7 @@ public class MaturityModelService {
                 dto.setWeight(practice.getWeight());
                 dto.setAggregationRule(resolveAggregationRule(practice.getAggregationRule()));
                 dto.setMinimumCoverage(practice.getMinimumCoverage() == null ? 0.0 : practice.getMinimumCoverage());
+                dto.setCompletionGatingMetadata(practice.getCompletionGatingMetadata());
                 dto.setMinimumIncludedCount(practice.getMinimumIncludedCount() == null ? 0.0 : practice.getMinimumIncludedCount());
                 dto.setChildStateGatingRules(practice.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(practice.getChildStateGatingRules()));
                 dto.setConditionalGatingRules(practice.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(practice.getConditionalGatingRules()));
@@ -640,6 +645,7 @@ public class MaturityModelService {
                 practice.setAggregationRule(resolveAggregationRule(dto.getAggregationRule()));
                 practice.setModule(module);
                 practice.setMinimumCoverage(dto.getMinimumCoverage() == null ? 0.0 : dto.getMinimumCoverage());
+                practice.setCompletionGatingMetadata(dto.getCompletionGatingMetadata());
                 practice.setMinimumIncludedCount(dto.getMinimumIncludedCount() == null ? 0.0 : dto.getMinimumIncludedCount());
                 practice.setChildStateGatingRules(dto.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(dto.getChildStateGatingRules()));
                 practice.setConditionalGatingRules(dto.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(dto.getConditionalGatingRules()));
@@ -785,6 +791,7 @@ public class MaturityModelService {
                         editorDimension.setAggregationRule(resolveAggregationRule(dimension.getAggregationRule()));
                         editorDimension.setMappingRules(dimension.getMappingRules());
                         editorDimension.setMinimumCoverage(dimension.getMinimumCoverage());
+                        editorDimension.setCompletionGatingMetadata(dimension.getCompletionGatingMetadata());
                         editorDimension.setMinimumIncludedCount(dimension.getMinimumIncludedCount());
                         editorDimension.setChildStateGatingRules(dimension.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(dimension.getChildStateGatingRules()));
                         editorDimension.setConditionalGatingRules(dimension.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(dimension.getConditionalGatingRules()));
@@ -804,6 +811,7 @@ public class MaturityModelService {
                                 editorModule.setWeight(module.getWeight());
                                 editorModule.setAggregationRule(resolveAggregationRule(module.getAggregationRule()));
                                 editorModule.setMinimumCoverage(module.getMinimumCoverage());
+                                editorModule.setCompletionGatingMetadata(module.getCompletionGatingMetadata());
                                 editorModule.setMinimumIncludedCount(module.getMinimumIncludedCount());
                                 editorModule.setChildStateGatingRules(module.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(module.getChildStateGatingRules()));
                                 editorModule.setConditionalGatingRules(module.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(module.getConditionalGatingRules()));
@@ -819,6 +827,7 @@ public class MaturityModelService {
                                         editorPractice.setWeight(practice.getWeight());
                                         editorPractice.setAggregationRule(resolveAggregationRule(practice.getAggregationRule()));
                                         editorPractice.setMinimumCoverage(practice.getMinimumCoverage());
+                                        editorPractice.setCompletionGatingMetadata(practice.getCompletionGatingMetadata());
                                         editorPractice.setMinimumIncludedCount(practice.getMinimumIncludedCount());
                                         editorPractice.setChildStateGatingRules(practice.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(practice.getChildStateGatingRules()));
                                         editorPractice.setConditionalGatingRules(practice.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(practice.getConditionalGatingRules()));
@@ -884,6 +893,7 @@ public class MaturityModelService {
                         dimension.setAggregationRule(resolveAggregationRule(editorDimension.getAggregationRule()));
                         dimension.setMappingRules(editorDimension.getMappingRules());
                         dimension.setMinimumCoverage(editorDimension.getMinimumCoverage());
+                        dimension.setCompletionGatingMetadata(editorDimension.getCompletionGatingMetadata());
                         dimension.setMinimumIncludedCount(editorDimension.getMinimumIncludedCount());
                         dimension.setChildStateGatingRules(editorDimension.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(editorDimension.getChildStateGatingRules()));
                         dimension.setConditionalGatingRules(editorDimension.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(editorDimension.getConditionalGatingRules()));
@@ -904,6 +914,7 @@ public class MaturityModelService {
                                 module.setWeight(editorModule.getWeight());
                                 module.setAggregationRule(resolveAggregationRule(editorModule.getAggregationRule()));
                                 module.setMinimumCoverage(editorModule.getMinimumCoverage());
+                                module.setCompletionGatingMetadata(editorModule.getCompletionGatingMetadata());
                                 module.setMinimumIncludedCount(editorModule.getMinimumIncludedCount());
                                 module.setChildStateGatingRules(editorModule.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(editorModule.getChildStateGatingRules()));
                                 module.setConditionalGatingRules(editorModule.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(editorModule.getConditionalGatingRules()));
@@ -920,6 +931,7 @@ public class MaturityModelService {
                                         practice.setWeight(editorPractice.getWeight());
                                         practice.setAggregationRule(resolveAggregationRule(editorPractice.getAggregationRule()));
                                         practice.setMinimumCoverage(editorPractice.getMinimumCoverage());
+                                        practice.setCompletionGatingMetadata(editorPractice.getCompletionGatingMetadata());
                                         practice.setMinimumIncludedCount(editorPractice.getMinimumIncludedCount());
                                         practice.setChildStateGatingRules(editorPractice.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(editorPractice.getChildStateGatingRules()));
                                         practice.setConditionalGatingRules(editorPractice.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(editorPractice.getConditionalGatingRules()));
@@ -1397,14 +1409,17 @@ public class MaturityModelService {
                 for (DimensionDTO dimension : dto.getDimensions()) {
                         validateGatingThresholds(dimension.getMinimumCoverage(), dimension.getMinimumIncludedCount(), "dimension '" + dimension.getId() + "'");
                         validateChildStateGatingRules(dimension.getChildStateGatingRules());
+                        if (dimension.getCompletionGatingMetadata() != null) validateRuleMetadata(dimension.getCompletionGatingMetadata().name(), dimension.getCompletionGatingMetadata().description());
                         if (dimension.getModules() == null) continue;
                         for (ModuleDTO module : dimension.getModules()) {
                                 validateGatingThresholds(module.getMinimumCoverage(), module.getMinimumIncludedCount(), "module '" + module.getCode() + "'");
                                 validateChildStateGatingRules(module.getChildStateGatingRules());
+                        if (module.getCompletionGatingMetadata() != null) validateRuleMetadata(module.getCompletionGatingMetadata().name(), module.getCompletionGatingMetadata().description());
                                 if (module.getPractices() == null) continue;
                                 for (PracticeDTO practice : module.getPractices()) {
                                         validateGatingThresholds(practice.getMinimumCoverage(), practice.getMinimumIncludedCount(), "practice '" + practice.getCode() + "'");
                                         validateChildStateGatingRules(practice.getChildStateGatingRules());
+                        if (practice.getCompletionGatingMetadata() != null) validateRuleMetadata(practice.getCompletionGatingMetadata().name(), practice.getCompletionGatingMetadata().description());
                                 }
                         }
                 }
@@ -1432,9 +1447,15 @@ public class MaturityModelService {
                 }
         }
 
+        private void validateRuleMetadata(String name, String description) {
+                if (name != null && (name.isBlank() || name.length() > 255)) throw new IllegalOperationException("INVALID_GATING_RULES", "Rule name must contain 1–255 characters.");
+                if (description != null && description.length() > 2000) throw new IllegalOperationException("INVALID_GATING_RULES", "Rule description must contain at most 2000 characters.");
+        }
+
         private void validateChildStateGatingRules(List<ChildStateGatingRule> rules) {
                 if (rules == null) return;
                 for (var rule : rules) {
+                        if (rule != null) validateRuleMetadata(rule.name(), rule.description());
                         if (rule == null || rule.quantifier() == null || rule.state() == null || rule.effect() == null
                                         || !Set.of("any", "every", "no").contains(rule.quantifier())
                                         || !Set.of("computed", "withheld").contains(rule.state())

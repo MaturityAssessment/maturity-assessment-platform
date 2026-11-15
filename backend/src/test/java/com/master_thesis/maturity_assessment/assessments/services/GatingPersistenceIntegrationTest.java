@@ -28,11 +28,12 @@ class GatingPersistenceIntegrationTest {
     void completionThresholdsAndWithheldSnapshotSurviveReload() throws Exception {
         Dimension dimension = new Dimension();
         dimension.setDimensionId("D1"); dimension.setName("Dimension");
+        dimension.setCompletionGatingMetadata(new com.master_thesis.maturity_assessment.maturity_models.models.GatingRuleMetadata("Completion", "Enough visible inputs"));
         dimension.setMinimumCoverage(82.5); dimension.setMinimumIncludedCount(60.0);
         var rule = new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule("any", "withheld", "flagForReview");
         dimension.setChildStateGatingRules(List.of(rule));
         var conditional = new com.fasterxml.jackson.databind.ObjectMapper().readValue("""
-                {"version":1,"effect":"flagForReview","when":{"kind":"and","conditions":[
+                {"version":1,"name":"Weak score review","description":"Check low scores","effect":"flagForReview","when":{"kind":"and","conditions":[
                   {"kind":"children","quantifier":"any","selection":{"codes":["D1.M1"]},"where":{"kind":"and","conditions":[
                     {"kind":"comparison","field":"score","operator":"<","right":{"kind":"literal","value":0.5}}
                   ]}}
@@ -58,6 +59,7 @@ class GatingPersistenceIntegrationTest {
                 "flagForReview", 0.75, 100, 100);
         assessment.setElementResults(List.of(snapshot, flagged));
         entities.flush(); entities.clear();
+        assertEquals("Completion", entities.find(Dimension.class, dimension.getId()).getCompletionGatingMetadata().name());
         assertEquals(82.5, entities.find(Dimension.class, dimension.getId()).getMinimumCoverage());
         assertEquals(60.0, entities.find(Dimension.class, dimension.getId()).getMinimumIncludedCount());
         assertEquals(90.0, entities.find(Module.class, module.getId()).getMinimumCoverage());
