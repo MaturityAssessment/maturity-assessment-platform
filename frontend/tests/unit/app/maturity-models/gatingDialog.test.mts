@@ -19,7 +19,6 @@ function harness(initial: any = {}) {
       if (!(index in cells)) cells[index] = initial;
       return [cells[index], (value: any) => { cells[index] = typeof value === "function" ? value(cells[index]) : value; }];
     } };
-    if (name === "./ScoreLimitFields") return { __esModule: true, default: "score-limits" };
     if (name === "./CompletionThresholdFields") return { __esModule: true, default: "completion-thresholds" };
     if (name === "./ConditionalGatingField") return {
       __esModule: true, default: "conditions-editor",

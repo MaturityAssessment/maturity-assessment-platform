@@ -796,8 +796,10 @@ export interface ConditionalGatingRule {
 
 /** Snapshot link: exactly one rule must match a current Flag for Review rule. */
 export interface ScoreLimit {
-  kind: "floor" | "ceiling";
+  kind: "floor" | "ceiling" | "both";
   value: number;
+  /** Upper bound when kind is both; value is the lower bound. Both use 0–1. */
+  upperValue?: number | null;
   childStateRule?: ChildStateGatingRule | null;
   conditionalRule?: ConditionalGatingRule | null;
 }

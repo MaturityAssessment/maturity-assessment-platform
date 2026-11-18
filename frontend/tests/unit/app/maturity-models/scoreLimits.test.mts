@@ -24,7 +24,8 @@ test("numeric limits validate independently of runtime conflicts", () => {
   assert.deepEqual(scoreLimitIssues(owner), []);
   for (const value of [0, 1, 0.555]) assert.deepEqual(scoreLimitIssues({ ...owner, scoreLimits: [{ ...limit, value }] }), []);
   for (const value of [-0.1, 1.01, NaN, Infinity, null]) assert.ok(scoreLimitIssues({ ...owner, scoreLimits: [{ ...limit, value } as ScoreLimit] }).length);
-  assert.deepEqual(scoreLimitIssues({ ...owner, scoreLimits: [{ ...limit, kind: "floor", value: 0.9 }, { ...limit, value: 0.1 }] }), []);
+  const other = { ...flag, name: "Other gate" };
+  assert.deepEqual(scoreLimitIssues({ childStateGatingRules: [flag, other], scoreLimits: [{ ...limit, kind: "floor", value: 0.9 }, { ...limit, childStateRule: other, value: 0.1 }] }), []);
   assert.ok(scoreLimitIssues({ ...owner, scoreLimits: Array(101).fill(limit) }).some(message => /100/.test(message)));
 });
 
@@ -95,4 +96,35 @@ test("explicit code edits invalidate limits and never rewrite their approval sna
     assert.ok(scoreLimitIssues(owner).length);
   }
   assert.deepEqual(repaired.dimensions[0].scoreLimits, before.dimensions[0].scoreLimits);
+});
+
+test("a gate can have only one limit, including equivalent imported snapshots", () => {
+  const snapshot = { name: "Check", description: null, effect: "flagForReview", state: "computed", quantifier: "any" } as unknown as ChildStateGatingRule;
+  const owner = { childStateGatingRules: [flag], scoreLimits: [limit, { ...limit, kind: "floor" as const, childStateRule: snapshot }] };
+  assert.ok(scoreLimitIssues(owner).some(message => /already has a limit/.test(message)));
+  const document = createEmptyDocument();
+  Object.assign(document.dimensions[0], owner);
+  assert.ok(validateDocument(document).some(issue => issue.severity === "error" && /already has a limit/.test(issue.message)));
+  const conditional: any = { version: 1, effect: "flagForReview", when: { kind: "and", conditions: [] } };
+  assert.ok(scoreLimitIssues({ conditionalGatingRules: [conditional], scoreLimits: [
+    { kind: "floor", value: 0.2, conditionalRule: conditional },
+    { kind: "ceiling", value: 0.8, conditionalRule: structuredClone(conditional) },
+  ] }).some(message => /already has a limit/.test(message)));
+});
+
+test("a combined limit validates ordered bounds and survives save/load at each scope", () => {
+  const both: ScoreLimit = { ...limit, kind: "both", value: 0.3, upperValue: 0.7 };
+  const owner = { childStateGatingRules: [flag], scoreLimits: [both] };
+  assert.deepEqual(scoreLimitIssues(owner), []);
+  for (const [value, upperValue] of [[0, 1], [0.5, 0.5], [0, 0], [1, 1]])
+    assert.deepEqual(scoreLimitIssues({ ...owner, scoreLimits: [{ ...both, value, upperValue }] }), []);
+  for (const upperValue of [undefined, null, NaN, Infinity, -0.1, 1.1, 0.2])
+    assert.ok(scoreLimitIssues({ ...owner, scoreLimits: [{ ...both, upperValue }] }).length);
+  assert.ok(scoreLimitIssues({ ...owner, scoreLimits: [{ ...both, kind: "floor" }] }).length);
+  const document = createEmptyDocument();
+  const dimension = document.dimensions[0], module = dimension.modules[0], practice = module.practices[0];
+  for (const item of [dimension, module, practice]) Object.assign(item, structuredClone(owner));
+  const saved = serializeDocument(hydrateDocument(document, false));
+  for (const item of [saved.dimensions[0], saved.dimensions[0].modules[0], saved.dimensions[0].modules[0].practices[0]])
+    assert.deepEqual(item.scoreLimits, [both]);
 });

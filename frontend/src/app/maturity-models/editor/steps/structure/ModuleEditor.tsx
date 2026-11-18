@@ -22,6 +22,7 @@ import ItemHeader from "./ItemHeader";
 import { TEXT_LIMITS } from "@/config/textLimits";
 import AggregationRuleField from "../../components/AggregationRuleField";
 import GatingRuleField from "../../components/GatingRuleField";
+import ScoreLimitFields from "../../components/ScoreLimitFields";
 import ElementEditorTabs, { EditorSectionHeading } from "./ElementEditorTabs";
 
 export default function ModuleEditor({
@@ -199,6 +200,10 @@ export default function ModuleEditor({
                     update({ ...module, aggregationRule })
                   }
                 />
+                <ScoreLimitFields
+                  owner={module}
+                  onChange={(scoreLimits) => update({ ...module, scoreLimits })}
+                />
               </>
             ),
           },
@@ -214,7 +219,6 @@ export default function ModuleEditor({
                 childType="practice"
                 childStateGatingRules={module.childStateGatingRules}
                 conditionalGatingRules={module.conditionalGatingRules}
-                scoreLimits={module.scoreLimits}
                 childOptions={module.practices.map(item => ({ code: `${dimension.code}.${module.code}.${item.code}`, name: item.name }))}
                 minimumCoverage={module.minimumCoverage}
                 minimumIncludedCount={module.minimumIncludedCount}

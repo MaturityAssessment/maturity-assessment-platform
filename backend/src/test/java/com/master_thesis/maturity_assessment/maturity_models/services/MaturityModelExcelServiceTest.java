@@ -33,6 +33,25 @@ class MaturityModelExcelServiceTest {
     private final MaturityModelExcelService excelService = new MaturityModelExcelService(csvParsingService, objectMapper);
 
     @Test
+    void combinedScoreLimitsRoundTripThroughWorkbookAtEveryScope() throws Exception {
+        var model = buildSampleModel();
+        var dimension = model.getDimensions().getFirst();
+        var module = dimension.getModules().getFirst();
+        var practice = module.getPractices().getFirst();
+        var flag = new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule("any", "computed", "flagForReview");
+        var limits = List.of(new com.master_thesis.maturity_assessment.maturity_models.models.ScoreLimit("both", 0.3, flag, null, 0.7));
+        dimension.setChildStateGatingRules(List.of(flag)); dimension.setScoreLimits(limits);
+        module.setChildStateGatingRules(List.of(flag)); module.setScoreLimits(limits);
+        practice.setChildStateGatingRules(List.of(flag)); practice.setScoreLimits(limits);
+        var result = excelService.parseExcelWorkbook(new ByteArrayInputStream(excelService.exportMaturityModelToXlsx(model)));
+        assertTrue(result.isSuccess(), result.getErrorDetails());
+        var imported = result.getMaturityModel().getDimensions().getFirst();
+        assertEquals(limits, imported.getScoreLimits());
+        assertEquals(limits, imported.getModules().getFirst().getScoreLimits());
+        assertEquals(limits, imported.getModules().getFirst().getPractices().getFirst().getScoreLimits());
+    }
+
+    @Test
     void scoreLimitsAndTheirFlagRuleLinksRoundTripAtEveryScope() throws Exception {
         var model = buildSampleModel();
         var dimension = model.getDimensions().getFirst();

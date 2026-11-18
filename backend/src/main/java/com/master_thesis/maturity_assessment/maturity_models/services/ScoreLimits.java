@@ -3,6 +3,8 @@ package com.master_thesis.maturity_assessment.maturity_models.services;
 import com.master_thesis.maturity_assessment.config.IllegalOperationException;
 import com.master_thesis.maturity_assessment.maturity_models.models.*;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -15,13 +17,33 @@ public final class ScoreLimits {
                                 List<ConditionalGatingRule> conditions, String owner) {
         if (limits == null) return;
         if (limits.size() > 100) fail(owner, "supports at most 100 score limits");
+        var usedStates = new HashSet<ChildStateGatingRule>();
+        var usedConditions = new ArrayList<ConditionalGatingRule>();
         for (var limit : limits) {
-            if (limit == null || !Set.of("floor", "ceiling").contains(limit.kind() == null ? "" : limit.kind())
-                    || limit.value() == null || !Double.isFinite(limit.value()) || limit.value() < 0 || limit.value() > 1)
-                fail(owner, "score limits require floor/ceiling and a finite normalized value from 0 to 1");
+            if (!validValues(limit))
+                fail(owner, "score limits require floor/ceiling/both and finite normalized bounds from 0 to 1, with floor at or below ceiling");
             if (!linked(limit, states, conditions))
                 fail(owner, "a score limit's Flag for Review rule changed or was removed; relink or remove the limit");
+            if (limit.childStateRule() != null) {
+                if (!usedStates.add(limit.childStateRule()))
+                    fail(owner, "each Flag for Review gate supports at most one score limit");
+            } else {
+                if (usedConditions.stream().anyMatch(rule -> sameConditionalRule(limit.conditionalRule(), rule)))
+                    fail(owner, "each Flag for Review gate supports at most one score limit");
+                usedConditions.add(limit.conditionalRule());
+            }
         }
+    }
+
+    private static boolean normalized(Double value) {
+        return value != null && Double.isFinite(value) && value >= 0 && value <= 1;
+    }
+
+    private static boolean validValues(ScoreLimit limit) {
+        return limit != null && Set.of("floor", "ceiling", "both").contains(limit.kind() == null ? "" : limit.kind())
+                && normalized(limit.value()) && ("both".equals(limit.kind())
+                    ? normalized(limit.upperValue()) && limit.value() <= limit.upperValue()
+                    : limit.upperValue() == null);
     }
 
     public static boolean linked(ScoreLimit limit, List<ChildStateGatingRule> states, List<ConditionalGatingRule> conditions) {
@@ -55,13 +77,13 @@ public final class ScoreLimits {
         double floor = 0, ceiling = 1;
         for (var limit : limits == null ? List.<ScoreLimit>of() : limits) {
             // Defensive handling for legacy/corrupt configuration: never apply an unapproved rule.
-            if (!linked(limit, states, conditions) || limit.value() == null || !Double.isFinite(limit.value())
-                    || limit.value() < 0 || limit.value() > 1 || !("floor".equals(limit.kind()) || "ceiling".equals(limit.kind())))
+            if (!linked(limit, states, conditions) || !validValues(limit))
                 return new Bounds(floor, ceiling, true);
             boolean matched = limit.childStateRule() != null ? stateMatches.test(limit.childStateRule()) : conditionMatches.test(limit.conditionalRule());
             if (matched) {
-                if ("floor".equals(limit.kind())) floor = Math.max(floor, limit.value());
-                else ceiling = Math.min(ceiling, limit.value());
+                if ("floor".equals(limit.kind()) || "both".equals(limit.kind())) floor = Math.max(floor, limit.value());
+                if ("ceiling".equals(limit.kind())) ceiling = Math.min(ceiling, limit.value());
+                if ("both".equals(limit.kind())) ceiling = Math.min(ceiling, limit.upperValue());
             }
         }
         return new Bounds(floor, ceiling, ceiling < floor);

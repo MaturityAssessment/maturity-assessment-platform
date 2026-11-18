@@ -19,6 +19,7 @@ import { TEXT_LIMITS } from "@/config/textLimits";
 import AggregationRuleField from "../../components/AggregationRuleField";
 import MappingRuleField from "../../components/MappingRuleField";
 import GatingRuleField from "../../components/GatingRuleField";
+import ScoreLimitFields from "../../components/ScoreLimitFields";
 import ElementEditorTabs, { EditorSectionHeading } from "./ElementEditorTabs";
 
 export default function DimensionEditor({
@@ -146,6 +147,10 @@ export default function DimensionEditor({
                     update({ ...dimension, mappingRules })
                   }
                 />
+                <ScoreLimitFields
+                  owner={dimension}
+                  onChange={(scoreLimits) => update({ ...dimension, scoreLimits })}
+                />
               </>
             ),
           },
@@ -161,7 +166,6 @@ export default function DimensionEditor({
                 childType="module"
                 childStateGatingRules={dimension.childStateGatingRules}
                 conditionalGatingRules={dimension.conditionalGatingRules}
-                scoreLimits={dimension.scoreLimits}
                 childOptions={dimension.modules.map(item => ({ code: `${dimension.code}.${item.code}`, name: item.name }))}
                 minimumCoverage={dimension.minimumCoverage}
                 minimumIncludedCount={dimension.minimumIncludedCount}

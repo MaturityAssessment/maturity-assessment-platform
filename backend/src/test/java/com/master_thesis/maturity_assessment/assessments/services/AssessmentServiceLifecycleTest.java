@@ -2607,6 +2607,29 @@ class AssessmentServiceLifecycleTest {
     }
 
     @Test
+    void combinedScoreLimitsApplyAtEveryScopeAndParentConditionsReadLimitedScores() throws Exception {
+        var model = hierarchicalAggregationModel();
+        var dimension = model.getDimensions().getFirst();
+        var module = dimension.getModules().getFirst();
+        var practice = module.getPractices().getFirst();
+        var flag = new ChildStateGatingRule("any", "computed", "flagForReview");
+        practice.setChildStateGatingRules(List.of(flag));
+        practice.setScoreLimits(List.of(new ScoreLimit("both", 0.4, flag, null, 0.45)));
+        module.setChildStateGatingRules(List.of(flag));
+        module.setScoreLimits(List.of(new ScoreLimit("both", 0.1, flag, null, 0.555)));
+        var parentRule = conditionalRule("D1.M1", "score", "==", "{\"kind\":\"literal\",\"value\":0.555}", "flagForReview");
+        dimension.setConditionalGatingRules(List.of(parentRule));
+        dimension.setScoreLimits(List.of(new ScoreLimit("both", 0.655, null, parentRule, 0.8)));
+        var response = submitForGating(model, partialHierarchyAnswers());
+        assertEquals(0.4, element(response, "practice", "P1").normalizedScore());
+        assertEquals(0.555, element(response, "module", "M1").normalizedScore());
+        assertEquals(0.655, element(response, "dimension", "D1").normalizedScore());
+        assertEquals("flagForReview", element(response, "dimension", "D1").state());
+        assertEquals(87.5, element(response, "dimension", "D1").includedCount());
+        assertEquals(65.5, response.getDimensionResults().getFirst().getPercentageScore());
+    }
+
+    @Test
     void conflictingActiveLimitsWithholdAndAreExcludedFromParentsButEqualBoundsAreValid() {
         var model = hierarchicalAggregationModel();
         var target = model.getDimensions().getFirst().getModules().getFirst();

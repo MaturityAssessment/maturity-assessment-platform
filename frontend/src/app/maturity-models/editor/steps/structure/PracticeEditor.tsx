@@ -26,6 +26,7 @@ import ItemHeader from "./ItemHeader";
 import { TEXT_LIMITS } from "@/config/textLimits";
 import AggregationRuleField from "../../components/AggregationRuleField";
 import GatingRuleField from "../../components/GatingRuleField";
+import ScoreLimitFields from "../../components/ScoreLimitFields";
 import ElementEditorTabs, { EditorSectionHeading } from "./ElementEditorTabs";
 
 export default function PracticeEditor({
@@ -193,6 +194,10 @@ export default function PracticeEditor({
                     update({ ...practice, aggregationRule })
                   }
                 />
+                <ScoreLimitFields
+                  owner={practice}
+                  onChange={(scoreLimits) => update({ ...practice, scoreLimits })}
+                />
               </>
             ),
           },
@@ -208,7 +213,6 @@ export default function PracticeEditor({
                 childType="question"
                 childStateGatingRules={practice.childStateGatingRules}
                 conditionalGatingRules={practice.conditionalGatingRules}
-                scoreLimits={practice.scoreLimits}
                 childOptions={gatingChildren(document, practice.clientKey)}
                 minimumCoverage={practice.minimumCoverage}
                 minimumIncludedCount={practice.minimumIncludedCount}

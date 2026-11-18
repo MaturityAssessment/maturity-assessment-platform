@@ -82,10 +82,66 @@ class ScoreLimitsTest {
         ConditionalGating.validate(List.of(rule), Map.of("D.M", new ConditionalGating.Definition(null)), "D");
         var limit = new ScoreLimit("ceiling", 0.7, null, snapshot);
         assertDoesNotThrow(() -> ScoreLimits.validate(List.of(limit), List.of(), List.of(rule), "D"));
+        var duplicate = new ScoreLimit("floor", 0.2, null, rule);
+        var error = assertThrows(IllegalOperationException.class,
+                () -> ScoreLimits.validate(List.of(limit, duplicate), List.of(), List.of(rule), "D"));
+        assertTrue(error.getMessage().contains("at most one score limit"));
         assertEquals(0.7, ScoreLimits.evaluate(List.of(limit), List.of(), List.of(rule), r -> false, r -> true).apply(1.0));
         var changed = mapper.readValue(json.replace("\"value\":1", "\"value\":0.9999999999"), ConditionalGatingRule.class);
         assertFalse(ScoreLimits.linked(limit, List.of(), List.of(changed)));
         assertFalse(ScoreLimits.linked(limit, List.of(), List.of(new ConditionalGatingRule(1, rule.when(), "withheld"))));
         assertFalse(ScoreLimits.linked(limit, List.of(), List.of(new ConditionalGatingRule(1, rule.when(), "flagForReview", "Renamed", null))));
+    }
+
+    @Test void eachFlagGateSupportsOnlyOneLimitButDifferentGatesCanSetDifferentBounds() {
+        var error = assertThrows(IllegalOperationException.class,
+                () -> ScoreLimits.validate(List.of(limit("floor", 0.2), limit("ceiling", 0.8)), List.of(flag), List.of(), "D"));
+        assertEquals("INVALID_SCORE_LIMITS", error.getErrorCode());
+        assertTrue(error.getMessage().contains("at most one score limit"));
+        var other = new ChildStateGatingRule("any", "computed", "flagForReview", "Other gate", null);
+        assertDoesNotThrow(() -> ScoreLimits.validate(List.of(limit("floor", 0.2),
+                new ScoreLimit("ceiling", 0.8, other, null)), List.of(flag, other), List.of(), "D"));
+    }
+
+    @Test void combinedLimitValidatesSerializesAndAppliesBothBoundsOnlyWhenItsGateMatches() throws Exception {
+        var both = new ScoreLimit("both", 0.3, flag, null, 0.7);
+        assertDoesNotThrow(() -> ScoreLimits.validate(List.of(both), List.of(flag), List.of(), "D"));
+        var active = bounds(List.of(both), true);
+        assertEquals(0.3, active.apply(0.1));
+        assertEquals(0.7, active.apply(0.9));
+        assertEquals(0.5, active.apply(0.5));
+        assertNull(active.apply(null));
+        assertEquals(0.1, bounds(List.of(both), false).apply(0.1));
+        var mapper = new ObjectMapper();
+        assertEquals(both, mapper.readValue(mapper.writeValueAsBytes(both), ScoreLimit.class));
+        assertFalse(mapper.readTree(mapper.writeValueAsBytes(limit("floor", 0.3))).has("upperValue"));
+        assertEquals(limit("ceiling", 0.7), mapper.readValue("""
+            {"kind":"ceiling","value":0.7,"childStateRule":{"quantifier":"any","state":"computed","effect":"flagForReview","name":"Check"}}
+            """, ScoreLimit.class));
+        for (double endpoint : new double[]{0, 0.5, 1}) {
+            var equal = new ScoreLimit("both", endpoint, flag, null, endpoint);
+            assertDoesNotThrow(() -> ScoreLimits.validate(List.of(equal), List.of(flag), List.of(), "D"));
+            assertEquals(endpoint, bounds(List.of(equal), true).apply(0.5));
+        }
+    }
+
+    @Test void combinedLimitsRejectMissingNonFiniteCrossedOrExtraneousBounds() {
+        var invalid = new ArrayList<ScoreLimit>();
+        invalid.add(new ScoreLimit("both", 0.3, flag, null));
+        invalid.add(new ScoreLimit("floor", 0.3, flag, null, 0.7));
+        invalid.add(new ScoreLimit("ceiling", 0.3, flag, null, 0.7));
+        for (double upper : new double[]{-0.1, 0.2, 1.1, Double.NaN, Double.POSITIVE_INFINITY})
+            invalid.add(new ScoreLimit("both", 0.3, flag, null, upper));
+        for (var entry : invalid) {
+            assertThrows(IllegalOperationException.class,
+                    () -> ScoreLimits.validate(List.of(entry), List.of(flag), List.of(), "D"));
+            assertTrue(bounds(List.of(entry), true).invalid());
+        }
+        var both = new ScoreLimit("both", 0.3, flag, null, 0.7);
+        assertThrows(IllegalOperationException.class,
+                () -> ScoreLimits.validate(List.of(both, limit("floor", 0.2)), List.of(flag), List.of(), "D"));
+        var other = new ChildStateGatingRule("no", "withheld", "flagForReview");
+        var limits = List.of(both, new ScoreLimit("ceiling", 0.2, other, null));
+        assertTrue(ScoreLimits.evaluate(limits, List.of(flag, other), List.of(), rule -> true, rule -> false).invalid());
     }
 }
