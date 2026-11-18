@@ -429,6 +429,6 @@ test("conditional creation controls expose full references and distinguish selec
   const Conditional = load(resolve(sourceRoot, "app/maturity-models/editor/components/ConditionalGatingField.tsx")).default;
   const html = renderToStaticMarkup(createElement(Conditional, { childType: "practice", childOptions: [{ code: "D1.M1.P1", name: "First" }, { code: "D1.M1.P2", name: "Second" }], value: [{ version: 1, effect: "flagForReview", when: { kind: "and", conditions: [{ kind: "children", quantifier: "any", selection: { codes: ["D1.M1.P1"] }, where: { kind: "and", conditions: [{ kind: "comparison", field: "score", operator: "==", right: { kind: "field", code: "D1.M1.P2", field: "score" } }] } }] } }], onChange: noOp }));
   assert.match(html, /D1\.M1\.P1/); assert.match(html, /D1\.M1\.P2/);
-  assert.match(html, /Add comparison for this child/); assert.match(html, /add selection condition/);
-  assert.match(html, /Full code identifier/);
+  assert.match(html, /Score is equal to/); assert.match(html, /Add condition lane/);
+  assert.match(html, /Edit condition 1 what must be true/);
 });

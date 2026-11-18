@@ -57,11 +57,13 @@ export function conditionalGatingIssues(rules: ConditionalGatingRule[] | undefin
     try {
       if (rule.name != null && (!rule.name.trim() || rule.name.length > 255) || rule.description != null && rule.description.length > 2000) throw Error("Use a name of 1–255 characters and a description of at most 2000 characters.");
       if (rule.version !== 1 || !["withheld", "flagForReview"].includes(rule.effect) || rule.when.kind !== "and" || !rule.when.conditions.length || rule.when.conditions.length > 50) throw Error("Use version 1, AND conditions and a valid effect.");
-      for (const clause of rule.when.conditions) {
-        if (clause.kind !== "children" || !["any", "every", "no"].includes(clause.quantifier) || clause.where.kind !== "and" || !clause.where.conditions.length || clause.where.conditions.length > 50) throw Error("Complete each selection and its AND comparisons.");
+      for (const [groupIndex, clause] of rule.when.conditions.entries()) {
+        if (clause.kind !== "children" || !["any", "every", "no"].includes(clause.quantifier) || clause.where.kind !== "and" || clause.where.conditions.length > 50) throw Error("Complete each selection and its AND comparisons.");
         const codes = clause.selection.codes;
         if (codes && (!codes.length || codes.length > 1000 || new Set(codes).size !== codes.length || codes.some(code => !byCode.has(code)))) throw Error("Select distinct, existing direct children using their full identifiers.");
         const selected = codes ? codes.map(code => byCode.get(code)!) : children;
+        if (!selected.length) throw Error("Add an element to check before defining a condition.");
+        if (!clause.where.conditions.length) throw Error(`Add a comparison to condition group ${groupIndex + 1}.`);
         for (const comparison of clause.where.conditions) {
           if (comparison.kind !== "comparison") throw Error("Invalid comparison.");
           for (const child of selected) {

@@ -176,8 +176,11 @@ The Gating tab separates baseline completion thresholds from the custom-rule lis
 Thresholds are edited directly in their own section; they have a fixed withhold
 effect and do not use names, descriptions or the custom-rule wizard. Existing
 completion metadata is preserved for compatibility. Custom rules use compact
-summary rows. Their creation and editing take place in
-a modal with Details → Conditions → Outcome steps. A nonblank name (maximum
+summary rows. The editor opens a dialog with an editable name and optional description in the
+header. Each condition is a pool lane with selection, quantifier, and comparison
+cells. Desktop cells open anchored editors. Mobile editors open as bottom sheets,
+with other lanes summarized. All lanes join through AND into shared outcome cards.
+Save commits the complete draft. A nonblank name (maximum
 255 characters) is required for rules saved through this editor. Descriptions
 are optional, up to 2000 characters. Changes remain in a local draft until Save;
 Cancel, closing the dialog, or Escape discards them.
