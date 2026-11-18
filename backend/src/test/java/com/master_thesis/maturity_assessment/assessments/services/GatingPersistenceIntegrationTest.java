@@ -4,6 +4,8 @@ import com.master_thesis.maturity_assessment.assessments.models.*;
 import com.master_thesis.maturity_assessment.maturity_models.models.Dimension;
 import com.master_thesis.maturity_assessment.maturity_models.models.Practice;
 import com.master_thesis.maturity_assessment.maturity_models.models.Module;
+import com.master_thesis.maturity_assessment.maturity_models.models.ScoreLimit;
+import com.master_thesis.maturity_assessment.maturity_models.services.ScoreLimits;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -40,11 +42,15 @@ class GatingPersistenceIntegrationTest {
                 ]}}
                 """, com.master_thesis.maturity_assessment.maturity_models.models.ConditionalGatingRule.class);
         dimension.setConditionalGatingRules(List.of(conditional));
+        var limits = List.of(new ScoreLimit("floor", 0.255, rule, null), new ScoreLimit("ceiling", 0.755, null, conditional));
+        dimension.setScoreLimits(limits);
         entities.persist(dimension);
         Module module = new Module(); module.setCode("M1"); module.setName("Module"); module.setDimension(dimension);
         module.setMinimumCoverage(90.0); module.setMinimumIncludedCount(75.0); entities.persist(module);
         Practice practice = new Practice(); practice.setCode("P1"); practice.setName("Practice"); practice.setModule(module);
         practice.setMinimumCoverage(99.0); practice.setMinimumIncludedCount(80.0); entities.persist(practice);
+        module.setChildStateGatingRules(List.of(rule)); module.setScoreLimits(List.of(limits.getFirst()));
+        practice.setChildStateGatingRules(List.of(rule)); practice.setScoreLimits(List.of(limits.getFirst()));
         var snapshot = new AssessmentElementResult("practice", "D1", "M1", "P1", null, null, "Practice",
                 "withheld", null, 50, 25);
         Assessment assessment = new Assessment();
@@ -68,6 +74,11 @@ class GatingPersistenceIntegrationTest {
         assertEquals(List.of(snapshot, flagged), reloaded.getElementResults());
         assertEquals(List.of(rule), entities.find(Dimension.class, dimension.getId()).getChildStateGatingRules());
         assertEquals(List.of(conditional), entities.find(Dimension.class, dimension.getId()).getConditionalGatingRules());
+        var reloadedOwner = entities.find(Dimension.class, dimension.getId());
+        assertEquals(limits, reloadedOwner.getScoreLimits());
+        assertEquals(List.of(limits.getFirst()), entities.find(Module.class, module.getId()).getScoreLimits());
+        assertEquals(List.of(limits.getFirst()), entities.find(Practice.class, practice.getId()).getScoreLimits());
+        assertDoesNotThrow(() -> ScoreLimits.validate(reloadedOwner.getScoreLimits(), reloadedOwner.getChildStateGatingRules(), reloadedOwner.getConditionalGatingRules(), "D1"));
         assertNull(reloaded.getOverallAverage()); assertNull(reloaded.getOverallMaturityLevel());
         DimensionResult reloadedDimension = entities.find(DimensionResult.class, result.getId());
         assertEquals("withheld", reloadedDimension.getScoreState()); assertEquals(25.0, reloadedDimension.getCoverage());

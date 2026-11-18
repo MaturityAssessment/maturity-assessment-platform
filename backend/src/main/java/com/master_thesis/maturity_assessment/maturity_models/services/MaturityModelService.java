@@ -428,6 +428,7 @@ public class MaturityModelService {
                 dto.setMinimumIncludedCount(dimension.getMinimumIncludedCount() == null ? 0.0 : dimension.getMinimumIncludedCount());
                 dto.setChildStateGatingRules(dimension.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(dimension.getChildStateGatingRules()));
                 dto.setConditionalGatingRules(dimension.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(dimension.getConditionalGatingRules()));
+                dto.setScoreLimits(dimension.getScoreLimits() == null ? List.of() : new java.util.ArrayList<>(dimension.getScoreLimits()));
                 dto.setSortOrder(dimension.getSortOrder());
 
                 // Convert modules
@@ -464,6 +465,7 @@ public class MaturityModelService {
                 dimension.setMinimumIncludedCount(dto.getMinimumIncludedCount() == null ? 0.0 : dto.getMinimumIncludedCount());
                 dimension.setChildStateGatingRules(dto.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(dto.getChildStateGatingRules()));
                 dimension.setConditionalGatingRules(dto.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(dto.getConditionalGatingRules()));
+                dimension.setScoreLimits(dto.getScoreLimits() == null ? List.of() : new java.util.ArrayList<>(dto.getScoreLimits()));
 
                 // Convert and set modules (list index = persisted sort order)
                 if (dto.getModules() != null) {
@@ -500,6 +502,7 @@ public class MaturityModelService {
                 dto.setMinimumIncludedCount(module.getMinimumIncludedCount() == null ? 0.0 : module.getMinimumIncludedCount());
                 dto.setChildStateGatingRules(module.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(module.getChildStateGatingRules()));
                 dto.setConditionalGatingRules(module.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(module.getConditionalGatingRules()));
+                dto.setScoreLimits(module.getScoreLimits() == null ? List.of() : new java.util.ArrayList<>(module.getScoreLimits()));
                 dto.setSortOrder(module.getSortOrder());
 
                 // Convert practices
@@ -538,6 +541,7 @@ public class MaturityModelService {
                 module.setMinimumIncludedCount(dto.getMinimumIncludedCount() == null ? 0.0 : dto.getMinimumIncludedCount());
                 module.setChildStateGatingRules(dto.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(dto.getChildStateGatingRules()));
                 module.setConditionalGatingRules(dto.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(dto.getConditionalGatingRules()));
+                module.setScoreLimits(dto.getScoreLimits() == null ? List.of() : new java.util.ArrayList<>(dto.getScoreLimits()));
 
                 // Convert and set practices
                 if (dto.getPractices() != null) {
@@ -620,6 +624,7 @@ public class MaturityModelService {
                 dto.setMinimumIncludedCount(practice.getMinimumIncludedCount() == null ? 0.0 : practice.getMinimumIncludedCount());
                 dto.setChildStateGatingRules(practice.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(practice.getChildStateGatingRules()));
                 dto.setConditionalGatingRules(practice.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(practice.getConditionalGatingRules()));
+                dto.setScoreLimits(practice.getScoreLimits() == null ? List.of() : new java.util.ArrayList<>(practice.getScoreLimits()));
 
                 // Convert questions
                 if (practice.getQuestions() != null) {
@@ -649,6 +654,7 @@ public class MaturityModelService {
                 practice.setMinimumIncludedCount(dto.getMinimumIncludedCount() == null ? 0.0 : dto.getMinimumIncludedCount());
                 practice.setChildStateGatingRules(dto.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(dto.getChildStateGatingRules()));
                 practice.setConditionalGatingRules(dto.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(dto.getConditionalGatingRules()));
+                practice.setScoreLimits(dto.getScoreLimits() == null ? List.of() : new java.util.ArrayList<>(dto.getScoreLimits()));
 
                 // Convert and set questions
                 if (dto.getQuestions() != null) {
@@ -795,6 +801,7 @@ public class MaturityModelService {
                         editorDimension.setMinimumIncludedCount(dimension.getMinimumIncludedCount());
                         editorDimension.setChildStateGatingRules(dimension.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(dimension.getChildStateGatingRules()));
                         editorDimension.setConditionalGatingRules(dimension.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(dimension.getConditionalGatingRules()));
+                        editorDimension.setScoreLimits(dimension.getScoreLimits() == null ? List.of() : new java.util.ArrayList<>(dimension.getScoreLimits()));
                         List<MaturityModelEditorDTO.EditorModuleDTO> modules = new ArrayList<>();
                         for (ModuleDTO module : dimension.getModules() == null ? List.<ModuleDTO>of() : dimension.getModules()) {
                                 var editorModule = new MaturityModelEditorDTO.EditorModuleDTO();
@@ -815,6 +822,7 @@ public class MaturityModelService {
                                 editorModule.setMinimumIncludedCount(module.getMinimumIncludedCount());
                                 editorModule.setChildStateGatingRules(module.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(module.getChildStateGatingRules()));
                                 editorModule.setConditionalGatingRules(module.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(module.getConditionalGatingRules()));
+                                editorModule.setScoreLimits(module.getScoreLimits() == null ? List.of() : new java.util.ArrayList<>(module.getScoreLimits()));
                                 List<MaturityModelEditorDTO.EditorPracticeDTO> practices = new ArrayList<>();
                                 for (PracticeDTO practice : module.getPractices() == null
                                                 ? List.<PracticeDTO>of() : module.getPractices()) {
@@ -831,6 +839,7 @@ public class MaturityModelService {
                                         editorPractice.setMinimumIncludedCount(practice.getMinimumIncludedCount());
                                         editorPractice.setChildStateGatingRules(practice.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(practice.getChildStateGatingRules()));
                                         editorPractice.setConditionalGatingRules(practice.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(practice.getConditionalGatingRules()));
+                                        editorPractice.setScoreLimits(practice.getScoreLimits() == null ? List.of() : new java.util.ArrayList<>(practice.getScoreLimits()));
                                         List<MaturityModelEditorDTO.EditorQuestionDTO> questions = new ArrayList<>();
                                         for (QuestionDTO question : practice.getQuestions() == null
                                                         ? List.<QuestionDTO>of() : practice.getQuestions()) {
@@ -897,6 +906,7 @@ public class MaturityModelService {
                         dimension.setMinimumIncludedCount(editorDimension.getMinimumIncludedCount());
                         dimension.setChildStateGatingRules(editorDimension.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(editorDimension.getChildStateGatingRules()));
                         dimension.setConditionalGatingRules(editorDimension.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(editorDimension.getConditionalGatingRules()));
+                        dimension.setScoreLimits(editorDimension.getScoreLimits() == null ? List.of() : new java.util.ArrayList<>(editorDimension.getScoreLimits()));
                         List<ModuleDTO> modules = new ArrayList<>();
                         for (var editorModule : editorDimension.getModules() == null
                                         ? List.<MaturityModelEditorDTO.EditorModuleDTO>of() : editorDimension.getModules()) {
@@ -918,6 +928,7 @@ public class MaturityModelService {
                                 module.setMinimumIncludedCount(editorModule.getMinimumIncludedCount());
                                 module.setChildStateGatingRules(editorModule.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(editorModule.getChildStateGatingRules()));
                                 module.setConditionalGatingRules(editorModule.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(editorModule.getConditionalGatingRules()));
+                                module.setScoreLimits(editorModule.getScoreLimits() == null ? List.of() : new java.util.ArrayList<>(editorModule.getScoreLimits()));
                                 List<PracticeDTO> practices = new ArrayList<>();
                                 for (var editorPractice : editorModule.getPractices() == null
                                                 ? List.<MaturityModelEditorDTO.EditorPracticeDTO>of()
@@ -935,6 +946,7 @@ public class MaturityModelService {
                                         practice.setMinimumIncludedCount(editorPractice.getMinimumIncludedCount());
                                         practice.setChildStateGatingRules(editorPractice.getChildStateGatingRules() == null ? List.of() : new java.util.ArrayList<>(editorPractice.getChildStateGatingRules()));
                                         practice.setConditionalGatingRules(editorPractice.getConditionalGatingRules() == null ? List.of() : new java.util.ArrayList<>(editorPractice.getConditionalGatingRules()));
+                                        practice.setScoreLimits(editorPractice.getScoreLimits() == null ? List.of() : new java.util.ArrayList<>(editorPractice.getScoreLimits()));
                                         List<QuestionDTO> questions = new ArrayList<>();
                                         for (var editorQuestion : editorPractice.getQuestions() == null
                                                         ? List.<MaturityModelEditorDTO.EditorQuestionDTO>of()
@@ -1440,10 +1452,13 @@ public class MaturityModelService {
                                         for (var question : practice.getQuestions() == null ? List.<QuestionDTO>of() : practice.getQuestions())
                                                 questions.put(practiceCode + "." + question.getCode(), new ConditionalGating.Definition(question));
                                         ConditionalGating.validate(practice.getConditionalGatingRules(), questions, practiceCode);
+                                        ScoreLimits.validate(practice.getScoreLimits(), practice.getChildStateGatingRules(), practice.getConditionalGatingRules(), practiceCode);
                                 }
                                 ConditionalGating.validate(module.getConditionalGatingRules(), practices, moduleCode);
+                                ScoreLimits.validate(module.getScoreLimits(), module.getChildStateGatingRules(), module.getConditionalGatingRules(), moduleCode);
                         }
                         ConditionalGating.validate(dimension.getConditionalGatingRules(), modules, dimension.getId());
+                        ScoreLimits.validate(dimension.getScoreLimits(), dimension.getChildStateGatingRules(), dimension.getConditionalGatingRules(), dimension.getId());
                 }
         }
 

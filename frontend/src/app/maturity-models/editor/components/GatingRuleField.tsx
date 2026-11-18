@@ -1,4 +1,6 @@
 import CompletionThresholdFields from "./CompletionThresholdFields";
+import ScoreLimitFields from "./ScoreLimitFields";
+import type { ScoreLimit } from "@/api/types";
 import { useState } from "react";
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
 import { PlusIcon, PencilSquareIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
@@ -8,7 +10,7 @@ import { comparisonLabel, quantifierDescription } from "../model/gatingRuleLabel
 import type { AggregationRule, ChildStateGatingRule, ConditionalGatingRule } from "@/api/types";
 import { inputClass } from "./FormFields";
 
-type Values = { minimumCoverage: number; minimumIncludedCount: number; conditionalGatingRules?: ConditionalGatingRule[]; childStateGatingRules?: ChildStateGatingRule[]; completionGatingMetadata?: { name?: string; description?: string } };
+type Values = { minimumCoverage: number; minimumIncludedCount: number; conditionalGatingRules?: ConditionalGatingRule[]; childStateGatingRules?: ChildStateGatingRule[]; scoreLimits?: ScoreLimit[]; completionGatingMetadata?: { name?: string; description?: string } };
 type Draft = { kind: "state" | "conditional"; index: number | null; name: string; description: string; state: ChildStateGatingRule; conditional: ConditionalGatingRule };
 const defaultRule = (): ConditionalGatingRule => ({ version: 1, effect: "flagForReview", when: { kind: "and", conditions: [emptyCondition()] } });
 const effectName = (effect: string) => effect === "withheld" ? "Withhold" : "Flag for review";
@@ -62,6 +64,7 @@ export default function GatingRuleField({ idPrefix, aggregationRule, isPractice,
     </div>}
     {!stateRules.length && !conditionalRules.length && <p className="text-sm text-gray-400">No custom rules yet. Create a rule to add a condition.</p>}
     </section>
+    <ScoreLimitFields owner={values} onChange={scoreLimits => onChange({ ...values, scoreLimits })} />
     <Dialog open={!!draft} onClose={close} className="relative z-50">
       <div className="fixed inset-0 bg-slate-900/40" aria-hidden="true" />
       <div className="fixed inset-0 overflow-y-auto">

@@ -1,4 +1,5 @@
 import type { ConditionalGatingRule, MaturityModelEditorDocument, ModelEditorDimension, ModelEditorModule, ModelEditorPractice, ModelEditorQuestion } from "@/api/types";
+import { scoreLimitLinked } from "./scoreLimits.ts";
 
 type Item = ModelEditorDimension | ModelEditorModule | ModelEditorPractice | ModelEditorQuestion;
 export type GatingChildOption = { code: string; name: string; question?: ModelEditorQuestion };
@@ -23,7 +24,7 @@ export function mapGatingReferences(rules: ConditionalGatingRule[], resolve: (co
   })) } }));
 }
 /** Rewrite simultaneous renames by editor identity. Deletions stay invalid rather than targeting the item that inherited their code. */
-export function repairConditionalReferences(before: MaturityModelEditorDocument, after: MaturityModelEditorDocument): MaturityModelEditorDocument {
+export function repairConditionalReferences(before: MaturityModelEditorDocument, after: MaturityModelEditorDocument, normalizeImportedLimits = false): MaturityModelEditorDocument {
   const previous = gatingIndex(before), next = gatingIndex(after);
   const rename = (code: string) => {
     const item = previous.byCode.get(code);
@@ -37,7 +38,16 @@ export function repairConditionalReferences(before: MaturityModelEditorDocument,
       // Explicit rule edits/imports are already expressed in the new document's identifiers.
       if (old && "conditionalGatingRules" in old && JSON.stringify(old.conditionalGatingRules) === JSON.stringify(item.conditionalGatingRules)) {
         const rules = mapGatingReferences(item.conditionalGatingRules, rename);
-        if (JSON.stringify(rules) !== JSON.stringify(item.conditionalGatingRules)) result = { ...item, conditionalGatingRules: rules };
+        if (JSON.stringify(rules) !== JSON.stringify(item.conditionalGatingRules)) {
+          result = { ...item, conditionalGatingRules: rules };
+          // Loading an imported model canonicalizes public codes without a creator edit.
+          // Preserve only approvals that were valid before this normalization. Explicit
+          // edits keep their original snapshots so changes still require reapproval.
+          if (normalizeImportedLimits && item.scoreLimits) result.scoreLimits = item.scoreLimits.map(limit => {
+            const index = item.conditionalGatingRules!.findIndex(rule => scoreLimitLinked(limit, { conditionalGatingRules: [rule] }));
+            return index < 0 ? limit : { ...limit, conditionalRule: structuredClone(rules[index]) };
+          });
+        }
       }
     }
     const children = itemChildren(result), nested = children.map(visit);

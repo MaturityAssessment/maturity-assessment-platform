@@ -75,6 +75,10 @@ public class Practice {
     @Column(name = "conditional_gating_rules", columnDefinition = "jsonb", nullable = false)
     private List<ConditionalGatingRule> conditionalGatingRules = new java.util.ArrayList<>();
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "score_limits", columnDefinition = "jsonb", nullable = false)
+    private List<ScoreLimit> scoreLimits = new java.util.ArrayList<>();
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -765,6 +765,56 @@ class MaturityModelServiceTest {
     }
 
     @Test
+    void scoreLimitsSurvivePersistenceEditorConversionAndVersionCreation() {
+        var domain = domain();
+        var dto = updateDto(domain.getId(), null);
+        var dimension = dto.getDimensions().getFirst();
+        var module = dimension.getModules().getFirst();
+        var practice = module.getPractices().getFirst();
+        var flag = new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule("any", "computed", "flagForReview");
+        var limits = List.of(new com.master_thesis.maturity_assessment.maturity_models.models.ScoreLimit("ceiling", 0.6, flag, null));
+        dimension.setChildStateGatingRules(List.of(flag)); dimension.setScoreLimits(limits);
+        module.setChildStateGatingRules(List.of(flag)); module.setScoreLimits(limits);
+        practice.setChildStateGatingRules(List.of(flag)); practice.setScoreLimits(limits);
+        when(domainRepository.findById(domain.getId())).thenReturn(Optional.of(domain));
+        List<MaturityModel> saved = new ArrayList<>();
+        when(maturityModelRepository.saveAndFlush(any(MaturityModel.class))).thenAnswer(invocation -> {
+            MaturityModel model = invocation.getArgument(0); assignGeneratedIds(model); saved.add(model); return model;
+        });
+        when(maturityModelRepository.save(any(MaturityModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        var original = service.createMaturityModel(dto);
+        assertEquals(limits, saved.getFirst().getDimensions().getFirst().getScoreLimits());
+        assertEquals(limits, saved.getFirst().getDimensions().getFirst().getModules().getFirst().getScoreLimits());
+        assertEquals(limits, saved.getFirst().getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getScoreLimits());
+        var editor = service.prepareEditorDocument(original);
+        assertEquals(limits, editor.getDimensions().getFirst().getScoreLimits());
+        var source = saved.getFirst();
+        when(maturityModelRepository.findById(source.getId())).thenReturn(Optional.of(source));
+        when(maturityModelRepository.findByBaseModelIdOrderByVersionAsc(source.getId())).thenReturn(List.of(source));
+        var version = service.createVersionFromEditor(source.getId(), editor);
+        assertEquals(2, version.getVersion());
+        assertEquals(limits, version.getDimensions().getFirst().getScoreLimits());
+        assertEquals(limits, version.getDimensions().getFirst().getModules().getFirst().getScoreLimits());
+        assertEquals(limits, version.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getScoreLimits());
+    }
+
+    @Test
+    void staleScoreLimitLinksAreRejectedAtEveryScopeBeforePersisting() {
+        var flag = new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule("any", "computed", "flagForReview");
+        var limits = List.of(new com.master_thesis.maturity_assessment.maturity_models.models.ScoreLimit("floor", 0.4, flag, null));
+        for (int scope = 0; scope < 3; scope++) {
+            var dto = updateDto(domain().getId(), null);
+            var dimension = dto.getDimensions().getFirst();
+            if (scope == 0) dimension.setScoreLimits(limits);
+            if (scope == 1) dimension.getModules().getFirst().setScoreLimits(limits);
+            if (scope == 2) dimension.getModules().getFirst().getPractices().getFirst().setScoreLimits(limits);
+            var error = assertThrows(IllegalOperationException.class, () -> service.createMaturityModel(dto));
+            assertEquals("INVALID_SCORE_LIMITS", error.getErrorCode());
+        }
+        verify(maturityModelRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
     void rejectsIncompleteAndUnsupportedChildStateRules() {
         var invalid = java.util.Arrays.asList(null,
                 new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule("some", "computed", "withheld"),

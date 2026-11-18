@@ -26,6 +26,7 @@ public class CsvMaturityModelRow {
     private String dimensionMinimumIncludedCount;
     private String dimensionChildStateGatingRules;
     private String dimensionConditionalGatingRules;
+    private String dimensionScoreLimits;
     private String dimensionCompletionGatingMetadata;
 
     private String moduleCode;
@@ -44,6 +45,7 @@ public class CsvMaturityModelRow {
     private String moduleMinimumIncludedCount;
     private String moduleChildStateGatingRules;
     private String moduleConditionalGatingRules;
+    private String moduleScoreLimits;
     private String moduleCompletionGatingMetadata;
 
     private String practiceId;
@@ -58,6 +60,7 @@ public class CsvMaturityModelRow {
     private String practiceMinimumIncludedCount;
     private String practiceChildStateGatingRules;
     private String practiceConditionalGatingRules;
+    private String practiceScoreLimits;
     private String practiceCompletionGatingMetadata;
 
     private String questionWeight;

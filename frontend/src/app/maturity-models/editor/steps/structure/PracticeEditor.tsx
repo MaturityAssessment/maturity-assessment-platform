@@ -208,6 +208,7 @@ export default function PracticeEditor({
                 childType="question"
                 childStateGatingRules={practice.childStateGatingRules}
                 conditionalGatingRules={practice.conditionalGatingRules}
+                scoreLimits={practice.scoreLimits}
                 childOptions={gatingChildren(document, practice.clientKey)}
                 minimumCoverage={practice.minimumCoverage}
                 minimumIncludedCount={practice.minimumIncludedCount}

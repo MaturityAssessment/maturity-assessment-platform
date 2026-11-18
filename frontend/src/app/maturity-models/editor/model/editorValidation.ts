@@ -1,3 +1,4 @@
+import { scoreLimitIssues } from "./scoreLimits.ts";
 import { conditionalGatingIssues, gatingChildren } from "./conditionalGating.ts";
 import { dependencyConditionError } from "../../../../lib/questionDependencies.ts";
 import type {
@@ -204,7 +205,7 @@ export function validateDocument(
         selection: dimensionSelection,
       });
     }
-    for (const message of conditionalGatingIssues(dimension.conditionalGatingRules, gatingChildren(document, dimension.clientKey))) {
+    for (const message of [...conditionalGatingIssues(dimension.conditionalGatingRules, gatingChildren(document, dimension.clientKey)), ...scoreLimitIssues(dimension)]) {
       add({ step: "structure", severity: "error", message, selection: dimensionSelection });
     }
     if (
@@ -272,7 +273,7 @@ export function validateDocument(
           selection: moduleSelection,
         });
       }
-      for (const message of conditionalGatingIssues(module.conditionalGatingRules, gatingChildren(document, module.clientKey))) {
+      for (const message of [...conditionalGatingIssues(module.conditionalGatingRules, gatingChildren(document, module.clientKey)), ...scoreLimitIssues(module)]) {
         add({ step: "structure", severity: "error", message, selection: moduleSelection });
       }
       if (
@@ -291,7 +292,7 @@ export function validateDocument(
           type: "practice",
           key: practice.clientKey,
         };
-        for (const message of conditionalGatingIssues(practice.conditionalGatingRules, gatingChildren(document, practice.clientKey))) {
+        for (const message of [...conditionalGatingIssues(practice.conditionalGatingRules, gatingChildren(document, practice.clientKey)), ...scoreLimitIssues(practice)]) {
           add({ step: "structure", severity: "error", message, selection: practiceSelection });
         }
         if (

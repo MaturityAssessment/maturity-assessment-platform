@@ -161,6 +161,7 @@ export default function DimensionEditor({
                 childType="module"
                 childStateGatingRules={dimension.childStateGatingRules}
                 conditionalGatingRules={dimension.conditionalGatingRules}
+                scoreLimits={dimension.scoreLimits}
                 childOptions={dimension.modules.map(item => ({ code: `${dimension.code}.${item.code}`, name: item.name }))}
                 minimumCoverage={dimension.minimumCoverage}
                 minimumIncludedCount={dimension.minimumIncludedCount}

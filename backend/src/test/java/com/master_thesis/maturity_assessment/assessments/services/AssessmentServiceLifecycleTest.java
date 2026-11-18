@@ -1,6 +1,8 @@
 package com.master_thesis.maturity_assessment.assessments.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.master_thesis.maturity_assessment.maturity_models.models.ScoreLimit;
+import com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule;
 import com.master_thesis.maturity_assessment.assessments.dto.AssessmentRequest;
 import com.master_thesis.maturity_assessment.assessments.dto.AssessmentResponse;
 import com.master_thesis.maturity_assessment.assessments.dto.ManualEvaluationRequest;
@@ -1264,6 +1266,29 @@ class AssessmentServiceLifecycleTest {
         assertTrue(response.getIsCompleted());
         assertEquals(4.0, response.getOverallAverage());
         assertEquals("Keep measuring the process.", response.getEvaluatorInsight());
+    }
+
+    @Test
+    void finalEvaluationAppliesLimitsToEffectiveReviewedScoresAndStoresTheLimitedSnapshot() throws Exception {
+        String responseKey = "D1_M1_101_1001";
+        var model = manualModelWithOpenQuestion();
+        var practice = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        var flag = new ChildStateGatingRule("any", "computed", "flagForReview");
+        practice.setChildStateGatingRules(List.of(flag));
+        practice.setScoreLimits(List.of(new ScoreLimit("ceiling", 0.3, flag, null)));
+        var assessment = pendingAssessment(new ObjectMapper().writeValueAsString(Map.of(responseKey, "A detailed answer")));
+        var reviewed = questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID).getFirst();
+        reviewed.setValidationStatus(QuestionEvaluationStatus.ACCEPTED);
+        reviewed.setManualScore(4.0);
+        when(assessmentRepository.findById(ASSESSMENT_ID)).thenReturn(Optional.of(assessment));
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        var response = assessmentService.finishEvaluation(ASSESSMENT_ID, new ManualEvaluationRequest(), user);
+        assertEquals("COMPLETED", response.getStatus());
+        assertEquals(0.75, element(response, "question", null).normalizedScore());
+        assertEquals(0.3, element(response, "practice", null).normalizedScore());
+        assertEquals("flagForReview", element(response, "practice", null).state());
+        assertEquals(0.3, element(response, "dimension", "D1").normalizedScore());
+        assertEquals(response.getElementResults(), assessment.getElementResults());
     }
 
     @Test
@@ -2556,6 +2581,142 @@ class AssessmentServiceLifecycleTest {
         assertEquals("computed", element(assessmentService.createAssessment(incoming, user), "practice", "P1").state());
         incoming.getQuestionResponses().get("D1_M1_101_1001").setChoiceIndex(1);
         assertEquals("withheld", element(assessmentService.createAssessment(incoming, user), "practice", "P1").state());
+    }
+
+    @Test
+    void scoreLimitsApplyAtEveryScopeAndParentConditionsReadLimitedScores() throws Exception {
+        var model = hierarchicalAggregationModel();
+        var dimension = model.getDimensions().getFirst();
+        var module = dimension.getModules().getFirst();
+        var practice = module.getPractices().getFirst();
+        var flag = new ChildStateGatingRule("any", "computed", "flagForReview");
+        practice.setChildStateGatingRules(List.of(flag));
+        practice.setScoreLimits(List.of(new ScoreLimit("floor", 0.4, flag, null)));
+        module.setChildStateGatingRules(List.of(flag));
+        module.setScoreLimits(List.of(new ScoreLimit("ceiling", 0.555, flag, null)));
+        var parentRule = conditionalRule("D1.M1", "score", "==", "{\"kind\":\"literal\",\"value\":0.555}", "flagForReview");
+        dimension.setConditionalGatingRules(List.of(parentRule));
+        dimension.setScoreLimits(List.of(new ScoreLimit("floor", 0.655, null, parentRule)));
+        var response = submitForGating(model, partialHierarchyAnswers());
+        assertEquals(0.4, element(response, "practice", "P1").normalizedScore());
+        assertEquals(0.555, element(response, "module", "M1").normalizedScore());
+        assertEquals(0.655, element(response, "dimension", "D1").normalizedScore());
+        assertEquals("flagForReview", element(response, "dimension", "D1").state());
+        assertEquals(87.5, element(response, "dimension", "D1").includedCount());
+        assertEquals(65.5, response.getDimensionResults().getFirst().getPercentageScore());
+    }
+
+    @Test
+    void conflictingActiveLimitsWithholdAndAreExcludedFromParentsButEqualBoundsAreValid() {
+        var model = hierarchicalAggregationModel();
+        var target = model.getDimensions().getFirst().getModules().getFirst();
+        var flag = new ChildStateGatingRule("any", "computed", "flagForReview");
+        target.setChildStateGatingRules(List.of(flag));
+        target.setScoreLimits(List.of(new ScoreLimit("floor", 0.8, flag, null), new ScoreLimit("ceiling", 0.2, flag, null)));
+        var response = submitForGating(model, partialHierarchyAnswers());
+        assertEquals("withheld", element(response, "module", "M1").state());
+        assertNull(element(response, "module", "M1").normalizedScore());
+        assertEquals(1.0, element(response, "dimension", "D1").normalizedScore());
+        assertEquals(50.0, element(response, "dimension", "D1").includedCount());
+        target.setScoreLimits(List.of(new ScoreLimit("floor", 0.555, flag, null), new ScoreLimit("ceiling", 0.555, flag, null)));
+        response = submitForGating(model, partialHierarchyAnswers());
+        assertEquals(0.555, element(response, "module", "M1").normalizedScore());
+        assertEquals("flagForReview", element(response, "module", "M1").state());
+    }
+
+    @Test
+    void unmatchedLimitRulesDoNotAffectScoresAndWithholdAlwaysWins() {
+        var model = hierarchicalAggregationModel();
+        var target = model.getDimensions().getFirst().getModules().getFirst();
+        var unmatched = new ChildStateGatingRule("any", "withheld", "flagForReview");
+        target.setChildStateGatingRules(List.of(unmatched));
+        target.setScoreLimits(List.of(new ScoreLimit("floor", 0.9, unmatched, null), new ScoreLimit("ceiling", 0.1, unmatched, null)));
+        var response = submitForGating(model, partialHierarchyAnswers());
+        assertEquals(1.0, element(response, "module", "M1").normalizedScore());
+        assertEquals("computed", element(response, "module", "M1").state());
+        var flag = new ChildStateGatingRule("any", "computed", "flagForReview");
+        var withhold = new ChildStateGatingRule("no", "withheld", "withheld");
+        target.setScoreLimits(List.of(new ScoreLimit("floor", 1.0, flag, null)));
+        for (var rules : List.of(List.of(flag, withhold), List.of(withhold, flag))) {
+            target.setChildStateGatingRules(rules);
+            var result = element(submitForGating(model, partialHierarchyAnswers()), "module", "M1");
+            assertNull(result.normalizedScore()); assertEquals("withheld", result.state());
+        }
+        target.setChildStateGatingRules(List.of(flag)); target.setMinimumIncludedCount(100.0);
+        assertNull(element(submitForGating(model, partialHierarchyAnswers()), "module", "M1").normalizedScore());
+    }
+
+    @Test
+    void floorsCannotCreateMissingScoresAndStaleLinksCannotChangeScores() {
+        var model = hierarchicalAggregationModel();
+        var target = model.getDimensions().getFirst().getModules().getFirst();
+        var flag = new ChildStateGatingRule("no", "computed", "flagForReview");
+        target.setChildStateGatingRules(List.of(flag));
+        target.setScoreLimits(List.of(new ScoreLimit("floor", 1.0, flag, null)));
+        var result = element(submitForGating(model, Map.of()), "module", "M1");
+        assertNull(result.normalizedScore()); assertEquals("withheld", result.state());
+        target.setChildStateGatingRules(List.of(new ChildStateGatingRule("any", "computed", "flagForReview")));
+        result = element(submitForGating(model, partialHierarchyAnswers()), "module", "M1");
+        assertNull(result.normalizedScore()); assertEquals("withheld", result.state());
+    }
+
+    @Test
+    void limitsFromStateAndConditionalFlagsCombineOnlyWhenTheirOwnRulesMatch() throws Exception {
+        var model = hierarchicalAggregationModel();
+        var target = model.getDimensions().getFirst().getModules().getFirst();
+        var flag = new ChildStateGatingRule("any", "computed", "flagForReview");
+        var lowChild = conditionalRule("D1.M1.P1", "score", "<", "{\"kind\":\"literal\",\"value\":0.5}", "flagForReview");
+        var highChild = conditionalRule("D1.M1.P1", "score", ">", "{\"kind\":\"literal\",\"value\":0.5}", "flagForReview");
+        target.setChildStateGatingRules(List.of(flag));
+        target.setConditionalGatingRules(List.of(lowChild, highChild));
+        target.setScoreLimits(List.of(new ScoreLimit("floor", 0.4, flag, null),
+                new ScoreLimit("ceiling", 0.6, null, lowChild), new ScoreLimit("ceiling", 0.2, null, highChild)));
+        var result = element(submitForGating(model, partialHierarchyAnswers()), "module", "M1");
+        assertEquals("flagForReview", result.state()); assertEquals(0.6, result.normalizedScore());
+        target.setScoreLimits(List.of(new ScoreLimit("floor", 0.8, flag, null), new ScoreLimit("ceiling", 0.6, null, lowChild)));
+        result = element(submitForGating(model, partialHierarchyAnswers()), "module", "M1");
+        assertEquals("withheld", result.state()); assertNull(result.normalizedScore());
+    }
+
+    @Test
+    void conflictingDimensionLimitsRemoveMaturityLevelsAndWithholdTheOverallResult() {
+        var model = hierarchicalAggregationModel();
+        var dimension = model.getDimensions().getFirst();
+        model.setDimensions(List.of(dimension));
+        var flag = new ChildStateGatingRule("any", "computed", "flagForReview");
+        dimension.setChildStateGatingRules(List.of(flag));
+        dimension.setScoreLimits(List.of(new ScoreLimit("floor", 0.9, flag, null), new ScoreLimit("ceiling", 0.1, flag, null)));
+        var answers = new java.util.HashMap<>(partialHierarchyAnswers()); answers.remove("D2_M3_104_1005");
+        var response = submitForGating(model, answers);
+        var result = response.getDimensionResults().getFirst();
+        assertEquals("withheld", result.getScoreState());
+        assertNull(result.getAverageScore()); assertNull(result.getPercentageScore());
+        assertNull(result.getMaturityLevelNumber()); assertNull(result.getMaturityLevel());
+        assertEquals(87.5, result.getIncludedCount());
+        assertEquals("withheld", response.getScoreState());
+        assertNull(element(response, "global", null).normalizedScore());
+        assertNull(response.getOverallAverage()); assertNull(response.getOverallPercentageScore()); assertNull(response.getOverallMaturityLevel());
+    }
+
+    @Test
+    void preciseLimitsApplyForEveryAggregationMethodAndZeroIsAUsableScore() {
+        for (var aggregation : AggregationRule.values()) {
+            var model = hierarchicalAggregationModel();
+            var target = model.getDimensions().getFirst().getModules().getFirst();
+            var flag = new ChildStateGatingRule("any", "computed", "flagForReview");
+            target.setAggregationRule(aggregation); target.setChildStateGatingRules(List.of(flag));
+            target.setScoreLimits(List.of(new ScoreLimit("floor", 0.555, flag, null), new ScoreLimit("ceiling", 0.555, flag, null)));
+            var result = element(submitForGating(model, partialHierarchyAnswers()), "module", "M1");
+            assertEquals("flagForReview", result.state(), aggregation.name()); assertEquals(0.555, result.normalizedScore(), aggregation.name());
+        }
+        var model = hierarchicalAggregationModel();
+        var target = model.getDimensions().getFirst().getModules().getFirst();
+        var flag = new ChildStateGatingRule("any", "computed", "flagForReview");
+        target.setChildStateGatingRules(List.of(flag)); target.setScoreLimits(List.of(new ScoreLimit("ceiling", 0.0, flag, null)));
+        var response = submitForGating(model, partialHierarchyAnswers());
+        assertEquals(0.0, element(response, "module", "M1").normalizedScore());
+        assertEquals(0.0, element(response, "dimension", "D1").normalizedScore());
+        assertEquals("computed", element(response, "dimension", "D1").state());
     }
 
     private Question question(Long id) {

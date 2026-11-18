@@ -86,6 +86,7 @@ export function emptyPractice(
     minimumIncludedCount: 0,
     childStateGatingRules: [],
     conditionalGatingRules: [],
+    scoreLimits: [],
     requiresEvidence: false,
     evidenceRequirements: [],
     questions: [emptyQuestion(questionOrdinal)],
@@ -108,6 +109,7 @@ export function emptyModule(
     minimumIncludedCount: 0,
     childStateGatingRules: [],
     conditionalGatingRules: [],
+    scoreLimits: [],
     visible: true,
     prerequisiteModuleCodes: [],
     coRequisiteModuleCodes: [],
@@ -137,6 +139,7 @@ export function emptyDimension(
     minimumIncludedCount: 0,
     childStateGatingRules: [],
     conditionalGatingRules: [],
+    scoreLimits: [],
     modules: [
       emptyModule(moduleOrdinal, practiceOrdinal, questionOrdinal),
     ],
@@ -189,6 +192,7 @@ export function hydrateDocument(
       minimumIncludedCount: dimension.minimumIncludedCount ?? 0,
       childStateGatingRules: (dimension.childStateGatingRules ?? []).map(rule => ({ ...rule })),
       conditionalGatingRules: structuredClone(dimension.conditionalGatingRules ?? []),
+      scoreLimits: structuredClone(dimension.scoreLimits ?? []),
       completionGatingMetadata: dimension.completionGatingMetadata ? { ...dimension.completionGatingMetadata } : undefined,
       mappingRules:
         dimension.mappingRules?.length === levels.length
@@ -215,6 +219,7 @@ export function hydrateDocument(
         minimumIncludedCount: module.minimumIncludedCount ?? 0,
         childStateGatingRules: (module.childStateGatingRules ?? []).map(rule => ({ ...rule })),
         conditionalGatingRules: structuredClone(module.conditionalGatingRules ?? []),
+        scoreLimits: structuredClone(module.scoreLimits ?? []),
         completionGatingMetadata: module.completionGatingMetadata ? { ...module.completionGatingMetadata } : undefined,
         practices: (module.practices ?? []).map((practice) => ({
           ...withoutLegacyGating(practice),
@@ -231,6 +236,7 @@ export function hydrateDocument(
           minimumIncludedCount: practice.minimumIncludedCount ?? 0,
           childStateGatingRules: (practice.childStateGatingRules ?? []).map(rule => ({ ...rule })),
           conditionalGatingRules: structuredClone(practice.conditionalGatingRules ?? []),
+          scoreLimits: structuredClone(practice.scoreLimits ?? []),
           completionGatingMetadata: practice.completionGatingMetadata ? { ...practice.completionGatingMetadata } : undefined,
           questions: (practice.questions ?? []).map((question) => ({
             ...question,
@@ -279,7 +285,7 @@ export function hydrateDocument(
       }
     }
   }
-  return repairConditionalReferences(beforeRenumber, document);
+  return repairConditionalReferences(beforeRenumber, document, true);
 }
 
 // Keep configured weights when switching rules; unfinished unused weights must
@@ -313,6 +319,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
         minimumIncludedCount: dimension.minimumIncludedCount ?? 0,
         childStateGatingRules: (dimension.childStateGatingRules ?? []).map(rule => ({ ...rule })),
         conditionalGatingRules: structuredClone(dimension.conditionalGatingRules ?? []),
+        scoreLimits: structuredClone(dimension.scoreLimits ?? []),
         completionGatingMetadata: dimension.completionGatingMetadata ? { ...dimension.completionGatingMetadata } : undefined,
         modules: dimension.modules.map(
           ({ clientKey: _moduleKey, codeLocked: _moduleLocked, ...module }) => ({
@@ -332,6 +339,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
             minimumIncludedCount: module.minimumIncludedCount ?? 0,
             childStateGatingRules: (module.childStateGatingRules ?? []).map(rule => ({ ...rule })),
             conditionalGatingRules: structuredClone(module.conditionalGatingRules ?? []),
+            scoreLimits: structuredClone(module.scoreLimits ?? []),
             completionGatingMetadata: module.completionGatingMetadata ? { ...module.completionGatingMetadata } : undefined,
             practices: module.practices.map(
               ({
@@ -350,6 +358,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
                 minimumIncludedCount: practice.minimumIncludedCount ?? 0,
                 childStateGatingRules: (practice.childStateGatingRules ?? []).map(rule => ({ ...rule })),
                 conditionalGatingRules: structuredClone(practice.conditionalGatingRules ?? []),
+                scoreLimits: structuredClone(practice.scoreLimits ?? []),
                 completionGatingMetadata: practice.completionGatingMetadata ? { ...practice.completionGatingMetadata } : undefined,
                 questions: practice.questions.map(
                   ({

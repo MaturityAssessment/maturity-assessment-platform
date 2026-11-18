@@ -3,6 +3,8 @@ package com.master_thesis.maturity_assessment.assessments.services;
 import com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule;
 import com.master_thesis.maturity_assessment.maturity_models.models.ConditionalGatingRule;
 import com.master_thesis.maturity_assessment.maturity_models.services.ConditionalGating;
+import com.master_thesis.maturity_assessment.maturity_models.services.ScoreLimits;
+import com.master_thesis.maturity_assessment.maturity_models.models.ScoreLimit;
 import com.master_thesis.maturity_assessment.assessments.dto.AssessmentRequest;
 import com.master_thesis.maturity_assessment.assessments.dto.AssessmentResponse;
 import com.master_thesis.maturity_assessment.assessments.dto.EvidenceDTO;
@@ -2226,14 +2228,14 @@ public class AssessmentService {
                                 question.getCode(), key, question.getText(), node));
                     }
                     ScoreNode node = aggregateNodes(questions, practice.getAggregationRule(), practice.getWeight(),
-                            practice.getMinimumCoverage(), practice.getMinimumIncludedCount(), practice.getChildStateGatingRules(), practice.getConditionalGatingRules(), questions.stream().map(gatingChildren::get).toList());
+                            practice.getMinimumCoverage(), practice.getMinimumIncludedCount(), practice.getChildStateGatingRules(), practice.getConditionalGatingRules(), practice.getScoreLimits(), questions.stream().map(gatingChildren::get).toList());
                     gatingChildren.put(node, new ConditionalGating.Child(dimension.getDimensionId() + "." + module.getCode() + "." + practice.getCode(), node.score(), node.state(), node.coverage(), node.includedCount(), false, null));
                     practices.add(node);
                     elements.add(elementResult("practice", dimension.getDimensionId(), module.getCode(), practice.getCode(),
                             null, null, practice.getName(), node));
                 }
                 ScoreNode node = aggregateNodes(practices, module.getAggregationRule(), module.getWeight(),
-                        module.getMinimumCoverage(), module.getMinimumIncludedCount(), module.getChildStateGatingRules(), module.getConditionalGatingRules(), practices.stream().map(gatingChildren::get).toList());
+                        module.getMinimumCoverage(), module.getMinimumIncludedCount(), module.getChildStateGatingRules(), module.getConditionalGatingRules(), module.getScoreLimits(), practices.stream().map(gatingChildren::get).toList());
                 gatingChildren.put(node, new ConditionalGating.Child(dimension.getDimensionId() + "." + module.getCode(), node.score(), node.state(), node.coverage(), node.includedCount(), false, null));
                 modules.add(node);
                 elements.add(elementResult("module", dimension.getDimensionId(), module.getCode(), null,
@@ -2242,7 +2244,7 @@ public class AssessmentService {
             // A dimension consisting entirely of explicitly hidden modules was not presented.
             if (modules.isEmpty()) continue;
             ScoreNode node = aggregateNodes(modules, dimension.getAggregationRule(), dimension.getWeight(),
-                    dimension.getMinimumCoverage(), dimension.getMinimumIncludedCount(), dimension.getChildStateGatingRules(), dimension.getConditionalGatingRules(), modules.stream().map(gatingChildren::get).toList());
+                    dimension.getMinimumCoverage(), dimension.getMinimumIncludedCount(), dimension.getChildStateGatingRules(), dimension.getConditionalGatingRules(), dimension.getScoreLimits(), modules.stream().map(gatingChildren::get).toList());
             dimensionNodes.add(node);
             elements.add(elementResult("dimension", dimension.getDimensionId(), null, null, null, null, dimension.getName(), node));
             dimensions.add(toDimensionResult(dimension, node, maxLevel, model.getLevels()));
@@ -2258,12 +2260,12 @@ public class AssessmentService {
 
     private ScoreNode aggregateNodes(List<ScoreNode> children, AggregationRule rule, Double weight,
                                      Double minimumCoverage, Double minimumIncludedCount) {
-        return aggregateNodes(children, rule, weight, minimumCoverage, minimumIncludedCount, List.of(), List.of(), List.of());
+        return aggregateNodes(children, rule, weight, minimumCoverage, minimumIncludedCount, List.of(), List.of(), List.of(), List.of());
     }
 
     private ScoreNode aggregateNodes(List<ScoreNode> children, AggregationRule rule, Double weight,
                                      Double minimumCoverage, Double minimumIncludedCount,
-                                     List<ChildStateGatingRule> stateRules, List<ConditionalGatingRule> conditionalRules,
+                                     List<ChildStateGatingRule> stateRules, List<ConditionalGatingRule> conditionalRules, List<ScoreLimit> scoreLimits,
                                      List<ConditionalGating.Child> gatingChildren) {
         List<ScoreNode> included = children.stream().filter(child -> child.score() != null && ("computed".equals(child.state()) || "flagForReview".equals(child.state()))).toList();
         double includedCount = children.stream().mapToDouble(child -> "withheld".equals(child.state()) ? 0 : child.includedCount()).average().orElse(0);
@@ -2276,6 +2278,7 @@ public class AssessmentService {
                 || includedCount + 1e-7 < threshold(minimumIncludedCount)
                 || (weightedMean && coverage + 1e-7 < threshold(minimumCoverage));
         boolean flagged = false;
+        Set<ChildStateGatingRule> matchingStateRules = new HashSet<>();
         for (var stateRule : stateRules == null ? List.<ChildStateGatingRule>of() : stateRules) {
             java.util.function.Predicate<ScoreNode> matches = child -> "computed".equals(stateRule.state())
                     ? "computed".equals(child.state()) || "flagForReview".equals(child.state())
@@ -2287,6 +2290,7 @@ public class AssessmentService {
                 default -> false;
             };
             if (matched) {
+                matchingStateRules.add(stateRule);
                 withheld |= "withheld".equals(stateRule.effect());
                 flagged |= "flagForReview".equals(stateRule.effect());
             }
@@ -2294,9 +2298,15 @@ public class AssessmentService {
         var conditionalEffects = ConditionalGating.evaluate(conditionalRules, gatingChildren);
         withheld |= conditionalEffects.withheld();
         flagged |= conditionalEffects.flagged();
+        var bounds = withheld ? new ScoreLimits.Bounds(0, 1, false)
+                : ScoreLimits.evaluate(scoreLimits, stateRules, conditionalRules, matchingStateRules::contains,
+                    condition -> ConditionalGating.evaluate(List.of(condition), gatingChildren).flagged());
+        withheld |= bounds.invalid();
         Double score = withheld ? null : maturityScoringService.aggregate(
                 included.stream().map(ScoreNode::score).toList(), included.stream().map(ScoreNode::weight).toList(), rule);
-        return new ScoreNode(score == null ? null : maturityScoringService.roundAndClampNormalized(score), childWeight(weight),
+        // Apply bounds last so normal score rounding cannot cross a precise floor or ceiling.
+        score = bounds.apply(score == null ? null : maturityScoringService.roundAndClampNormalized(score));
+        return new ScoreNode(score, childWeight(weight),
                 children.stream().mapToInt(ScoreNode::totalQuestions).sum(),
                 children.stream().mapToDouble(ScoreNode::totalScore).sum(),
                 includedCount, coverage, withheld ? "withheld" : flagged ? "flagForReview" : "computed");

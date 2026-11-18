@@ -158,6 +158,7 @@ export interface Practice {
   aggregationRule?: AggregationRule;
   childStateGatingRules?: ChildStateGatingRule[];
   conditionalGatingRules?: ConditionalGatingRule[];
+  scoreLimits?: ScoreLimit[];
   completionGatingMetadata?: { name?: string; description?: string };
   minimumCoverage?: number;
   minimumIncludedCount?: number;
@@ -184,6 +185,7 @@ export interface Module {
   aggregationRule?: AggregationRule;
   childStateGatingRules?: ChildStateGatingRule[];
   conditionalGatingRules?: ConditionalGatingRule[];
+  scoreLimits?: ScoreLimit[];
   completionGatingMetadata?: { name?: string; description?: string };
   minimumCoverage?: number;
   minimumIncludedCount?: number;
@@ -201,6 +203,7 @@ export interface Dimension {
   mappingRules?: MappingRule[];
   childStateGatingRules?: ChildStateGatingRule[];
   conditionalGatingRules?: ConditionalGatingRule[];
+  scoreLimits?: ScoreLimit[];
   completionGatingMetadata?: { name?: string; description?: string };
   minimumCoverage?: number;
   minimumIncludedCount?: number;
@@ -641,6 +644,7 @@ export interface ModelEditorPractice {
   aggregationRule: AggregationRule;
   childStateGatingRules?: ChildStateGatingRule[];
   conditionalGatingRules?: ConditionalGatingRule[];
+  scoreLimits?: ScoreLimit[];
   completionGatingMetadata?: { name?: string; description?: string };
   minimumCoverage: number;
   minimumIncludedCount: number;
@@ -668,6 +672,7 @@ export interface ModelEditorModule {
   aggregationRule: AggregationRule;
   childStateGatingRules?: ChildStateGatingRule[];
   conditionalGatingRules?: ConditionalGatingRule[];
+  scoreLimits?: ScoreLimit[];
   completionGatingMetadata?: { name?: string; description?: string };
   minimumCoverage: number;
   minimumIncludedCount: number;
@@ -685,6 +690,7 @@ export interface ModelEditorDimension {
   mappingRules: MappingRule[];
   childStateGatingRules?: ChildStateGatingRule[];
   conditionalGatingRules?: ConditionalGatingRule[];
+  scoreLimits?: ScoreLimit[];
   completionGatingMetadata?: { name?: string; description?: string };
   minimumCoverage: number;
   minimumIncludedCount: number;
@@ -786,4 +792,12 @@ export interface ConditionalGatingRule {
   version: 1;
   when: { kind: "and"; conditions: GatingChildCondition[] };
   effect: "withheld" | "flagForReview";
+}
+
+/** Snapshot link: exactly one rule must match a current Flag for Review rule. */
+export interface ScoreLimit {
+  kind: "floor" | "ceiling";
+  value: number;
+  childStateRule?: ChildStateGatingRule | null;
+  conditionalRule?: ConditionalGatingRule | null;
 }

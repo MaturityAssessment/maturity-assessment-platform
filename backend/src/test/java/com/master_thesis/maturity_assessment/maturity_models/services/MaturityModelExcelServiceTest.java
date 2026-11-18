@@ -33,6 +33,63 @@ class MaturityModelExcelServiceTest {
     private final MaturityModelExcelService excelService = new MaturityModelExcelService(csvParsingService, objectMapper);
 
     @Test
+    void scoreLimitsAndTheirFlagRuleLinksRoundTripAtEveryScope() throws Exception {
+        var model = buildSampleModel();
+        var dimension = model.getDimensions().getFirst();
+        var module = dimension.getModules().getFirst();
+        var practice = module.getPractices().getFirst();
+        var flag = new com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule("any", "computed", "flagForReview", "Check", "Review this result");
+        var limits = List.of(new com.master_thesis.maturity_assessment.maturity_models.models.ScoreLimit("ceiling", 0.555, flag, null));
+        dimension.setChildStateGatingRules(List.of(flag)); dimension.setScoreLimits(limits);
+        module.setChildStateGatingRules(List.of(flag)); module.setScoreLimits(limits);
+        practice.setChildStateGatingRules(List.of(flag)); practice.setScoreLimits(limits);
+        var result = excelService.parseExcelWorkbook(new ByteArrayInputStream(excelService.exportMaturityModelToXlsx(model)));
+        assertTrue(result.isSuccess(), result.getErrorDetails());
+        var imported = result.getMaturityModel().getDimensions().getFirst();
+        assertEquals(limits, imported.getScoreLimits());
+        assertEquals(limits, imported.getModules().getFirst().getScoreLimits());
+        assertEquals(limits, imported.getModules().getFirst().getPractices().getFirst().getScoreLimits());
+        assertDoesNotThrow(() -> ScoreLimits.validate(imported.getScoreLimits(), imported.getChildStateGatingRules(), imported.getConditionalGatingRules(), "D"));
+    }
+
+    @Test
+    void conditionalScoreLimitSnapshotRoundTripsAndLegacyWorkbooksDefaultToEmptyLimits() throws Exception {
+        var model = buildSampleModel();
+        var dimension = model.getDimensions().getFirst();
+        var flag = objectMapper.readValue("""
+                {"version":1,"effect":"flagForReview","when":{"kind":"and","conditions":[
+                  {"kind":"children","quantifier":"any","selection":{},"where":{"kind":"and","conditions":[
+                    {"kind":"comparison","field":"score","operator":"<","right":{"kind":"literal","value":1.0}}
+                  ]}}
+                ]}}
+                """, com.master_thesis.maturity_assessment.maturity_models.models.ConditionalGatingRule.class);
+        dimension.setConditionalGatingRules(List.of(flag));
+        var limits = List.of(new com.master_thesis.maturity_assessment.maturity_models.models.ScoreLimit("ceiling", 0.655, null, flag));
+        dimension.setScoreLimits(limits);
+        byte[] bytes = excelService.exportMaturityModelToXlsx(model);
+        var result = excelService.parseExcelWorkbook(new ByteArrayInputStream(bytes));
+        assertTrue(result.isSuccess(), result.getErrorDetails());
+        var imported = result.getMaturityModel().getDimensions().getFirst();
+        assertEquals(limits, imported.getScoreLimits());
+        assertDoesNotThrow(() -> ScoreLimits.validate(imported.getScoreLimits(), imported.getChildStateGatingRules(), imported.getConditionalGatingRules(), "D"));
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(bytes)); var output = new ByteArrayOutputStream()) {
+            for (String sheet : List.of("Dimensions", "Modules", "Practices")) {
+                var header = workbook.getSheet(sheet).getRow(0);
+                int column = header.getLastCellNum() - 1;
+                assertTrue(header.getCell(column).getStringCellValue().endsWith("ScoreLimits"));
+                for (Row row : workbook.getSheet(sheet)) if (row.getCell(column) != null) row.removeCell(row.getCell(column));
+            }
+            workbook.write(output);
+            var legacy = excelService.parseExcelWorkbook(new ByteArrayInputStream(output.toByteArray()));
+            assertTrue(legacy.isSuccess(), legacy.getErrorDetails());
+            var legacyDimension = legacy.getMaturityModel().getDimensions().getFirst();
+            assertTrue(legacyDimension.getScoreLimits().isEmpty());
+            assertTrue(legacyDimension.getModules().getFirst().getScoreLimits().isEmpty());
+            assertTrue(legacyDimension.getModules().getFirst().getPractices().getFirst().getScoreLimits().isEmpty());
+        }
+    }
+
+    @Test
     void notApplicableConfigurationRoundTripsThroughWorkbook() throws Exception {
         var model = buildSampleModel();
         var question = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst().getQuestions().getFirst();
@@ -211,10 +268,10 @@ class MaturityModelExcelServiceTest {
                     List.of("modelName", "modelDescription", "modelAutoEvaluated", "modelAggregationRule", "modelChangelogMarkdown"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_MODEL), fmt));
             assertEquals(
-                    List.of("dimensionId", "moduleCode", "moduleName", "moduleDescription", "moduleWeight", "moduleAggregationRule", "moduleMinimumCoverage", "moduleMinimumIncludedCount", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes", "moduleChildStateGatingRules", "moduleConditionalGatingRules", "moduleCompletionGatingMetadata"),
+                    List.of("dimensionId", "moduleCode", "moduleName", "moduleDescription", "moduleWeight", "moduleAggregationRule", "moduleMinimumCoverage", "moduleMinimumIncludedCount", "moduleVisible", "modulePrerequisites", "moduleCoRequisites", "moduleMutex", "moduleMandatoryBadge", "moduleReinforces", "moduleSubstitutes", "moduleChildStateGatingRules", "moduleConditionalGatingRules", "moduleCompletionGatingMetadata", "moduleScoreLimits"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_MODULES), fmt));
             assertEquals(
-                    List.of("dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceMinimumCoverage", "practiceMinimumIncludedCount", "practiceEvidenceRequirements", "practiceChildStateGatingRules", "practiceConditionalGatingRules", "practiceCompletionGatingMetadata"),
+                    List.of("dimensionId", "moduleCode", "practiceCode", "practiceName", "practiceDescription", "practiceRequiresEvidence", "practiceWeight", "practiceAggregationRule", "practiceMinimumCoverage", "practiceMinimumIncludedCount", "practiceEvidenceRequirements", "practiceChildStateGatingRules", "practiceConditionalGatingRules", "practiceCompletionGatingMetadata", "practiceScoreLimits"),
                     headerRowValues(wb.getSheet(MaturityModelExcelService.SHEET_PRACTICES), fmt));
             assertEquals(
                     MaturityModelExcelService.QUESTION_EXPORT_HEADERS,

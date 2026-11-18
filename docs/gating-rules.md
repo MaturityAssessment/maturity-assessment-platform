@@ -191,3 +191,55 @@ editor. Completion minima store the same information in
 `completionGatingMetadata`, backed by a nullable JSONB column added in V57 on
 practices, modules and dimensions. Excel includes an optional completion-metadata
 JSON column at each scope. Rule evaluation ignores this descriptive metadata.
+
+## Score limits (V58)
+
+Practices, modules and dimensions can store `scoreLimits`, defaulting to an empty
+array. A limit belongs to the same element as its linked **Flag for Review** gate
+rule. `kind` is `floor` or `ceiling` (cap); `value` is a finite normalized score
+from 0 to 1. Exactly one of `childStateRule` or `conditionalRule` must contain a
+snapshot of an existing rule on that element:
+
+```json
+{
+  "childStateGatingRules": [
+    {"quantifier":"any","state":"computed","effect":"flagForReview","name":"Check inputs"}
+  ],
+  "scoreLimits": [
+    {"kind":"ceiling","value":0.6,"childStateRule":
+      {"quantifier":"any","state":"computed","effect":"flagForReview","name":"Check inputs"}}
+  ]
+}
+```
+
+The snapshot links by complete rule content, including its name and description,
+independently of list order. Identical rule definitions are interchangeable.
+Editing or removing the referenced definition invalidates the link; changing its
+effect to withhold also invalidates it. The editor shows an alert and requires
+the creator to select a current flag rule or remove the limit. API writes reject
+stale links with `INVALID_SCORE_LIMITS`. Relinking explicitly approves the current
+rule definition. Changing a conditional rule's referenced public paths also
+requires relinking its limits. Initial editor loading preserves valid links when
+it canonicalizes imported codes; this does not repair already stale links.
+Equivalent JSON number encodings such as `1` and `1.0` identify the same value.
+
+After gating, any withhold effect, failed completion minimum or absence of usable
+scores takes precedence. Otherwise only **matching** linked flag rules activate
+limits. Start with floor 0 and ceiling 1, accumulate the highest active floor and
+lowest active ceiling, then clamp the aggregate score to that interval. Limits
+are applied after ordinary score rounding, so rounding cannot cross a precise
+bound. Equal bounds are valid. A ceiling strictly below the floor withholds the
+element: its score and maturity level are absent and parents exclude its score,
+using the existing completion treatment for withheld children. Nonmatching limits
+cannot cause a conflict, and a floor cannot create a missing score.
+
+Parents read the limited child scores and final states in both their aggregation
+and gate conditions. Dimension maturity mapping uses the limited dimension score.
+The shared scoring flow applies this during submission and final evaluation;
+existing stored assessment snapshots are unchanged until recalculated. Defensive
+evaluation of a stale persisted link also withholds the affected score.
+
+V58 adds JSONB columns to the three element tables. Limits survive model/editor
+conversion and new model versions. Excel adds optional `dimensionScoreLimits`,
+`moduleScoreLimits` and `practiceScoreLimits` JSON columns; older workbooks use
+empty arrays. The minimal editor controls are in each element's Gating rules tab.
