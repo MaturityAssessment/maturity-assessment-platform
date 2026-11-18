@@ -32,6 +32,9 @@ export type AssessmentExportAnswer = {
 };
 
 export type AssessmentResultsExportData = {
+  targetProfileComparison?: AssessmentResponse["targetProfileComparison"];
+  profiling?: AssessmentResponse["profiling"];
+  profilingAnswers?: Array<{ question: string; answer: string }>;
   assessmentId: number;
   modelName: string;
   modelVersion: number | null;
@@ -105,6 +108,12 @@ export function buildAssessmentResultsExportData(
   );
 
   return {
+    targetProfileComparison: assessment.targetProfileComparison,
+    profiling: assessment.profiling,
+    profilingAnswers: Object.entries(assessment.profiling?.answers ?? {}).map(([questionId, optionId]) => {
+      const question = model.targetProfiles?.questions.find(item => item.id === questionId);
+      return { question: question?.text ?? "Unavailable question", answer: question?.options.find(item => item.id === optionId)?.label ?? "Unavailable answer" };
+    }),
     assessmentId: assessment.id,
     modelName: model.name,
     modelVersion: assessment.maturityModelVersion ?? model.version ?? null,

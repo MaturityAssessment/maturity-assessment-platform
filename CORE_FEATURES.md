@@ -38,6 +38,7 @@ See the [domain reference](./backend/docs/api/reference/domains.md).
 - Import an Excel (`.xlsx`) workbook into the editor for review before saving, and export existing models as workbooks.
 - Preserve unfinished editor work in a browser-local draft and receive unsaved-change prompts.
 - Define between 2 and 12 named maturity levels and configure automatic or manual evaluation.
+- Define versioned target profiles in the Target profiles tab: single-choice profiling trees route to one profile or no profile, with percentage minima for selected dimensions/modules and an optional expected overall maturity level.
 - Edit a model by creating a new inactive version, with a changelog and stable public codes for model items.
 - Configure minimum coverage and minimum included count as percentages on practices, modules and dimensions. Failed minima withhold scores from parent aggregation; evaluation stores completion metrics and states at every visible element. See [gating calculations](docs/gating-rules.md).
 - Add Any/Every/No rules over visible direct-child states. Rules can withhold an aggregate or flag it for review; flags retain normal scoring, and withholding always wins.
@@ -81,6 +82,8 @@ See the [model reference](./backend/docs/api/reference/maturity-models.md) for t
 4. Autosave preserves answers and evidence; save-state feedback shows progress or a retry option. Continue Later saves pending changes before leaving.
 5. Review the answers and evidence before submitting.
 6. An automatic model produces completed results; a manual model enters the review queue.
+
+When a model has target profiles, respondents first answer its profiling questions. Partial paths are saved, a matched profile appears on the dashboard, and profiling can be revised until first submission. Start Over clears profiling; correction workflows retain it. Profiling never changes questionnaire content or scoring.
 
 Individual assessments reuse one draft per user and exact model version. Start Over clears a draft's answers and evidence while retaining its ID. Submission transitions the same assessment record, and duplicate submission is rejected.
 
@@ -141,6 +144,8 @@ See the [campaign workflow](./backend/docs/api/workflows/campaigns.md).
 ## Results and Reporting
 
 Completed assessments present overall maturity and dimension results, with charts and supporting answer information. Users can return to their assessment history, and campaign organizers can view aggregates from completed evaluations.
+
+Completed individual assessments compare final evaluated scores against their selected target profile, with actual-versus-target bars and **met**, **not met**, or **not evaluated** outcomes. Any failed target yields not met even if another is unavailable. PDF/Excel reports preserve the comparison and profiling context. Campaign profiling remains outside this feature.
 
 Assessment reports can be exported as **PDF** or **Excel (`.xlsx`)**, including results and answer summaries. Model workbook export is a separate capability for exchanging model definitions.
 

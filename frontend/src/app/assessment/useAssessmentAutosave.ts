@@ -31,6 +31,7 @@ type LatestAssessmentState = {
   draftId: number | null;
   maturityModelId: number | null;
   referenceDate?: string;
+  profilingAnswers?: Record<string, string>;
   revision: number;
   evidenceRevision: number;
   formData: AssessmentData;
@@ -64,6 +65,7 @@ export default function useAssessmentAutosave({
   draftId,
   maturityModelId,
   referenceDate,
+  profilingAnswers,
   revision,
   evidenceRevision,
   formData,
@@ -84,6 +86,7 @@ export default function useAssessmentAutosave({
     draftId,
     maturityModelId,
     referenceDate,
+    profilingAnswers,
     revision,
     evidenceRevision,
     formData,
@@ -106,6 +109,7 @@ export default function useAssessmentAutosave({
     draftId,
     maturityModelId,
     referenceDate,
+    profilingAnswers,
     revision,
     evidenceRevision,
     formData,
@@ -149,6 +153,7 @@ export default function useAssessmentAutosave({
       draftId: latest.draftId,
       maturityModelId: latest.maturityModelId,
       referenceDate: latest.referenceDate,
+      profilingAnswers: latest.profilingAnswers ? { ...latest.profilingAnswers } : undefined,
       questionResponses: latest.buildResponses({ ...latest.formData }),
       evidenceFiles: cloneEvidenceSnapshot(latest.evidenceFiles),
       campaignId: latest.campaignId,
@@ -168,6 +173,7 @@ export default function useAssessmentAutosave({
       JSON.stringify({
         maturityModelId: snapshot.maturityModelId,
         referenceDate: snapshot.referenceDate,
+        profilingAnswers: snapshot.profilingAnswers,
         questionResponses: snapshot.questionResponses,
         respondentUpdatedResponseKeys:
           snapshot.respondentUpdatedResponseKeys,

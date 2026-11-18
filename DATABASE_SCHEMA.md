@@ -723,3 +723,25 @@ contain `flagForReview`, retaining scores and normal aggregation participation.
 NOT NULL, default `[]`, constrained to a JSON array. The versioned condition
 schema and full-path reference/type validation are enforced on model writes.
 These rules coexist with completion thresholds and child-state rules.
+
+### Target profiles (V60)
+
+`maturity_models.target_profiles` is nullable JSONB holding the version-1 profiling
+questions, tree destinations, and profile requirements. Scores use 0–1, element
+references use version-local codes, and optional expected levels use the model's
+scale. Model writes validate the tree and references. See the
+[model contract](backend/docs/api/reference/maturity-models.md#target-profiles).
+
+`assessments.profiling` is nullable JSONB containing `complete`, the question-ID to
+option-ID answer map, and the server-resolved profile ID/name (nullable for no
+match). Drafts retain partial paths; submission locks profiling and reset clears it.
+
+`assessments.target_profile_comparison` is nullable JSONB containing `MET`,
+`NOT_MET`, or `NOT_EVALUATED`, a reason, profile identity, and requirement results.
+It is saved with final scoring snapshots. Missing/withheld/review-flagged required
+scores retain null actuals; any failed target takes precedence. See the
+[assessment contract](backend/docs/api/reference/assessments.md#assessment-profiling-and-target-comparison).
+
+V60 adds these columns without backfilling or changing historical results.
+Campaigns remain unprofiled. No new tables/foreign keys are needed: profiling
+identities belong to an immutable model version.

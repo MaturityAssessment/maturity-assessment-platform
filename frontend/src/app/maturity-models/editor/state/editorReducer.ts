@@ -1,3 +1,4 @@
+import { repairTargetReferences } from "../../../../lib/targetProfiles.ts";
 import { repairConditionalReferences } from "../model/conditionalGating.ts";
 import type { MaturityModelEditorDocument } from "@/api/types";
 import type {
@@ -76,7 +77,7 @@ export function editorReducer(
     case "replaceDocument":
       return {
         ...state,
-        document: state.document ? repairConditionalReferences(state.document, action.document) : action.document,
+        document: state.document ? repairTargetReferences(state.document, repairConditionalReferences(state.document, action.document)) : action.document,
         selection:
           action.selection === undefined ? state.selection : action.selection,
         dirty: true,

@@ -8,6 +8,7 @@ import {
   View,
   pdf,
 } from "@react-pdf/renderer";
+import { targetReasonLabel, targetStatusLabel } from "@/lib/targetProfiles";
 import * as XLSX from "xlsx";
 import {
   getAssessmentExportFileName,
@@ -60,6 +61,20 @@ function exportWorkbook(data: AssessmentResultsExportData) {
   ]);
   summarySheet["!cols"] = [{ wch: 30 }, { wch: 90 }];
   XLSX.utils.book_append_sheet(workbook, summarySheet, "Results");
+
+  if (data.profiling || data.targetProfileComparison) {
+    const comparison = data.targetProfileComparison;
+    const sheet = XLSX.utils.aoa_to_sheet([
+      ["Target profile", data.profiling?.profileName || comparison?.profileName || "No profile applies"],
+      ["Outcome", comparison ? targetStatusLabel(comparison.status) : "Not evaluated"],
+      ["Reason", targetReasonLabel(comparison?.reason)], [],
+      ["Requirement", "Type", "Minimum", "Actual", "Outcome", "Reason"],
+      ...(comparison?.requirements ?? []).map(item => [item.name, item.elementType, item.elementType === "overall" ? item.target : item.target * 100 + "%", item.actual == null ? "Unavailable" : item.elementType === "overall" ? item.actual : item.actual * 100 + "%", targetStatusLabel(item.status), targetReasonLabel(item.reason)]),
+      [], ["Profiling question", "Answer"], ...(data.profilingAnswers ?? []).map(item => [item.question, item.answer]),
+    ]);
+    sheet["!cols"] = [{ wch: 50 }, ...Array.from({ length: 5 }, () => ({ wch: 24 }))];
+    XLSX.utils.book_append_sheet(workbook, sheet, "Target profile");
+  }
 
   const dimensionSheet = XLSX.utils.json_to_sheet(
     data.dimensions.map((dimension) => ({
@@ -191,6 +206,14 @@ function AssessmentResultsDocument({
             <Detail label="Respondent" value={data.respondent} />
           )}
         </View>
+
+        {(data.profiling || data.targetProfileComparison) && <View>
+          <SectionTitle>Target profile comparison</SectionTitle>
+          <Text style={styles.tableCell}>{data.profiling?.profileName || data.targetProfileComparison?.profileName || "No profile applies"} — {data.targetProfileComparison ? targetStatusLabel(data.targetProfileComparison.status) : "Not evaluated"}</Text>
+          {data.targetProfileComparison?.reason && <Text style={styles.tableCell}>{targetReasonLabel(data.targetProfileComparison.reason)}</Text>}
+          {data.targetProfileComparison?.requirements.map((item, index) => <Text key={index} style={styles.tableCell}>{item.name}: minimum {item.elementType === "overall" ? "level " + item.target : Math.round(item.target * 1000) / 10 + "%"}; actual {item.actual == null ? "unavailable" : item.elementType === "overall" ? "level " + item.actual : Math.round(item.actual * 1000) / 10 + "%"} — {targetStatusLabel(item.status)}</Text>)}
+          {(data.profilingAnswers ?? []).map((item, index) => <Text key={index} style={styles.tableCell}>{item.question}: {item.answer}</Text>)}
+        </View>}
 
         <SectionTitle>Dimension results</SectionTitle>
         <View style={styles.table}>

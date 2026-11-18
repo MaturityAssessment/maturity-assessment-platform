@@ -44,6 +44,7 @@ import {
   type AssessmentAdjustmentMetric,
 } from "./assessmentResults";
 import { buildAssessmentResultsExportData } from "./assessmentResultsExport";
+import TargetProfileResults from "./TargetProfileResults";
 import AssessmentCompletionResults from "./AssessmentCompletionResults";
 import EvidenceUpload from "@/components/assessment/EvidenceUpload";
 import { hydrateEvidenceByField, getPracticeEvidenceField } from "./assessmentEvidence";
@@ -127,6 +128,7 @@ export default function AssessmentResultsTab({
       aria-labelledby="assessment-tab-results"
       className="mx-auto w-full max-w-[1440px] px-4 pb-16 pt-7 sm:px-6 lg:px-10 lg:pt-9"
     >
+      {assessment.targetProfileComparison && <TargetProfileResults comparison={assessment.targetProfileComparison} levels={model.levels} />}
       <section className="relative overflow-hidden rounded-3xl bg-slate-950 px-6 py-7 text-white shadow-xl shadow-slate-950/10 sm:px-8 sm:py-9 lg:px-10">
         <div
           className="absolute -right-24 -top-36 h-80 w-80 rounded-full bg-indigo-500/25 blur-3xl"

@@ -27,6 +27,7 @@ import useEvaluation from "./evaluation/useEvaluation";
 import EvaluationPanel from "./evaluation/EvaluationPanel";
 import { assessmentCapabilities, reviewNeedsAttention } from "./evaluation/evaluationState";
 import EvaluationNavigation from "./evaluation/EvaluationNavigation";
+import AssessmentProfilingStep from "./AssessmentProfilingStep";
 import AssessmentDashboard from "./AssessmentDashboard";
 import type { AssessmentDashboardTab } from "./AssessmentDashboard";
 import AssessmentModuleOverview from "./AssessmentModuleOverview";
@@ -130,6 +131,8 @@ export default function AssessmentFlow() {
   ] = useState<Set<string>>(new Set());
   const [routeContext, setRouteContext] =
     useState<AssessmentRouteContext | null>(null);
+  const [profilingAnswers, setProfilingAnswers] = useState<Record<string, string>>({});
+  const [profilingOpen, setProfilingOpen] = useState(false);
   const [referenceDate, setReferenceDate] = useState(evidenceToday);
   const [freshnessError, setFreshnessError] = useState<string | null>(null);
   const [formData, setFormData] = useState<AssessmentData>({});
@@ -451,8 +454,9 @@ export default function AssessmentFlow() {
     draftId: routeContext?.draftId ?? null,
     maturityModelId: maturityModel?.id ?? null,
     referenceDate,
+    profilingAnswers: !campaignId && maturityModel?.targetProfiles ? profilingAnswers : undefined,
     onSaved: saved => setLoadedAssessment(current => current?.id === saved.id ? {
-      ...current, referenceDate: saved.referenceDate, referenceDateInferred: saved.referenceDateInferred,
+      ...current, profiling: saved.profiling, targetProfileComparison: saved.targetProfileComparison, referenceDate: saved.referenceDate, referenceDateInferred: saved.referenceDateInferred,
       historicalEvidenceValidity: saved.historicalEvidenceValidity, currentEvidenceFreshness: saved.currentEvidenceFreshness,
     } : current),
     revision: changeRevision,
@@ -486,6 +490,43 @@ export default function AssessmentFlow() {
   }, loadedAssessment?.currentEvidenceFreshness?.nextRefreshAt, Boolean(loadedAssessment) && !autosave.isDirty && !isSubmitting);
 
   useEffect(() => {
+    const loadDraftIntoAssessment = (
+      draft: AssessmentResponse,
+      model: MaturityModel
+    ) => {
+      if (!model) return;
+
+      model = visibleAssessmentModel(model);
+      setMaturityModel(model);
+      setLoadedAssessment(draft);
+      setProfilingAnswers(draft.profiling?.answers ?? {});
+      setProfilingOpen(Boolean(model.targetProfiles && !draft.profiling?.complete));
+      setReferenceDate(draft.referenceDate || evidenceToday());
+      setRespondentUpdatedResponseKeys(
+        new Set(
+          Object.values(draft.questionEvaluations || {})
+            .filter((evaluation) => evaluation.respondentUpdated)
+            .map((evaluation) => evaluation.responseKey)
+        )
+      );
+      previousPracticeKey.current = null;
+      setDepartedPracticeKeys(new Set());
+      setFormData(hydrateQuestionResponses(draft.questionEvaluations));
+      const restoredEvidence = hydrateEvidenceByField(
+        draft.evidence,
+        buildPracticeSteps(model)
+      );
+      setEvidenceFiles(restoredEvidence);
+      setDraftLoadError(null);
+      setReviewError(null);
+      setDashboardTab(
+        readAssessmentRouteContext(window.location.search)?.tab || (draft.status === "COMPLETED" || draft.isCompleted
+          ? "results"
+          : "overview")
+      );
+      setAssessmentStep("dashboard");
+    };
+
     const initialContext = readAssessmentRouteContext(
       window.location.search
     );
@@ -547,7 +588,7 @@ export default function AssessmentFlow() {
     };
 
     loadInitialAssessment();
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (isLoadingDraft || !maturityModel || pathname === "/assessment") return;
@@ -858,41 +899,6 @@ export default function AssessmentFlow() {
     openModule(nextStep.dimension, nextStep.module);
   };
 
-  const loadDraftIntoAssessment = (
-    draft: AssessmentResponse,
-    model = maturityModel
-  ) => {
-    if (!model) return;
-
-    model = visibleAssessmentModel(model);
-    setMaturityModel(model);
-    setLoadedAssessment(draft);
-    setReferenceDate(draft.referenceDate || evidenceToday());
-    setRespondentUpdatedResponseKeys(
-      new Set(
-        Object.values(draft.questionEvaluations || {})
-          .filter((evaluation) => evaluation.respondentUpdated)
-          .map((evaluation) => evaluation.responseKey)
-      )
-    );
-    previousPracticeKey.current = null;
-    setDepartedPracticeKeys(new Set());
-    setFormData(hydrateQuestionResponses(draft.questionEvaluations));
-    const restoredEvidence = hydrateEvidenceByField(
-      draft.evidence,
-      buildPracticeSteps(model)
-    );
-    setEvidenceFiles(restoredEvidence);
-    setDraftLoadError(null);
-    setReviewError(null);
-    setDashboardTab(
-      readAssessmentRouteContext(window.location.search)?.tab || (draft.status === "COMPLETED" || draft.isCompleted
-        ? "results"
-        : "overview")
-    );
-    setAssessmentStep("dashboard");
-  };
-
   const prepareToGoHome = async () => {
     if (isSavingAndLeaving || isPreparingReview || isSubmitting) return false;
 
@@ -1019,6 +1025,7 @@ export default function AssessmentFlow() {
       const requestData = {
         maturityModelId: maturityModel.id,
         referenceDate,
+        profilingAnswers: !campaignId && maturityModel.targetProfiles ? profilingAnswers : undefined,
         questionResponses: collectQuestionResponses(practiceSteps, formData),
         respondentUpdatedResponseKeys: Array.from(
           respondentUpdatedResponseKeys
@@ -1234,6 +1241,14 @@ export default function AssessmentFlow() {
     );
   }, [activeTour, campaignId, completeHelpTour]);
 
+  if (profilingOpen && !campaignId && maturityModel?.targetProfiles && loadedAssessment?.status === "DRAFT" && capabilities.canEditResponses && !isLoadingDraft) {
+    return <AssessmentProfilingStep modelName={maturityModel.name} config={maturityModel.targetProfiles} answers={profilingAnswers}
+      saving={autosave.status === "saving" || isSavingAndLeaving} error={autosave.error}
+      onChange={answers => { setProfilingAnswers(answers); setChangeRevision(revision => revision + 1); }}
+      onContinue={() => { void autosave.flush().then(saved => { if (saved) { setProfilingOpen(false); setAssessmentStep("dashboard"); router.replace(buildAssessmentOverviewHref(routeContext)); } }); }}
+      onLeave={() => { void prepareToGoHome().then(saved => { if (saved) router.push("/dashboard"); }); }} />;
+  }
+
   if (campaignPendingReview && maturityModel && !isLoadingDraft) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
@@ -1262,6 +1277,7 @@ export default function AssessmentFlow() {
         <AssessmentDashboard
           routeContext={capabilities.canEvaluate ? { ...routeContext, tab: "evaluation" } : routeContext}
           model={maturityModel}
+          onEditProfiling={!campaignId && maturityModel.targetProfiles && loadedAssessment.status === "DRAFT" && capabilities.canEditResponses ? () => setProfilingOpen(true) : undefined}
           lockedPracticeKeys={new Set(practiceSteps.filter((step) => !capabilities.canEvaluate && modulePrerequisiteStates.get(step.module)?.locked).map((step) => step.key))}
           practiceSteps={practiceSteps}
           warningPracticeKeys={warningPracticeKeys}

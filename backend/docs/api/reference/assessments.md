@@ -26,6 +26,7 @@ is committed. Optional unanswered questions do not block unlocking. See the
 |---|---|
 | `maturityModelId` | Required numeric ID of the exact model version |
 | `questionResponses` | Required object keyed by response key; `{}` is valid for an empty draft |
+| `profilingAnswers` | Optional question-ID/option-ID map; see [profiling](#assessment-profiling-and-target-comparison) |
 | `respondentUpdatedResponseKeys` | Optional array of response-key strings recording corrections to flagged items |
 
 Each response entry contains required `questionId` and `response`, plus optional
@@ -555,3 +556,67 @@ Existing assessments have null metrics until evaluated again. See the
 score, maturity level, aggregation contribution and completion contribution, and
 also matches a child-state rule testing `computed`. It has no review-workflow
 consequence. Withholding takes precedence when multiple gating effects apply.
+
+## Assessment profiling and target comparison
+
+Ordinary requests accept optional `profilingAnswers`, mapping profiling question
+IDs to option IDs from the model's
+[`targetProfiles`](maturity-models.md#target-profiles). These answers are separate
+from `questionResponses` and never affect scoring or questionnaire applicability.
+
+```json
+{"maturityModelId":18,"questionResponses":{},"profilingAnswers":{"context":"yes"}}
+```
+
+Draft saves accept partial paths. Send all current profiling answers: omitted/null
+preserves saved answers, while `{}` clears a draft's path. Unknown options and
+answers outside the selected path return `400 INVALID_TARGET_PROFILES`. Prune
+later answers when changing an earlier choice. The server resolves applicability;
+clients cannot assign an arbitrary profile ID. A terminal `none` destination is a
+complete path and permits submission without a profile. Incomplete profiling on
+ordinary submission returns `400 PROFILING_INCOMPLETE`.
+
+Profiling locks at first submission. Correction saves/resubmissions must omit the
+field or resend the same answers; changes return `400 PROFILING_LOCKED`. Start
+Over clears profiling and comparison. Campaigns do not require or assign profiles,
+even when their model contains configuration.
+
+`AssessmentResponse` adds nullable `profiling` and `targetProfileComparison`:
+
+```json
+{
+  "profiling": {
+    "complete": true, "answers": {"context":"yes"},
+    "profileId": "regulated", "profileName": "Regulated organization"
+  },
+  "targetProfileComparison": {
+    "status": "MET", "reason": null,
+    "profileId": "regulated", "profileName": "Regulated organization",
+    "requirements": [{
+      "elementType": "dimension", "dimensionCode": "D01_GOV", "moduleCode": null,
+      "name": "Governance", "target": 0.6, "actual": 0.75, "status": "MET", "reason": null
+    }]
+  }
+}
+```
+
+Comparison is saved with final results on automatic completion and both manual
+completion paths. It is null before completion, for unconfigured models, and for
+campaigns. Historical assessments are not recomputed.
+
+Dimension/module comparisons use final normalized element snapshots after gates
+and score limits. Overall requirements use `elementType: "overall"`, null hierarchy
+codes, and numeric model levels for target/actual. Comparisons are inclusive;
+omitted optional targets impose no requirement.
+
+- Any failed requirement yields `NOT_MET`, including when another is unavailable.
+- If none fails but a required score is missing, withheld, or flagged for review,
+  the outcome is `NOT_EVALUATED`. Unavailable rows have `actual: null` and reason
+  `SCORE_UNAVAILABLE` or `REVIEW_REQUIRED`; they never become zero.
+- Otherwise all configured requirements met yields `MET`.
+- No matching profile yields `NOT_EVALUATED / NO_PROFILE`; no requirements yields
+  `NOT_EVALUATED / NO_REQUIREMENTS`. Defensive reasons for unavailable definitions
+  are `PROFILING_INCOMPLETE` and `PROFILE_UNAVAILABLE`.
+
+The respondent results view and individual PDF/Excel reports include the saved
+comparison. Reports also include profiling question/answer labels.

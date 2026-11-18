@@ -276,6 +276,8 @@ export interface AssessmentLogPage {
 }
 
 export interface AssessmentResponse {
+  profiling?: AssessmentProfiling | null;
+  targetProfileComparison?: TargetProfileComparison | null;
   id: number;
   referenceDate?: string;
   referenceDateInferred?: boolean;
@@ -425,6 +427,7 @@ export interface UpdateDomainAppearanceRequest {
 }
 
 export interface MaturityModel {
+  targetProfiles?: TargetProfileConfiguration | null;
   id: number;
   name: string;
   description: string;
@@ -711,6 +714,7 @@ export interface ModelEditorDimension {
 }
 
 export interface MaturityModelEditorDocument {
+  targetProfiles?: TargetProfileConfiguration | null;
   name: string;
   description: string;
   changelogMarkdown: string;
@@ -817,4 +821,54 @@ export interface ScoreLimit {
   upperValue?: number | null;
   childStateRule?: ChildStateGatingRule | null;
   conditionalRule?: ConditionalGatingRule | null;
+}
+
+export type ProfilingDestination = { type: "question" | "profile" | "none"; id: string | null };
+export interface ProfilingQuestion {
+  id: string;
+  text: string;
+  options: Array<{ id: string; label: string; destination: ProfilingDestination }>;
+}
+export interface TargetProfileRequirement {
+  elementType: "dimension" | "module";
+  dimensionCode: string;
+  moduleCode: string | null;
+  /** Normalized score; inputs and charts display percentages. */
+  minimumScore: number;
+}
+export interface TargetProfile {
+  id: string;
+  name: string;
+  description: string | null;
+  requirements: TargetProfileRequirement[];
+  expectedLevel: number | null;
+}
+export interface TargetProfileConfiguration {
+  version: 1;
+  rootQuestionId: string;
+  questions: ProfilingQuestion[];
+  profiles: TargetProfile[];
+}
+export interface AssessmentProfiling {
+  complete: boolean;
+  answers: Record<string, string>;
+  profileId: string | null;
+  profileName: string | null;
+}
+export type TargetProfileStatus = "MET" | "NOT_MET" | "NOT_EVALUATED";
+export interface TargetProfileComparison {
+  status: TargetProfileStatus;
+  reason: string | null;
+  profileId: string | null;
+  profileName: string | null;
+  requirements: Array<{
+    elementType: "dimension" | "module" | "overall";
+    dimensionCode: string | null;
+    moduleCode: string | null;
+    name: string;
+    target: number;
+    actual: number | null;
+    status: TargetProfileStatus;
+    reason: string | null;
+  }>;
 }

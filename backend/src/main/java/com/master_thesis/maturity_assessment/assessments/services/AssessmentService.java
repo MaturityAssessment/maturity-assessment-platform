@@ -549,6 +549,7 @@ public class AssessmentService {
                 ? targetDraft
                 : getOrCreateDraftAssessment(user, request.getMaturityModelId());
         var auditBefore = auditService.state(assessment);
+        applyProfiling(assessment, request, model, campaignParticipant != null, true);
         assessment.setOverallAverage(overallAverage);
         assessment.setOverallPercentageScore(overallPercentage);
         assessment.setOverallMaturityLevel(overallMaturityLevelName);
@@ -558,6 +559,7 @@ public class AssessmentService {
                 isAutoEvaluated ? AssessmentStatus.COMPLETED : AssessmentStatus.PENDING_REVIEW
         );
         populateAssessmentRequestFields(assessment, request, user, campaignParticipant);
+        if (isAutoEvaluated) snapshotTargetComparison(assessment, model, overallLevelNumber);
 
         Assessment savedAssessment = assessmentRepository.save(assessment);
         auditService.assessmentDetailsChanged(savedAssessment, savedAssessment.getUser(), auditBefore);
@@ -594,6 +596,7 @@ public class AssessmentService {
 
         Assessment assessment = getOrCreateDraftAssessment(user, request.getMaturityModelId());
         var auditBefore = auditService.state(assessment);
+        applyProfiling(assessment, request, maturityModelRepository.findById(request.getMaturityModelId()).orElseThrow(), false, false);
         populateAssessmentRequestFields(assessment, request, user, null);
         initializeDraftState(assessment);
 
@@ -685,6 +688,7 @@ public class AssessmentService {
         }
 
         var auditBefore = auditService.state(assessment);
+        applyProfiling(assessment, request, maturityModelRepository.findById(request.getMaturityModelId()).orElseThrow(), false, false);
         populateAssessmentRequestFields(assessment, request, assessment.getUser(), null);
         if (!changesRequested) {
             initializeDraftState(assessment);
@@ -755,6 +759,7 @@ public class AssessmentService {
         questionEvaluationRepository.deleteByAssessmentId(draftId);
 
         assessment.setEvaluatorInsight(null);
+        assessment.setProfiling(null);
         initializeDraftState(assessment);
 
         Assessment savedAssessment = assessmentRepository.save(assessment);
@@ -1167,6 +1172,7 @@ public class AssessmentService {
     }
 
     private void initializeDraftState(Assessment assessment) {
+        assessment.setTargetProfileComparison(null);
         transitionTo(assessment, AssessmentStatus.DRAFT);
         assessment.setOverallAverage(0.0);
         assessment.setOverallPercentageScore(0.0);
@@ -1239,6 +1245,39 @@ public class AssessmentService {
         }
         return userRepository.findByIdForUpdate(user.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated."));
+    }
+
+    private void applyProfiling(Assessment assessment, AssessmentRequest request, MaturityModel model,
+                                boolean campaign, boolean submitting) {
+        if (campaign) return;
+        var config = model.getTargetProfiles();
+        if (config == null) {
+            if (request.getProfilingAnswers() != null && !request.getProfilingAnswers().isEmpty()) {
+                throw new IllegalOperationException("INVALID_TARGET_PROFILES", "This model version has no profiling questions.");
+            }
+            return;
+        }
+        var previous = assessment.getProfiling();
+        Map<String, String> answers = request.getProfilingAnswers() != null ? request.getProfilingAnswers()
+                : previous == null ? Map.of() : previous.answers();
+        if (resolveAssessmentStatus(assessment) == AssessmentStatus.CHANGES_REQUESTED) {
+            Map<String, String> locked = previous == null ? Map.of() : previous.answers();
+            if (!locked.equals(answers)) throw new IllegalOperationException("PROFILING_LOCKED", "Profiling answers are locked after first submission.");
+            // Legacy submissions without profiling must remain correctable.
+            return;
+        }
+        var resolved = com.master_thesis.maturity_assessment.maturity_models.services.TargetProfiles.resolve(config, answers);
+        if (submitting && !resolved.complete()) throw new IllegalOperationException("PROFILING_INCOMPLETE", "Complete the profiling questions before submitting this assessment.");
+        assessment.setProfiling(resolved);
+    }
+
+    private void snapshotTargetComparison(Assessment assessment, MaturityModel model, int level) {
+        if (assessment.getCampaign() != null || model == null) return;
+        assessment.setTargetProfileComparison(
+                com.master_thesis.maturity_assessment.maturity_models.services.TargetProfiles.compare(
+                        model.getTargetProfiles(), assessment.getProfiling(), assessment.getElementResults(),
+                        assessment.getOverallMaturityLevel() == null || assessment.getOverallPercentageScore() == null
+                                || !"computed".equals(assessment.getScoreState()) ? null : level));
     }
 
     private void populateAssessmentRequestFields(
@@ -1495,6 +1534,10 @@ public class AssessmentService {
                 request != null ? request.getEvaluatorInsight() : null
         ));
         transitionTo(assessment, AssessmentStatus.COMPLETED);
+        MaturityModel completionModel = maturityModelRepository.findById(assessment.getMaturityModelId()).orElse(null);
+        snapshotTargetComparison(assessment, completionModel, maturityScoringService.mapScoreToLevel(
+                assessment.getOverallPercentageScore() == null ? 0 : assessment.getOverallPercentageScore(),
+                completionModel == null ? 5 : maturityScoringService.resolveMaxLevelNumber(completionModel.getLevels())));
         Assessment savedAssessment = assessmentRepository.save(assessment);
 
         auditService.evaluationChanged(savedAssessment, user, auditBefore,
@@ -1592,6 +1635,7 @@ public class AssessmentService {
         applyScoringSnapshot(assessment, calculation);
         transitionTo(assessment, AssessmentStatus.COMPLETED);
         assessment.setEvaluatorInsight(evaluatorInsight);
+        snapshotTargetComparison(assessment, evalModel, overallLevelNumber);
 
         Assessment savedAssessment = assessmentRepository.save(assessment);
 
@@ -2521,6 +2565,8 @@ public class AssessmentService {
         AssessmentResponse response = new AssessmentResponse();
         AssessmentStatus status = resolveAssessmentStatus(assessment);
         response.setId(assessment.getId());
+        response.setProfiling(assessment.getProfiling());
+        response.setTargetProfileComparison(assessment.getTargetProfileComparison());
         response.setOverallAverage(assessment.getOverallAverage());
         response.setCoverage(assessment.getCoverage());
         response.setIncludedCount(assessment.getIncludedCount());

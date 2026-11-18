@@ -327,7 +327,21 @@ public class MaturityModelExcelService {
             }
 
             int[] rowNumbers = excelRows.stream().mapToInt(Integer::intValue).toArray();
-            return csvParsingService.parseDenormalizedRows(denormalized, rowNumbers);
+            CsvUploadResponse parsed = csvParsingService.parseDenormalizedRows(denormalized, rowNumbers);
+            Sheet profilingSheet = workbook.getSheet("TargetProfiles");
+            if (parsed.isSuccess() && profilingSheet != null) {
+                if (profilingSheet.getLastRowNum() > 4096) throw new IllegalArgumentException("TargetProfiles sheet is too large.");
+                StringBuilder json = new StringBuilder();
+                for (int row = 1; row <= profilingSheet.getLastRowNum(); row++) {
+                    Row part = profilingSheet.getRow(row);
+                    if (part == null || part.getCell(0) == null) throw new IllegalArgumentException("Missing TargetProfiles JSON chunk.");
+                    json.append(part.getCell(0).getStringCellValue());
+                }
+                parsed.getMaturityModel().setTargetProfiles(objectMapper.readValue(json.toString(),
+                        com.master_thesis.maturity_assessment.maturity_models.models.TargetProfileConfiguration.class));
+                TargetProfiles.validate(parsed.getMaturityModel());
+            }
+            return parsed;
         } catch (Exception e) {
             return new CsvUploadResponse(false, "Failed to read Excel file", null, e.getMessage());
         }
@@ -664,6 +678,18 @@ public class MaturityModelExcelService {
             writeModulesSheet(workbook, model);
             writePracticesSheet(workbook, model);
             writeQuestionsSheet(workbook, model);
+            if (model.getTargetProfiles() != null) {
+                Sheet profiling = workbook.createSheet("TargetProfiles");
+                profiling.createRow(0).createCell(0).setCellValue("configurationJsonChunks");
+                String json = objectMapper.writeValueAsString(model.getTargetProfiles());
+                for (int offset = 0, row = 1; offset < json.length(); row++) {
+                    int end = Math.min(offset + 30000, json.length());
+                    // A cell must not end with half of a Unicode surrogate pair.
+                    if (end < json.length() && Character.isHighSurrogate(json.charAt(end - 1))) end--;
+                    profiling.createRow(row).createCell(0).setCellValue(json.substring(offset, end));
+                    offset = end;
+                }
+            }
             writeInstructionsSheet(workbook);
             workbook.write(out);
             return out.toByteArray();

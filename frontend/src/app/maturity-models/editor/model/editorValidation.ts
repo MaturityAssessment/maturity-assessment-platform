@@ -1,3 +1,4 @@
+import { targetProfileIssues } from "../../../../lib/targetProfiles.ts";
 import { branchingIssues } from "../../../../lib/questionBranching.ts";
 import { branchingWouldCycle } from "./questionBranchingEditor.ts";
 import { scoreLimitIssues } from "./scoreLimits.ts";
@@ -489,5 +490,6 @@ export function validateDocument(
         "This is a large model. Review the structure carefully before saving.",
     });
   }
+  targetProfileIssues(document).forEach(issue => add({ ...issue, step: "profiles" }));
   return issues;
 }

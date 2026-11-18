@@ -1,3 +1,4 @@
+import { describeTargetProfiles, targetProfilesForComparison } from "../../../../lib/targetProfiles.ts";
 import { gatingIndex, mapGatingReferences } from "./conditionalGating.ts";
 import { mapBranchingReferences } from "../../../../lib/questionBranching.ts";
 import { branchingSummary } from "./questionBranchingEditor.ts";
@@ -134,6 +135,10 @@ export function compareDocuments(baseline: MaturityModelEditorDocument | null, c
     return group(`level:${number}`, `Level ${number}`, differences).map(e => ({ ...e, status: !a ? "added" as const : !b ? "removed" as const : e.status }));
   }) : [];
   const structure = baseline ? compareItems(baseline.dimensions, current.dimensions, [], gatingIndex(baseline).byCode, gatingIndex(current).byCode) : current.dimensions.map(i => branch(i, "added", []));
+  if (!equal(baseline ? targetProfilesForComparison(baseline) : null, targetProfilesForComparison(current))) structure.push({
+    id: "profiles", title: "Target profiles and profiling tree", path: "", status: !baseline?.targetProfiles ? "added" : !current.targetProfiles ? "removed" : "updated",
+    fields: [{ label: "Profiles and routing", before: baseline ? describeTargetProfiles(baseline) : "No target profiles", after: describeTargetProfiles(current), beforeEmpty: !baseline?.targetProfiles, afterEmpty: !current.targetProfiles }],
+  });
   const notes = changed(plainFields({ changelogMarkdown: baseline?.changelogMarkdown ?? "" }), plainFields({ changelogMarkdown: current.changelogMarkdown }));
   const counts = { updated: 0, added: 0, removed: 0, order: 0 };
   [...overviewEntries, ...scale, ...structure].forEach(e => counts[e.status]++);

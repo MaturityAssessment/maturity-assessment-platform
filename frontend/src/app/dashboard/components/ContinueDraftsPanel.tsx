@@ -67,6 +67,7 @@ export default function ContinueDraftsPanel({
                     : ""}
                 </p>
               </div>
+              {assessment.assessment.profiling && <p className="mt-2 text-xs text-indigo-700">{assessment.assessment.profiling.complete ? "Profile: " + (assessment.assessment.profiling.profileName || "None applies") : "Profiling incomplete"}</p>}
               <div className="mt-4 w-full">
                 <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
                   <div

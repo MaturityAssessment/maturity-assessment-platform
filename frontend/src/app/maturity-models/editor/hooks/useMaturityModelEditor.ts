@@ -230,7 +230,7 @@ export function useMaturityModelEditor(
           ).length;
           return counts;
         },
-        { overview: 0, scale: 0, structure: 0, review: 0 }
+        { overview: 0, scale: 0, structure: 0, profiles: 0, review: 0 }
       ),
     [issues]
   );

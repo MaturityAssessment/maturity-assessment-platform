@@ -12,6 +12,8 @@ public class AssessmentResponse {
     private String scoreState;
     private List<com.master_thesis.maturity_assessment.assessments.models.AssessmentElementResult> elementResults;
     private Long id;
+    private com.master_thesis.maturity_assessment.assessments.models.AssessmentProfiling profiling;
+    private com.master_thesis.maturity_assessment.assessments.models.TargetProfileComparison targetProfileComparison;
     private Double overallAverage;
     private Double overallPercentageScore;
     private String overallMaturityLevel;

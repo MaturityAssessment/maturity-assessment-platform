@@ -26,6 +26,10 @@ public class MaturityModel {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "target_profiles", columnDefinition = "jsonb")
+    private com.master_thesis.maturity_assessment.maturity_models.models.TargetProfileConfiguration targetProfiles;
+
     @Column(nullable = false)
     private String name;
 

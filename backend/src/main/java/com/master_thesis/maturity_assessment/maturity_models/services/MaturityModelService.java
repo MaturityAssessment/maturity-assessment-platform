@@ -183,6 +183,7 @@ public class MaturityModelService {
                 ModuleRelationships.validate(maturityModelDTO.getDimensions());
                 validateMaturityModelQuestions(maturityModelDTO);
                 validateConditionalGatingRules(maturityModelDTO);
+                TargetProfiles.validate(maturityModelDTO);
 
                 MaturityModel model = convertFromDTO(maturityModelDTO);
                 model.setCreatedBy(creator);
@@ -217,6 +218,7 @@ public class MaturityModelService {
                 ModuleRelationships.validate(source.getDimensions());
                 validateMaturityModelQuestions(source);
                 validateConditionalGatingRules(source);
+                TargetProfiles.validate(source);
                 return toEditorDocument(source);
         }
 
@@ -302,6 +304,7 @@ public class MaturityModelService {
                 dto.setBaseModelId(model.getBaseModelId());
                 dto.setCreatedAt(model.getCreatedAt());
                 dto.setAggregationRule(resolveAggregationRule(model.getAggregationRule()));
+                dto.setTargetProfiles(model.getTargetProfiles());
                 if (model.getCreatedBy() != null) {
                         dto.setCreatorId(model.getCreatedBy().getId());
                         dto.setCreatorName(resolveCreatorName(model.getCreatedBy()));
@@ -353,6 +356,7 @@ public class MaturityModelService {
                 model.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : false);
                 model.setAutoEvaluated(dto.getAutoEvaluated() != null ? dto.getAutoEvaluated() : true);
                 model.setAggregationRule(resolveAggregationRule(dto.getAggregationRule()));
+                model.setTargetProfiles(dto.getTargetProfiles());
                 // Version will be set based on context (create vs update)
 
                 // Set domain if provided
@@ -789,6 +793,7 @@ public class MaturityModelService {
                 editor.setAutoEvaluated(source.getAutoEvaluated());
                 editor.setDomainId(source.getDomainId());
                 editor.setAggregationRule(resolveAggregationRule(source.getAggregationRule()));
+                editor.setTargetProfiles(source.getTargetProfiles());
                 editor.setLevels(source.getLevels() == null ? new ArrayList<>() : source.getLevels());
 
                 List<MaturityModelEditorDTO.EditorDimensionDTO> dimensions = new ArrayList<>();
@@ -895,6 +900,7 @@ public class MaturityModelService {
                 dto.setIsActive(false);
                 dto.setDomainId(editor.getDomainId());
                 dto.setAggregationRule(resolveAggregationRule(editor.getAggregationRule()));
+                dto.setTargetProfiles(editor.getTargetProfiles());
                 dto.setLevels(editor.getLevels());
 
                 List<DimensionDTO> dimensions = new ArrayList<>();
@@ -1742,6 +1748,7 @@ public class MaturityModelService {
                 ModuleRelationships.validate(maturityModelDTO.getDimensions());
                 validateMaturityModelQuestions(maturityModelDTO);
                 validateConditionalGatingRules(maturityModelDTO);
+                TargetProfiles.validate(maturityModelDTO);
 
                 int assessmentUsageCount = assessmentRepository.findByMaturityModelId(id).size();
                 Long lineageRoot = resolveLineageRoot(existingModel);

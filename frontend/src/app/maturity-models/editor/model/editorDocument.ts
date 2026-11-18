@@ -1,3 +1,4 @@
+import { repairTargetReferences } from "../../../../lib/targetProfiles.ts";
 import { rewritePracticeBranchingReferences } from "../../../../lib/questionBranching.ts";
 import type {
   AggregationRule,
@@ -288,7 +289,7 @@ export function hydrateDocument(
       }
     }
   }
-  return repairConditionalReferences(beforeRenumber, document, true);
+  return repairTargetReferences(beforeRenumber, repairConditionalReferences(beforeRenumber, document, true));
 }
 
 // Keep configured weights when switching rules; unfinished unused weights must
@@ -303,6 +304,7 @@ export function serializeDocument(document: MaturityModelEditorDocument) {
     name: document.name.trim(),
     description: document.description.trim(),
     changelogMarkdown: document.changelogMarkdown.trim(),
+    targetProfiles: document.targetProfiles ?? null,
     autoEvaluated: document.autoEvaluated,
     domainId: document.domainId,
     aggregationRule: document.aggregationRule,

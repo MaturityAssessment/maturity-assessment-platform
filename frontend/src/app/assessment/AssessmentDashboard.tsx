@@ -66,6 +66,7 @@ export type AssessmentDashboardTab =
   | "logs";
 
 type AssessmentDashboardProps = {
+  onEditProfiling?: () => void;
   routeContext?: AssessmentRouteContext | null;
   evaluationPanel?: React.ReactNode;
   evaluation?: EvaluationController;
@@ -123,6 +124,7 @@ const dimensionIcons = [
 
 export default function AssessmentDashboard({
   routeContext,
+  onEditProfiling,
   evaluationPanel,
   evaluation,
   onEvaluationQuestion,
@@ -314,6 +316,11 @@ export default function AssessmentDashboard({
           </p>
         </div>
       )}
+
+      {!routeContext?.campaignId && !assessment.campaignId && model.targetProfiles && <div className="mx-auto mt-5 flex w-full max-w-[1440px] flex-wrap items-center justify-between gap-3 px-4 sm:px-6 lg:px-10">
+        <p className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-950"><span className="font-semibold">Target profile: </span>{assessment.profiling?.complete ? assessment.profiling.profileName || "No target profile applies" : "Profiling incomplete"}</p>
+        {onEditProfiling && <button type="button" className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700" onClick={onEditProfiling}>Edit profiling answers</button>}
+      </div>}
 
       {activeTab === "evaluation" ? evaluationPanel : activeTab === "overview" ? (
         evaluationActive && evaluation && onEvaluationQuestion ? (

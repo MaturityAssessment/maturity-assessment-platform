@@ -13,6 +13,8 @@ import java.util.List;
  */
 @Data
 public class MaturityModelEditorDTO {
+    private com.master_thesis.maturity_assessment.maturity_models.models.TargetProfileConfiguration targetProfiles;
+
     private String name;
     private String description;
     private String changelogMarkdown;

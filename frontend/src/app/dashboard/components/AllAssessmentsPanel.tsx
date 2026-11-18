@@ -384,6 +384,7 @@ export default function AllAssessmentsPanel({
                             <span className="block truncate text-sm font-semibold text-slate-900 group-hover:text-indigo-700">
                               {assessment.name}
                             </span>
+                            {assessment.assessment.profiling && <span className="mt-1 block text-xs text-indigo-700">{assessment.assessment.profiling.complete ? "Profile: " + (assessment.assessment.profiling.profileName || "None applies") : "Profiling incomplete"}</span>}
                             {assessment.version != null && (
                               <span className="mt-0.5 block text-xs text-slate-500">
                                 Version {assessment.version}

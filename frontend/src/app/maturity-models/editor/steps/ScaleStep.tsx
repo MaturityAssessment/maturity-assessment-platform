@@ -33,6 +33,7 @@ export default function ScaleStep({
     onChange({
       ...document,
       levels,
+      targetProfiles: document.targetProfiles ? { ...document.targetProfiles, profiles: document.targetProfiles.profiles.map(profile => ({ ...profile, expectedLevel: profile.expectedLevel == null ? null : profile.expectedLevel === removedIndex + 1 ? -1 : profile.expectedLevel > removedIndex + 1 ? profile.expectedLevel - 1 : profile.expectedLevel })) } : null,
       dimensions: document.dimensions.map((dimension) => ({
         ...dimension,
         mappingRules: dimension.mappingRules

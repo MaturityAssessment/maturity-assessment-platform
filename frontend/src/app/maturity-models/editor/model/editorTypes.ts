@@ -7,7 +7,7 @@ import type {
 } from "@/api/types";
 import type { NoticeType } from "@/components";
 
-export type EditorStep = "overview" | "scale" | "structure" | "review";
+export type EditorStep = "overview" | "scale" | "structure" | "profiles" | "review";
 
 export type Selection =
   | { type: "dimension"; key: string }
@@ -119,5 +119,6 @@ export const EDITOR_STEPS: Array<{
   { id: "overview", label: "Overview", description: "Purpose and ownership" },
   { id: "scale", label: "Scale", description: "Maturity levels" },
   { id: "structure", label: "Structure", description: "Model content" },
+  { id: "profiles", label: "Target profiles", description: "Profiling and expectations" },
   { id: "review", label: "Review", description: "Checks and save" },
 ];

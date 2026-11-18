@@ -25,6 +25,15 @@
 6. Inspect `status`: automatic models become `COMPLETED`; manual models become
    `PENDING_REVIEW`. Display server-returned scores and maturity levels.
 
+If the exact model version defines target profiles, present the profiling questions
+before assessment content. Send the active path as `profilingAnswers` on draft
+saves; retain partial paths on resume and clear later profiling answers when an
+earlier choice changes. Continue when the server reports `profiling.complete`,
+including a terminal no-profile outcome. Profiling locks on first submission and
+is preserved during corrections. Reset clears it. Compare only the returned final
+`targetProfileComparison` after completion; no client-side score recalculation is
+needed. See [profiling and comparison](../reference/assessments.md#assessment-profiling-and-target-comparison).
+
 For request examples, see [multipart saves](../reference/assessments.md#multipart-request)
 and [file/URL evidence](../reference/evidence.md#upload-and-retain-evidence).
 

@@ -2134,6 +2134,96 @@ class AssessmentServiceLifecycleTest {
         verify(assessmentRepository).delete(draft);
     }
 
+    private com.master_thesis.maturity_assessment.maturity_models.models.TargetProfileConfiguration targetConfiguration() {
+        try { return new ObjectMapper().treeToValue(new ObjectMapper().readTree(
+                java.nio.file.Path.of("../tests/fixtures/target-profiles.json").toFile()).get("configuration"),
+                com.master_thesis.maturity_assessment.maturity_models.models.TargetProfileConfiguration.class); }
+        catch (Exception error) { throw new AssertionError(error); }
+    }
+
+    @Test void profilingAutosavesPartialPathsResumesAndResets() {
+        var draft = draftAssessment(); var model = model(true); model.setTargetProfiles(targetConfiguration());
+        when(assessmentRepository.findByIdForUpdate(ASSESSMENT_ID)).thenReturn(Optional.of(draft));
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        var request = request(Map.of()); request.setProfilingAnswers(Map.of("context", "large"));
+        var partial = assessmentService.saveDraft(ASSESSMENT_ID, request, user);
+        assertFalse(partial.getProfiling().complete()); assertNull(partial.getTargetProfileComparison());
+        request.setProfilingAnswers(Map.of("context", "large", "regulation", "yes"));
+        var complete = assessmentService.saveDraft(ASSESSMENT_ID, request, user);
+        assertEquals("regulated", complete.getProfiling().profileId());
+        request.setProfilingAnswers(null);
+        assertEquals("regulated", assessmentService.saveDraft(ASSESSMENT_ID, request, user).getProfiling().profileId());
+        assertNull(assessmentService.resetDraft(ASSESSMENT_ID, user).getProfiling());
+    }
+
+    @Test void profilingIsRequiredForOrdinarySubmissionButNoMatchCanComplete() {
+        var model = model(true); model.setTargetProfiles(targetConfiguration()); var draft = draftAssessment();
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
+                USER_ID, MODEL_ID, AssessmentStatus.DRAFT)).thenReturn(Optional.of(draft));
+        var incomplete = request(Map.of());
+        assertEquals("PROFILING_INCOMPLETE", assertThrows(IllegalOperationException.class,
+                () -> assessmentService.createAssessment(incomplete, user)).getErrorCode());
+        assertEquals(AssessmentStatus.DRAFT, draft.getStatus());
+        incomplete.setProfilingAnswers(Map.of("context", "other"));
+        var result = assessmentService.createAssessment(incomplete, user);
+        assertEquals("COMPLETED", result.getStatus());
+        assertTrue(result.getProfiling().complete()); assertNull(result.getProfiling().profileId());
+        assertEquals("NO_PROFILE", result.getTargetProfileComparison().reason());
+    }
+
+    @Test void automaticEvaluationSavesAuthoritativeTargetComparison() {
+        var model = booleanScoringModel(); model.setTargetProfiles(targetConfiguration()); var draft = draftAssessment();
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
+                USER_ID, MODEL_ID, AssessmentStatus.DRAFT)).thenReturn(Optional.of(draft));
+        var request = request(Map.of("D1_M1_101_1001", true));
+        request.setProfilingAnswers(Map.of("context", "small"));
+        var result = assessmentService.createAssessment(request, user);
+        assertEquals("MET", result.getTargetProfileComparison().status());
+        assertEquals(1.0, result.getTargetProfileComparison().requirements().getFirst().actual());
+    }
+
+    @Test void profilingIsLockedDuringRespondentCorrections() {
+        var model = model(false); model.setTargetProfiles(targetConfiguration()); var draft = draftAssessment();
+        draft.setStatus(AssessmentStatus.CHANGES_REQUESTED);
+        draft.setProfiling(com.master_thesis.maturity_assessment.maturity_models.services.TargetProfiles.resolve(
+                model.getTargetProfiles(), Map.of("context", "small")));
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        when(assessmentRepository.findByIdForUpdate(ASSESSMENT_ID)).thenReturn(Optional.of(draft));
+        var changed = request(Map.of()); changed.setProfilingAnswers(Map.of("context", "other"));
+        assertEquals("PROFILING_LOCKED", assertThrows(IllegalOperationException.class,
+                () -> assessmentService.saveDraft(ASSESSMENT_ID, changed, user)).getErrorCode());
+        assertEquals("small-org", draft.getProfiling().profileId());
+        changed.setProfilingAnswers(null);
+        assertEquals("small-org", assessmentService.saveDraft(ASSESSMENT_ID, changed, user).getProfiling().profileId());
+    }
+
+    @Test void legacyManualCompletionAlsoSnapshotsUnavailableProfileResults() {
+        var model = model(false); model.setTargetProfiles(targetConfiguration()); var assessment = draftAssessment();
+        assessment.setStatus(AssessmentStatus.PENDING_REVIEW); assessment.setOverallMaturityLevel(null);
+        assessment.setScoreState("withheld");
+        assessment.setProfiling(com.master_thesis.maturity_assessment.maturity_models.services.TargetProfiles.resolve(
+                model.getTargetProfiles(), Map.of("context", "small")));
+        when(assessmentRepository.findById(ASSESSMENT_ID)).thenReturn(Optional.of(assessment));
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        var result = assessmentService.completeAssessment(ASSESSMENT_ID, null, user);
+        assertEquals("COMPLETED", result.getStatus());
+        assertEquals("NOT_EVALUATED", result.getTargetProfileComparison().status());
+        assertEquals("SCORES_UNAVAILABLE", result.getTargetProfileComparison().reason());
+    }
+
+    @Test void manualSubmissionRetainsProfileWithoutProducingComparison() {
+        var model = model(false); model.setTargetProfiles(targetConfiguration()); var draft = draftAssessment();
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        when(assessmentRepository.findByCampaignIsNullAndUserIdAndMaturityModelIdAndStatus(
+                USER_ID, MODEL_ID, AssessmentStatus.DRAFT)).thenReturn(Optional.of(draft));
+        var request = request(Map.of()); request.setProfilingAnswers(Map.of("context", "small"));
+        var result = assessmentService.createAssessment(request, user);
+        assertEquals("PENDING_REVIEW", result.getStatus()); assertNull(result.getTargetProfileComparison());
+        assertEquals("small-org", result.getProfiling().profileId());
+    }
+
     private AssessmentRequest request(Map<String, Object> responses) {
         AssessmentRequest request = new AssessmentRequest();
         request.setMaturityModelId(MODEL_ID);

@@ -10,6 +10,10 @@ The editor contract is the preferred way to author models. Public model reads
 include database IDs needed to submit assessments. Each version has its own
 numeric model ID; `baseModelId` groups a lineage.
 
+Full models and editor documents accept optional
+[`targetProfiles`](#target-profiles). Configuration belongs to the exact version
+and does not affect questionnaire structure or scoring.
+
 Unless stated otherwise, success is `200` JSON. Missing model IDs in these
 services currently commonly return `500 INTERNAL_SERVER_ERROR`, not `404`.
 Writes require curator/admin access and may return `400` for model validation.
@@ -598,3 +602,63 @@ includedCount. Only matching numeric fields can be compared by reference.
 
 Invalid schemas, fields, operators, values or references return
 `400 INVALID_GATING_RULES`. See the [schema, examples and evaluation semantics](../../../../docs/gating-rules.md#conditional-rules-v56).
+
+## Target profiles
+
+`targetProfiles` is optional/nullable on both `MaturityModelDTO` and the editor
+document. Omission or `null` disables profiling on the new saved version. Edits
+create an inactive version; previous configuration and assessments stay unchanged.
+Browser drafts and change previews retain the configuration.
+
+```json
+{
+  "version": 1,
+  "rootQuestionId": "context",
+  "questions": [{
+    "id": "context",
+    "text": "Does your organization operate in a regulated sector?",
+    "options": [
+      {"id": "yes", "label": "Yes", "destination": {"type": "profile", "id": "regulated"}},
+      {"id": "no", "label": "No", "destination": {"type": "none", "id": null}}
+    ]
+  }],
+  "profiles": [{
+    "id": "regulated",
+    "name": "Regulated organization",
+    "description": "Expected minimum capabilities for this context.",
+    "requirements": [
+      {"elementType": "dimension", "dimensionCode": "D01_GOV", "moduleCode": null, "minimumScore": 0.6},
+      {"elementType": "module", "dimensionCode": "D01_GOV", "moduleCode": "M01_MGMT", "minimumScore": 0.7}
+    ],
+    "expectedLevel": 3
+  }]
+}
+```
+
+- Version `1` supports single-choice questions. Destinations are `question`,
+  `profile`, or `none`. Question/profile destinations require an existing ID;
+  `none` requires a null ID.
+- Define 1–128 profiles, 1–128 questions, and 2–32 options per question. Stable IDs
+  contain 1–80 ASCII letters, digits, underscores, or hyphens. Question/profile
+  IDs are unique in their respective lists; option IDs are unique per question.
+- The root has no parent. Every other question has exactly one parent option
+  and is reachable from the root. Cycles and dangling references are rejected.
+  Multiple terminal branches may identify the same profile.
+- Names/option labels have a 200-character limit, question text a 1,000-character
+  limit, and profile descriptions a 4,000-character limit.
+- Each profile can target selected dimensions and/or visible modules, once per
+  element, with up to 2,048 requirements. References use case-insensitive,
+  version-local codes. `minimumScore` is finite and normalized to 0–1 inclusive;
+  the UI displays percentages. Dimension targets have null `moduleCode`.
+- Optional `expectedLevel` must belong to this model's scale. Results at or above
+  the expectation meet it. Profiles without any requirements are permitted with
+  an authoring warning; their outcome is `NOT_EVALUATED / NO_REQUIREMENTS`.
+- Invalid configuration returns `400 INVALID_TARGET_PROFILES`. Editor references
+  follow item identities through renames/reorders. Deleting a targeted element or
+  hiding a targeted module requires explicit repair/removal of its target.
+
+Excel round trips preserve configuration in an optional `TargetProfiles` sheet.
+Column A has header `configurationJsonChunks`; concatenate subsequent rows to
+obtain one JSON object. Older workbooks may omit the sheet. Parsing validates
+configuration against the imported hierarchy. Preserve the sheet when exchanging
+models and use the Target profiles tab for normal authoring.

@@ -9,6 +9,8 @@ import com.master_thesis.maturity_assessment.maturity_models.models.AggregationR
 public class MaturityModelDTO {
     private Long id; // Optional for creation, required for updates
 
+    private com.master_thesis.maturity_assessment.maturity_models.models.TargetProfileConfiguration targetProfiles;
+
     private String name;
     private String description;
     private String changelogMarkdown;

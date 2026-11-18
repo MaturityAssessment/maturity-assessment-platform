@@ -1,0 +1,34 @@
+{
+  "configuration": {
+    "version": 1,
+    "rootQuestionId": "context",
+    "questions": [
+      { "id": "context", "text": "What is your organization size?", "options": [
+        { "id": "small", "label": "Small organization", "destination": { "type": "profile", "id": "small-org" } },
+        { "id": "large", "label": "Large organization", "destination": { "type": "question", "id": "regulation" } },
+        { "id": "other", "label": "Other context", "destination": { "type": "none", "id": null } }
+      ] },
+      { "id": "regulation", "text": "Are you in a regulated sector?", "options": [
+        { "id": "yes", "label": "Yes", "destination": { "type": "profile", "id": "regulated" } },
+        { "id": "no", "label": "No", "destination": { "type": "none", "id": null } }
+      ] }
+    ],
+    "profiles": [
+      { "id": "small-org", "name": "Small organization", "description": "Baseline expectations for a small organization.", "requirements": [
+        { "elementType": "dimension", "dimensionCode": "D1", "moduleCode": null, "minimumScore": 0.6 },
+        { "elementType": "module", "dimensionCode": "D1", "moduleCode": "M1", "minimumScore": 0.7 }
+      ], "expectedLevel": 3 },
+      { "id": "regulated", "name": "Regulated enterprise", "description": "Expectations for regulated organizations.", "requirements": [
+        { "elementType": "dimension", "dimensionCode": "D1", "moduleCode": null, "minimumScore": 0.8 }
+      ], "expectedLevel": null }
+    ]
+  },
+  "routes": [
+    { "name": "unanswered root", "answers": {}, "complete": false, "profileId": null },
+    { "name": "direct match", "answers": { "context": "small" }, "complete": true, "profileId": "small-org" },
+    { "name": "explicit no match", "answers": { "context": "other" }, "complete": true, "profileId": null },
+    { "name": "unanswered follow-up", "answers": { "context": "large" }, "complete": false, "profileId": null },
+    { "name": "nested match", "answers": { "context": "large", "regulation": "yes" }, "complete": true, "profileId": "regulated" },
+    { "name": "nested no match", "answers": { "context": "large", "regulation": "no" }, "complete": true, "profileId": null }
+  ]
+}

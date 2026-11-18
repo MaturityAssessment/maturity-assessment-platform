@@ -3,6 +3,7 @@
 import { TopNavbar, PageLoading } from "@/components";
 import EditorChrome from "./components/EditorChrome";
 import { useMaturityModelEditor } from "./hooks/useMaturityModelEditor";
+import TargetProfilesStep from "./steps/TargetProfilesStep";
 import OverviewStep from "./steps/OverviewStep";
 import ReviewStep from "./steps/ReviewStep";
 import ScaleStep from "./steps/ScaleStep";
@@ -105,6 +106,7 @@ export default function MaturityModelEditorPage({
           commands={structureCommands}
         />
       )}
+      {state.step === "profiles" && <TargetProfilesStep document={state.document} onChange={editor.replaceDocument} />}
       {state.step === "review" && editor.changes && (
         <ReviewStep
           changes={editor.changes}

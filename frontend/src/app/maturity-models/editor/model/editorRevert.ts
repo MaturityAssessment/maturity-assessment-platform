@@ -1,3 +1,4 @@
+import { repairTargetReferences } from "../../../../lib/targetProfiles.ts";
 import { mapBranchingReferences } from "../../../../lib/questionBranching.ts";
 import { encodeConditionalReferences, decodeConditionalReferences } from "./conditionalGating.ts";
 import { MODULE_BADGE_REFERENCE_FIELDS } from "./moduleBadges.ts";
@@ -100,6 +101,7 @@ export function revertEditorChange(current: MaturityModelEditorDocument, baselin
     const { name, description, autoEvaluated, domainId, aggregationRule } = baseline;
     return { ...next, name, description, autoEvaluated, domainId, aggregationRule };
   }
+  if (entry.id === "profiles") return repairTargetReferences(baseline, { ...next, targetProfiles: structuredClone(baseline.targetProfiles ?? null) });
   if (entry.id === "notes") return { ...next, changelogMarkdown: baseline.changelogMarkdown };
   if (entry.id.startsWith("level:")) {
     const number = Number(entry.id.slice(6));

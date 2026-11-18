@@ -29,6 +29,14 @@ public class Assessment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "profiling", columnDefinition = "jsonb")
+    private AssessmentProfiling profiling;
+
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "target_profile_comparison", columnDefinition = "jsonb")
+    private TargetProfileComparison targetProfileComparison;
+
     @Column(name = "reference_date", nullable = false)
     private java.time.LocalDate referenceDate;
 
