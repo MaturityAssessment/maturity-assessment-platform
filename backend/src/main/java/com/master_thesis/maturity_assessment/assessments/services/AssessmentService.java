@@ -1,5 +1,7 @@
 package com.master_thesis.maturity_assessment.assessments.services;
 
+import com.master_thesis.maturity_assessment.maturity_models.services.EvidenceApplicability;
+import com.master_thesis.maturity_assessment.maturity_models.services.QuestionBranching;
 import com.master_thesis.maturity_assessment.maturity_models.models.ChildStateGatingRule;
 import com.master_thesis.maturity_assessment.maturity_models.models.ConditionalGatingRule;
 import com.master_thesis.maturity_assessment.maturity_models.services.ConditionalGating;
@@ -42,7 +44,6 @@ import com.master_thesis.maturity_assessment.maturity_models.models.Question;
 import com.master_thesis.maturity_assessment.maturity_models.models.AggregationRule;
 import com.master_thesis.maturity_assessment.assessments.models.AssessmentElementResult;
 import com.master_thesis.maturity_assessment.maturity_models.services.MaturityScoringService;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -52,10 +53,8 @@ import com.master_thesis.maturity_assessment.config.TextLimits;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.master_thesis.maturity_assessment.maturity_models.dto.QuestionChoiceDTO;
-
 import com.master_thesis.maturity_assessment.maturity_models.services.QuestionDependencies;
 import com.master_thesis.maturity_assessment.maturity_models.services.NotApplicableAnswers;
-
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -79,6 +78,7 @@ public class AssessmentService {
     // Raw values remain available for scoring; option identity is retained for activation.
     private static class ResponseValues extends LinkedHashMap<String, Object> {
         private final Map<Long, QuestionDependencies.Answer> answers = new HashMap<>();
+        private final Map<Long, Boolean> visibility = new HashMap<>();
     }
 
     private final AssessmentRepository assessmentRepository;
@@ -850,7 +850,7 @@ public class AssessmentService {
         }
     }
 
-    private Map<String, Object> responseValues(AssessmentRequest request) {
+    Map<String, Object> responseValues(AssessmentRequest request) {
         if (request == null || request.getQuestionResponses() == null) {
             return Map.of();
         }
@@ -864,7 +864,7 @@ public class AssessmentService {
         return activeResponseValues(responses, request.getMaturityModelId());
     }
 
-    private Map<String, Object> responseValues(List<QuestionEvaluation> rows, Long modelId) {
+    Map<String, Object> responseValues(List<QuestionEvaluation> rows, Long modelId) {
         ResponseValues responses = new ResponseValues();
         if (rows == null) {
             return responses;
@@ -892,6 +892,8 @@ public class AssessmentService {
                 if (module.getPractices() == null) continue;
                 for (Practice practice : module.getPractices()) {
                     if (practice.getQuestions() == null) continue;
+                    QuestionBranching.resolve(practice.getQuestions(), responses.answers::get, objectMapper)
+                            .forEach((question, visible) -> responses.visibility.put(question.getId(), visible));
                     for (Question question : practice.getQuestions()) {
                         if (Boolean.FALSE.equals(module.getVisible()) || !isQuestionVisible(question, responses)) {
                             String key = findQuestionKey(question.getId(), responses);
@@ -2202,20 +2204,22 @@ public class AssessmentService {
                 for (Practice practice : Optional.ofNullable(module.getPractices()).orElse(List.of())) {
                     List<ScoreNode> questions = new ArrayList<>();
                     for (Question question : Optional.ofNullable(practice.getQuestions()).orElse(List.of())) {
-                        if (!isQuestionVisible(question, answers)) continue;
+                        boolean visible = isQuestionVisible(question, answers);
+                        boolean defaulted = !visible && question.getHiddenScore() != null;
+                        if (!visible && !defaulted) continue;
                         String practiceId = practice.getId() == null ? practice.getName() : String.valueOf(practice.getId());
                         String key = dimension.getDimensionId() + "_" + module.getCode() + "_" + practiceId + "_" + question.getId();
-                        boolean answered = isAnswered(answers.get(key));
-                        Double score = answered ? scoredResponses.get(key) : null;
+                        boolean answered = visible && isAnswered(answers.get(key));
+                        Double score = defaulted ? question.getHiddenScore() : answered ? scoredResponses.get(key) : null;
                         QuestionInfo info = metadata.get(key);
                         if (score != null && Double.isFinite(score) && info != null) {
-                            boolean normalized = NotApplicableAnswers.isAnswer(answers.get(key)) || !"open_answer".equalsIgnoreCase(info.getType());
+                            boolean normalized = defaulted || NotApplicableAnswers.isAnswer(answers.get(key)) || !"open_answer".equalsIgnoreCase(info.getType());
                             score = maturityScoringService.roundAndClampNormalized(normalized ? score : maturityScaleScoreToNormalized(score, maxLevel));
                         } else score = null;
                         ScoreNode node = new ScoreNode(score, childWeight(question.getWeight()), 1,
                                 score == null ? 0 : score * childWeight(question.getWeight()) * childWeight(practice.getWeight()),
-                                answered ? 100 : 0, answered ? 100 : 0,
-                                !answered ? "unanswered" : score == null ? "unscored" : "computed");
+                                answered || defaulted ? 100 : 0, answered || defaulted ? 100 : 0,
+                                !answered && !defaulted ? "unanswered" : score == null ? "unscored" : "computed");
                         Integer choiceIndex = answers instanceof ResponseValues values && values.answers.get(question.getId()) != null
                                 ? values.answers.get(question.getId()).choiceIndex() : null;
                         List<QuestionChoiceDTO> choices = "multiple_choice".equals(question.getType()) ? info == null ? null : info.choiceOptions
@@ -2225,7 +2229,7 @@ public class AssessmentService {
                                 node.score(), node.state(), null, null, answered, answer));
                         questions.add(node);
                         elements.add(elementResult("question", dimension.getDimensionId(), module.getCode(), practice.getCode(),
-                                question.getCode(), key, question.getText(), node));
+                                question.getCode(), key, question.getText(), node, visible, defaulted ? "default" : answered ? "respondent" : null));
                     }
                     ScoreNode node = aggregateNodes(questions, practice.getAggregationRule(), practice.getWeight(),
                             practice.getMinimumCoverage(), practice.getMinimumIncludedCount(), practice.getChildStateGatingRules(), practice.getConditionalGatingRules(), practice.getScoreLimits(), questions.stream().map(gatingChildren::get).toList());
@@ -2324,6 +2328,12 @@ public class AssessmentService {
             String practiceCode, String questionCode, String responseKey, String name, ScoreNode node) {
         return new AssessmentElementResult(type, dimensionId, moduleCode, practiceCode, questionCode, responseKey,
                 name, node.state(), node.score(), node.includedCount(), node.coverage());
+    }
+
+    private AssessmentElementResult elementResult(String type, String dimensionId, String moduleCode, String practiceCode,
+            String questionCode, String responseKey, String name, ScoreNode node, boolean visible, String source) {
+        return new AssessmentElementResult(type, dimensionId, moduleCode, practiceCode, questionCode, responseKey,
+                name, node.state(), node.score(), node.includedCount(), node.coverage(), visible, source);
     }
 
     private DimensionResult toDimensionResult(Dimension dimension, ScoreNode node, int maxLevel, List<MaturityLevel> levels) {
@@ -2677,7 +2687,7 @@ public class AssessmentService {
         Map<Module, ModulePrerequisites.State> states = ModulePrerequisites.states(model,
                 question -> isQuestionVisible(question, responses),
                 question -> { String key = findQuestionKey(question.getId(), responses);
-                    return key != null && isAnswered(responses.get(key)); }, candidatePractice -> hasRequiredPracticeEvidence(candidatePractice,
+                    return key != null && isAnswered(responses.get(key)); }, candidatePractice -> hasRequiredPracticeEvidence(candidatePractice, question -> isQuestionVisible(question, responses),
                         code -> practiceEvidence.stream().anyMatch(item -> candidatePractice.getId().equals(item.getPractice().getId())
                                 && (code == null || code.equals(item.getRequirementCode())))));
         ModulePrerequisites.State state = states.get(module);
@@ -2687,11 +2697,12 @@ public class AssessmentService {
                 "Module '" + module.getName() + "' is locked until its prerequisites are complete. Existing evidence is retained.");
     }
 
-    private boolean hasRequiredPracticeEvidence(Practice practice,
+    private boolean hasRequiredPracticeEvidence(Practice practice, java.util.function.Predicate<Question> visible,
                                                java.util.function.Predicate<String> supplied) {
         var requirements = practice.getEvidenceRequirements();
         if (requirements == null || requirements.isEmpty()) return !Boolean.TRUE.equals(practice.getRequiresEvidence()) || supplied.test(null);
         return requirements.stream().filter(item -> Boolean.TRUE.equals(item.getRequired()))
+                .filter(item -> EvidenceApplicability.active(item, practice, visible))
                 .allMatch(item -> supplied.test(item.getCode()));
     }
 
@@ -2740,7 +2751,7 @@ public class AssessmentService {
         Map<Module, ModulePrerequisites.State> states = ModulePrerequisites.states(model,
                 question -> isQuestionVisible(question, responses),
                 question -> { String key = findQuestionKey(question.getId(), responses);
-                    return key != null && isAnswered(responses.get(key)); }, practice -> hasRequiredPracticeEvidence(practice,
+                    return key != null && isAnswered(responses.get(key)); }, practice -> hasRequiredPracticeEvidence(practice, question -> isQuestionVisible(question, responses),
                         code -> practiceEvidence.stream().anyMatch(item -> practice.getId().equals(item.getPracticeId())
                                 && (code == null || code.equals(item.getRequirementCode())))));
         Map<Long, PrerequisiteEvidence> currentEvidence = new HashMap<>();
@@ -2814,6 +2825,8 @@ public class AssessmentService {
     boolean isQuestionVisible(Question question, Map<String, Object> responses) {
         if (question.getPractice() != null && question.getPractice().getModule() != null
                 && Boolean.FALSE.equals(question.getPractice().getModule().getVisible())) return false;
+        if (responses instanceof ResponseValues values && values.visibility.containsKey(question.getId()))
+            return Boolean.TRUE.equals(values.visibility.get(question.getId()));
         return QuestionDependencies.active(question, id -> {
             if (responses instanceof ResponseValues values) return values.answers.get(id);
             String key = findQuestionKey(id, responses);

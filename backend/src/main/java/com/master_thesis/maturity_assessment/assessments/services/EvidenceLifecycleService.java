@@ -1,5 +1,6 @@
 package com.master_thesis.maturity_assessment.assessments.services;
 
+import com.master_thesis.maturity_assessment.maturity_models.services.EvidenceApplicability;
 import com.master_thesis.maturity_assessment.assessments.dto.AssessmentResponse;
 import com.master_thesis.maturity_assessment.assessments.dto.EvidenceFreshnessSummary;
 import com.master_thesis.maturity_assessment.assessments.dto.EvidenceFreshnessSummary.Indicator;
@@ -9,7 +10,6 @@ import com.master_thesis.maturity_assessment.maturity_models.models.Question;
 import com.master_thesis.maturity_assessment.maturity_models.repository.MaturityModelRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.*;
 import java.util.*;
 import java.util.function.BiPredicate;
@@ -64,6 +64,7 @@ public class EvidenceLifecycleService {
             for (var practice : safe(module.getPractices())) {
                 if (safe(practice.getQuestions()).stream().noneMatch(active)) continue;
                 for (var requirement : safe(practice.getEvidenceRequirements())) {
+                    if (!EvidenceApplicability.active(requirement, practice, active)) continue;
                     var age = requirement.effectiveMaxAgeDays();
                     var evaluated = records.stream().filter(item -> practice.getId().equals(item.getPracticeId())
                             && requirement.getCode().equals(item.getRequirementCode()))

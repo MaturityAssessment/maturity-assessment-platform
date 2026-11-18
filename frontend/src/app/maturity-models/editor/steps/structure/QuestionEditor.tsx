@@ -1,4 +1,5 @@
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle, Description } from "@headlessui/react";
+import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { XMarkIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type {
   ModelEditorPractice,
@@ -27,7 +28,9 @@ export default function QuestionEditor({
   onChange,
   onClose,
   onDelete,
+  initialSection = "details",
 }: {
+  initialSection?: "details" | "dependencies";
   issues?: import("../../model/editorTypes").EditorIssue[];
   question: ModelEditorQuestion;
   questionIndex: number;
@@ -53,7 +56,13 @@ export default function QuestionEditor({
                 <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
-            <div className="grid gap-5 p-5 sm:p-6 md:grid-cols-2">
+            <TabGroup defaultIndex={initialSection === "dependencies" ? 1 : 0}>
+              <TabList aria-label="Question settings" className="flex gap-5 border-b border-gray-200 px-5 sm:px-6">
+                {["Question details", "Dependencies"].map(label => <Tab key={label}
+                  className="border-b-2 border-transparent py-3 text-sm font-medium text-gray-500 outline-none hover:text-gray-950 focus-visible:ring-2 focus-visible:ring-blue-500 data-[selected]:border-blue-600 data-[selected]:text-blue-700">{label}</Tab>)}
+              </TabList>
+              <TabPanels>
+              <TabPanel className="grid gap-5 p-5 sm:p-6 md:grid-cols-2">
             {issues.length > 0 && (
               <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 md:col-span-2">
                 <p className="font-semibold">This question needs attention</p>
@@ -117,7 +126,6 @@ export default function QuestionEditor({
               </select>
             </label>
 
-            <QuestionDependencyField question={question} practice={practice} onChange={onChange} />
             <ScaleConfigurationFields
               question={question}
               maxLevel={maxLevel}
@@ -185,7 +193,12 @@ export default function QuestionEditor({
                   <span className="text-xs font-normal text-gray-500">Score between 0 and 1 awarded when N/A is selected.</span>
                 </label>
               )}
-            </div>
+              </TabPanel>
+              <TabPanel className="p-5 sm:p-6">
+                <QuestionDependencyField question={question} practice={practice} onChange={onChange} />
+              </TabPanel>
+              </TabPanels>
+            </TabGroup>
             <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-5 py-4 sm:px-6">
               <button type="button" onClick={onDelete} disabled={practice.questions.length <= 1}
                 className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-30">

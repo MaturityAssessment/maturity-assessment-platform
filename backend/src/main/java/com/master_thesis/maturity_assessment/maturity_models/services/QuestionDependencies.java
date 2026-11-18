@@ -1,6 +1,5 @@
 package com.master_thesis.maturity_assessment.maturity_models.services;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.master_thesis.maturity_assessment.config.IllegalOperationException;
 import com.master_thesis.maturity_assessment.maturity_models.dto.DependencyCondition;
@@ -58,25 +57,7 @@ public final class QuestionDependencies {
     }
 
     public static boolean active(Question child, Function<Long, Answer> answers, ObjectMapper mapper) {
-        return active(child, answers, mapper, Collections.newSetFromMap(new IdentityHashMap<>()));
-    }
-
-    private static boolean active(Question child, Function<Long, Answer> answers, ObjectMapper mapper, Set<Question> visiting) {
-        if (!visiting.add(child)) return false;
-        try {
-            Question parent = child.getDependsOnQuestion();
-            if (parent == null) return child.getDependencyCondition() == null;
-            if (parent.getId() == null || !active(parent, answers, mapper, visiting)) return false;
-            Answer answer = answers.apply(parent.getId());
-            if (answer == null) return false;
-            List<QuestionChoiceDTO> options = List.of();
-            if ("multiple_choice".equals(parent.getType())) {
-                try { options = mapper.readValue(parent.getChoiceOptions(), new TypeReference<List<QuestionChoiceDTO>>() {}); }
-                catch (Exception exception) { return false; }
-            }
-            return matches(parent.getType(), child.getDependencyCondition(), answer,
-                    parent.getScalePointCount() == null ? 5 : parent.getScalePointCount(), options);
-        } finally { visiting.remove(child); }
+        return QuestionBranching.active(child, answers, mapper);
     }
 
     public static boolean matches(String type, DependencyCondition condition, Answer answer, int pointCount, List<QuestionChoiceDTO> options) {

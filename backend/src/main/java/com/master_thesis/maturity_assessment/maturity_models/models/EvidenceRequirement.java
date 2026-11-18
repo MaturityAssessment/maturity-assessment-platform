@@ -30,6 +30,15 @@ public class EvidenceRequirement {
     @Column(name = "max_age_days")
     private Integer maxAgeDays;
 
+    /** Local question codes; null retains whole-practice scope. */
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "question_codes", columnDefinition = "jsonb")
+    private java.util.List<String> questionCodes;
+
+    public EvidenceRequirement(String code, String name, String instructions, Boolean required, Format format, Frequency frequency, Integer maxAgeDays) {
+        this(code, name, instructions, required, format, frequency, maxAgeDays, null);
+    }
+
     public enum Frequency { adhoc, monthly, quarterly, yearly }
 
     public EvidenceRequirement(String code, String name, String instructions, Boolean required, Format format) {
@@ -54,6 +63,6 @@ public class EvidenceRequirement {
     }
 
     public EvidenceRequirement copy() {
-        return new EvidenceRequirement(code, name, instructions, required, format, frequency, maxAgeDays);
+        return new EvidenceRequirement(code, name, instructions, required, format, frequency, maxAgeDays, questionCodes == null ? null : new java.util.ArrayList<>(questionCodes));
     }
 }

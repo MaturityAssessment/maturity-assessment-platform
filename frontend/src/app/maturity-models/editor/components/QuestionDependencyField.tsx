@@ -1,93 +1,113 @@
-import { Listbox, ListboxButton, ListboxLabel, ListboxOption, ListboxOptions } from "@headlessui/react";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import type { DependencyCondition, ModelEditorPractice, ModelEditorQuestion } from "@/api/types";
-import { defaultDependencyCondition, dependencyConditionError, dependencySummary } from "@/lib/questionDependencies";
-import { dependencyWouldCycle } from "../model/editorValidation";
+import type { BranchingExpression, ModelEditorPractice, ModelEditorQuestion } from "@/api/types";
+import { branchingIssues } from "@/lib/questionBranching";
+import { branchingSummary, branchingWouldCycle, editableBranching, parentCodes, setQuestionBranching } from "../model/questionBranchingEditor";
 import { inputClass, labelClass } from "./FormFields";
+import BranchingAcceptedAnswers, { branchingActionClass as actionClass } from "./BranchingAcceptedAnswers";
+
+function RuleNode({ expression, questions, candidates, used, onChange, depth = 0 }: {
+  expression: BranchingExpression; questions: ModelEditorQuestion[]; candidates: ModelEditorQuestion[];
+  used: string[]; onChange: (expression?: BranchingExpression) => void; depth?: number;
+}) {
+  const negated = expression.kind === "not";
+  const node = negated ? expression.condition : expression;
+  const update = (next?: BranchingExpression) => onChange(next && negated ? { kind: "not", condition: next } : next);
+  const available = candidates.filter(q => !used.includes(q.code.toLowerCase()));
+  const newRule = (): BranchingExpression => ({ kind: "parent", code: available[0].code, predicate: { kind: "answered" } });
+  const parent = node.kind === "parent" ? questions.find(q => q.code.toLowerCase() === node.code.toLowerCase()) : undefined;
+  return <div className="min-w-0 space-y-3 rounded-lg border border-gray-200 bg-gray-50/60 p-3 sm:p-4">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <label className="flex items-center gap-2 text-xs font-medium text-gray-700">
+        <input type="checkbox" checked={negated} disabled={!negated && depth >= 19}
+          onChange={event => onChange(event.target.checked ? { kind: "not", condition: expression } : node)} className="rounded border-gray-300 text-blue-600" />
+        Not <span className="font-normal text-gray-500">(invert this {node.kind === "parent" ? "rule" : "group"})</span>
+      </label>
+      <button type="button" onClick={() => onChange(undefined)} className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50">Remove {node.kind === "parent" ? "rule" : "group"}</button>
+    </div>
+    {node.kind === "parent" ? <>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className={labelClass}>Parent question
+          <select className={inputClass} title={parent ? `${parent.code} — ${parent.text}` : node.code} value={parent?.code ?? node.code} onChange={event => update({ kind: "parent", code: event.target.value, predicate: { kind: "answered" } })}>
+            {!candidates.some(q => q.code.toLowerCase() === node.code.toLowerCase()) && <option value={node.code}>{node.code} (needs attention)</option>}
+            {candidates.filter(q => q.code.toLowerCase() === node.code.toLowerCase() || !used.includes(q.code.toLowerCase())).map(q =>
+              <option key={q.clientKey} value={q.code}>{q.code} — {q.text || "Untitled question"}</option>)}
+          </select>
+        </label>
+        <label className={labelClass}>Condition
+          <select className={inputClass} value={node.predicate.kind} onChange={event => update({ ...node, predicate: event.target.value === "answered" ? { kind: "answered" } : { kind: "in", values: [] } })}>
+            <option value="answered">Has an answer</option><option value="in">Matches accepted answers</option>
+          </select>
+        </label>
+      </div>
+      {parent && node.predicate.kind === "in" && <BranchingAcceptedAnswers key={`${parent.clientKey}-${parent.type}`} parent={parent} values={node.predicate.values}
+        onChange={values => update({ ...node, predicate: { kind: "in", values } })} />}
+      {depth < 18 && <button type="button" className={actionClass} onClick={() => update({ kind: "and", conditions: [node] })}>Make a group</button>}
+    </> : node.kind === "and" || node.kind === "or" ? <>
+      <label className={`${labelClass} max-w-sm`}>Match conditions
+        <select className={inputClass} value={node.kind} onChange={event => update({ ...node, kind: event.target.value as "and" | "or" })}>
+          <option value="and">All conditions (AND)</option><option value="or">Any condition (OR)</option>
+        </select>
+      </label>
+      <div className="space-y-3 border-l-2 border-blue-200 pl-2 sm:pl-3">
+        {node.conditions.map((condition, index) => <RuleNode key={index} expression={condition} questions={questions} candidates={candidates} used={used} depth={depth + (negated ? 2 : 1)}
+          onChange={next => {
+            const conditions = node.conditions.flatMap((child, i) => i === index ? next ? [next] : [] : [child]);
+            update(conditions.length ? { ...node, conditions } : undefined);
+          }} />)}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className={actionClass} disabled={!available.length || node.conditions.length >= 100 || depth >= 19} onClick={() => update({ ...node, conditions: [...node.conditions, newRule()] })}>Add parent rule</button>
+        <button type="button" className={actionClass} disabled={!available.length || node.conditions.length >= 100 || depth >= 18} onClick={() => update({ ...node, conditions: [...node.conditions, { kind: "and", conditions: [newRule()] }] })}>Add group</button>
+      </div>
+    </> : <RuleNode expression={node} questions={questions} candidates={candidates} used={used} onChange={update} depth={depth + 1} />}
+  </div>;
+}
 
 export default function QuestionDependencyField({ question, practice, onChange }: {
-  question: ModelEditorQuestion;
-  practice: ModelEditorPractice;
-  onChange: (question: ModelEditorQuestion) => void;
+  question: ModelEditorQuestion; practice: ModelEditorPractice; onChange: (question: ModelEditorQuestion) => void;
 }) {
-  const candidates = practice.questions.filter((candidate) => candidate.clientKey !== question.clientKey
-    && ["boolean", "multiple_choice", "likert"].includes(candidate.type)
-    && !dependencyWouldCycle(practice, question.code, candidate.code));
-  const parent = practice.questions.find((candidate) => candidate.code.toLowerCase() === question.dependsOnQuestionCode?.toLowerCase());
-  const eligible = parent && candidates.includes(parent);
-  const condition = question.dependencyCondition ?? (parent?.type === "boolean" ? defaultDependencyCondition("boolean") : undefined);
-  const error = question.dependsOnQuestionCode && !eligible ? "Select a valid parent question in this practice."
-    : dependencyConditionError(parent, condition);
-  const id = `question-${question.clientKey}-dependency`;
-  const label = (candidate: ModelEditorQuestion) => `${candidate.code} — ${candidate.text || "Untitled question"}`;
-  const setCondition = (dependencyCondition: DependencyCondition) => onChange({ ...question, dependencyCondition });
-  const options: { value: boolean | string | number; label: string }[] = parent?.type === "boolean"
-    ? [{ value: true, label: "Yes" }, { value: false, label: "No" }]
-    : parent?.type === "multiple_choice"
-      ? (parent.choices ?? []).map((choice) => ({ value: choice.id ?? "", label: choice.label || "Untitled option" }))
-      : parent?.type === "likert"
-        ? Array.from({ length: Number.isInteger(parent.scalePointCount) ? Math.min(100, Math.max(0, parent.scalePointCount)) : 0 }, (_, index) => ({
-            value: index + 1,
-            label: `${index + 1}${index === 0 && parent.scaleMinLabel ? ` — ${parent.scaleMinLabel}` : index + 1 === parent.scalePointCount && parent.scaleMaxLabel ? ` — ${parent.scaleMaxLabel}` : ""}`,
-          })) : [];
-  const selected: (string | number | boolean)[] = condition?.type !== parent?.type ? []
-    : condition?.type === "boolean" ? condition.answers : condition?.type === "multiple_choice" ? condition.optionIds : condition?.points ?? [];
-  const toggle = (value: boolean | string | number) => {
-    const next = selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value];
-    if (parent?.type === "boolean") setCondition({ type: "boolean", answers: next as boolean[] });
-    if (parent?.type === "multiple_choice") setCondition({ type: "multiple_choice", optionIds: next as string[] });
-    if (parent?.type === "likert") setCondition({ type: "likert", points: (next as number[]).sort((a, b) => a - b) });
-  };
-
-  return (
-    <div className="min-w-0">
-      <Listbox as="div" className={labelClass} value={question.dependsOnQuestionCode ?? ""}
-        onChange={(code: string) => {
-          const nextParent = candidates.find((candidate) => candidate.code === code);
-          onChange({ ...question, dependsOnQuestionCode: code || undefined,
-            dependencyCondition: nextParent ? defaultDependencyCondition(nextParent.type) : undefined });
-        }}>
-        <ListboxLabel>Depends on</ListboxLabel>
-        <ListboxButton id={id} aria-invalid={Boolean(error)} aria-describedby={`${id}-help${error ? ` ${id}-error` : ""}`}
-          className={`${inputClass} flex min-w-0 items-center gap-2 text-left ${error ? "border-red-500" : ""}`}
-          title={parent ? label(parent) : undefined}>
-          <span className="min-w-0 flex-1 truncate">{parent ? label(parent) : question.dependsOnQuestionCode || "No dependency"}</span>
-          <ChevronDownIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-gray-500" />
-        </ListboxButton>
-        <ListboxOptions anchor="bottom start" className="z-50 max-h-64 w-[var(--button-width)] overflow-y-auto overflow-x-hidden rounded-md border border-gray-200 bg-white p-1 shadow-lg [--anchor-gap:4px] focus:outline-none">
-          <ListboxOption value="" className="cursor-pointer rounded px-2 py-2 text-sm text-gray-900 data-[focus]:bg-blue-50 data-[selected]:font-semibold">No dependency</ListboxOption>
-          {question.dependsOnQuestionCode && !eligible && (
-            <ListboxOption disabled value={question.dependsOnQuestionCode} className="rounded px-2 py-2 text-sm text-red-600">
-              <span className="block truncate">{parent ? label(parent) : question.dependsOnQuestionCode} (needs attention)</span>
-            </ListboxOption>
-          )}
-          {candidates.map((candidate) => (
-            <ListboxOption key={candidate.clientKey} value={candidate.code} title={label(candidate)}
-              className="cursor-pointer rounded px-2 py-2 text-sm text-gray-900 data-[focus]:bg-blue-50 data-[selected]:font-semibold">
-              <span className="block truncate">{label(candidate)}</span>
-            </ListboxOption>
-          ))}
-        </ListboxOptions>
-      </Listbox>
-      <p id={`${id}-help`} className="mt-1 text-xs text-gray-500">Choose a Yes / No, Multiple choice, or Scale question in this practice.</p>
-      {eligible && (
-        <fieldset className="mt-3 min-w-0 rounded-lg border border-gray-200 bg-gray-50/70 p-3" aria-describedby={error ? `${id}-error` : undefined}>
-          <legend className="px-1 text-xs font-semibold text-gray-800">Activate when the answer is</legend>
-          <div className={`flex max-h-48 gap-2 overflow-y-auto ${parent.type === "multiple_choice" ? "flex-col" : "flex-wrap"}`}>
-            {options.map((option) => (
-              <label key={String(option.value)} className="flex min-w-0 cursor-pointer items-start gap-2 rounded-md border border-gray-200 bg-white px-2.5 py-2 text-sm text-gray-800">
-                <input type="checkbox" checked={selected.includes(option.value)} onChange={() => toggle(option.value)}
-                  className="mt-0.5 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                <span className="min-w-0 [overflow-wrap:anywhere]">{option.label}</span>
-              </label>
-            ))}
-          </div>
-          {!error && <p className="mt-2 line-clamp-3 text-xs leading-5 text-gray-500" title={dependencySummary(parent, condition)}>{dependencySummary(parent, condition)}. Any selected answer activates this question.</p>}
-          {error && <button type="button" className="mt-2 text-xs font-medium text-blue-600 hover:underline"
-            onClick={() => onChange({ ...question, dependencyCondition: defaultDependencyCondition(parent.type) })}>Reset activation answers</button>}
-        </fieldset>
-      )}
-      {error && <p id={`${id}-error`} role="alert" className="mt-1 text-xs text-red-600">{error}</p>}
-    </div>
-  );
+  const expression = editableBranching(question, practice.questions);
+  const candidates = practice.questions.filter(candidate => candidate.clientKey !== question.clientKey
+    && !branchingWouldCycle(practice.questions, question.code, candidate.code));
+  const used = parentCodes(expression).map(code => code.toLowerCase());
+  const available = candidates.filter(q => !used.includes(q.code.toLowerCase()));
+  const set = (next?: BranchingExpression) => onChange(setQuestionBranching(question, next));
+  const errors = branchingIssues(practice.questions.map(q => q.clientKey === question.clientKey ? question : q))
+    .filter(message => message.startsWith(`${question.code}:`) || message.includes("cycles"));
+  return <section id={`question-${question.clientKey}-dependency`} tabIndex={-1} aria-label="Question dependencies" className="min-w-0 space-y-4">
+    <div><h3 className="text-base font-semibold text-gray-900">Visibility & dependencies</h3>
+      <p className="mt-1 text-sm leading-6 text-gray-500">Show this question when its parent rules match. Parents must be in this practice.</p></div>
+    <label className={`${labelClass} max-w-sm`}>Show question
+      <select className={inputClass} value={expression ? "conditional" : "always"} onChange={event => {
+        if (event.target.value === "always") set(undefined);
+        else if (available[0]) set({ kind: "and", conditions: [{ kind: "parent", code: available[0].code, predicate: { kind: "answered" } }] });
+      }}>
+        <option value="always">Always</option><option value="conditional" disabled={!expression && !available.length}>When rules match</option>
+      </select>
+    </label>
+    {!expression && !available.length && <p className="text-xs text-gray-500">Add another independent question to use as a parent. A question cannot depend on itself or on its descendants.</p>}
+    {expression && <>
+      <RuleNode expression={expression} questions={practice.questions} candidates={candidates} used={used} onChange={set} />
+      {(expression.kind === "parent" || expression.kind === "not") && <button type="button" className={actionClass} disabled={!available.length}
+        onClick={() => set({ kind: "and", conditions: [expression, { kind: "parent", code: available[0].code, predicate: { kind: "answered" } }] })}>Add parent rule</button>}
+      <p className="text-xs leading-5 text-gray-500">Each parent can appear once. A hidden or unanswered parent is still waiting for an answer, even inside a NOT rule. Hidden default scores do not count as answers.</p>
+      <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-950">
+        <p className="font-semibold">Show when</p><p className="mt-1 [overflow-wrap:anywhere]">{branchingSummary(expression, practice.questions)}</p>
+      </div>
+      <fieldset className="space-y-3 rounded-lg border border-gray-200 p-4">
+        <legend className="px-1 text-sm font-semibold text-gray-800">When this question is hidden</legend>
+        <label className="flex items-start gap-2 text-sm text-gray-700">
+          <input type="checkbox" className="mt-0.5 rounded border-gray-300 text-blue-600" checked={question.hiddenScore != null}
+            onChange={event => onChange({ ...question, hiddenScore: event.target.checked ? 0 : undefined })} />Use a default score
+        </label>
+        {question.hiddenScore != null && <label className={`${labelClass} max-w-xs`}>Hidden question score
+          <input type="number" min={0} max={1} step="any" className={inputClass} value={Number.isFinite(question.hiddenScore) ? question.hiddenScore : ""}
+            onChange={event => onChange({ ...question, hiddenScore: event.target.value === "" ? NaN : Number(event.target.value) })} />
+        </label>}
+        <p className="text-xs leading-5 text-gray-500">{question.hiddenScore != null
+          ? "Use a score from 0 to 1. It counts toward aggregation, coverage, and score/state gating rules while hidden. It does not activate dependent questions."
+          : "Hidden questions are excluded from scores and coverage. Visible optional questions left unanswered still count toward coverage."}</p>
+      </fieldset>
+    </>}
+    {!!errors.length && <ul role="alert" className="list-disc space-y-1 pl-5 text-xs text-red-600">{errors.map(error => <li key={error}>{error}</li>)}</ul>}
+  </section>;
 }

@@ -1,3 +1,5 @@
+import { branchingIssues } from "../../../../lib/questionBranching.ts";
+import { branchingWouldCycle } from "./questionBranchingEditor.ts";
 import { scoreLimitIssues } from "./scoreLimits.ts";
 import { conditionalGatingIssues, gatingChildren } from "./conditionalGating.ts";
 import { dependencyConditionError } from "../../../../lib/questionDependencies.ts";
@@ -40,21 +42,7 @@ export function dependencyWouldCycle(
   questionCode: string,
   candidateParentCode: string
 ) {
-  const byCode = new Map(
-    practice.questions.map((question) => [
-      question.code.toLowerCase(),
-      question,
-    ])
-  );
-  const target = questionCode.toLowerCase();
-  let cursor: string | undefined = candidateParentCode.toLowerCase();
-  const seen = new Set<string>();
-  while (cursor) {
-    if (cursor === target || seen.has(cursor)) return true;
-    seen.add(cursor);
-    cursor = byCode.get(cursor)?.dependsOnQuestionCode?.toLowerCase();
-  }
-  return false;
+  return branchingWouldCycle(practice.questions, questionCode, candidateParentCode);
 }
 
 export function validateDocument(
@@ -331,6 +319,11 @@ export function validateDocument(
             message: `${practice.name || `Practice ${practiceIndex + 1}`} needs a question.`,
             selection: practiceSelection,
           });
+        }
+        for (const message of branchingIssues(practice.questions, practice.evidenceRequirements)) {
+          const question = practice.questions.find(candidate => message.startsWith(`${candidate.code}:`));
+          add({ step: "structure", severity: "error", message, selection: practiceSelection,
+            ...(question && { questionKey: question.clientKey, field: `question-${question.clientKey}-dependency` }) });
         }
         const requirements = practice.evidenceRequirements ?? [];
         if (requirements.length > 50 || requirements.some(item => !validCode(item.code) || !item.name.trim()

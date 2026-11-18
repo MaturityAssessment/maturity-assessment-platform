@@ -10,7 +10,7 @@ import {
 } from "./assessmentEvidence.ts";
 import type { AssessmentEvidenceByField } from "./assessmentEvidence.ts";
 
-import { dependencyMatches } from "../../lib/questionDependencies.ts";
+import { resolveQuestionVisibility } from "../../lib/questionBranching.ts";
 import { getSingleChoiceIndex } from "./singleChoiceResponse.ts";
 
 export function getFieldName(step: AssessmentPracticeStep, question: Question) {
@@ -68,32 +68,8 @@ export function isDependentQuestionDisabled(
   step: AssessmentPracticeStep,
   question: Question,
   formData: AssessmentData,
-  visiting = new Set<Question>()
 ) {
-  if (visiting.has(question)) return true;
-  visiting.add(question);
-  const hasDependency =
-    question.dependsOnQuestionId != null ||
-    Boolean(question.dependsOnQuestionCode?.trim());
-  if (!hasDependency) return false;
-
-  const parentById =
-    question.dependsOnQuestionId == null
-      ? undefined
-      : step.practice.questions.find(
-          (candidate) => candidate.id === question.dependsOnQuestionId
-        );
-  const parentQuestion =
-    parentById ??
-    step.practice.questions.find(
-      (candidate) =>
-        candidate.code?.toLowerCase() ===
-        question.dependsOnQuestionCode?.toLowerCase()
-    );
-  if (!parentQuestion || isDependentQuestionDisabled(step, parentQuestion, formData, visiting)) return true;
-
-  const parentFieldName = getFieldName(step, parentQuestion);
-  return !dependencyMatches(parentQuestion, question.dependencyCondition, formData[parentFieldName]);
+  return resolveQuestionVisibility(step.practice.questions, candidate => formData[getFieldName(step, candidate)]).get(question) !== true;
 }
 
 export function isPracticeRequiredComplete(
@@ -146,7 +122,8 @@ export function getPracticeCompletionIssues(
     missingEvidenceCount:
       missingRequiredAnswerCount === 0 && invalidAnswerCount === 0 &&
       enabledQuestions.length > 0
-        ? missingEvidenceRequirements(step.practice, evidenceFiles.get(getPracticeEvidenceField(step.practice.id))) : 0,
+        ? missingEvidenceRequirements(step.practice, evidenceFiles.get(getPracticeEvidenceField(step.practice.id)),
+            question => !isDependentQuestionDisabled(step, question, formData)) : 0,
   };
 }
 

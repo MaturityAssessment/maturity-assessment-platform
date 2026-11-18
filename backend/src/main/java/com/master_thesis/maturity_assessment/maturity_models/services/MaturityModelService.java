@@ -563,6 +563,8 @@ public class MaturityModelService {
                         dto.setPracticeId(question.getPractice().getId());
                 }
                 dto.setDependencyCondition(question.getDependencyCondition());
+                dto.setBranchingRule(question.getBranchingRule());
+                dto.setHiddenScore(question.getHiddenScore());
                 dto.setWeight(question.getWeight());
                 dto.setText(question.getText());
                 dto.setType(question.getType());
@@ -718,6 +720,8 @@ public class MaturityModelService {
                 // Don't set ID - let Hibernate generate new IDs for new entities
                 // This is important when creating new model versions
                 question.setDependencyCondition(dto.getDependencyCondition());
+                question.setBranchingRule(dto.getBranchingRule());
+                question.setHiddenScore(dto.getHiddenScore());
                 question.setCode(dto.getCode());
                 question.setSortOrder(sortOrder);
                 question.setWeight(dto.getWeight() != null ? dto.getWeight() : 1.0);
@@ -851,6 +855,8 @@ public class MaturityModelService {
                                                 editorQuestion.setHelp(question.getHelp());
                                                 editorQuestion.setDependsOnQuestionCode(question.getDependsOnQuestionCode());
                                                 editorQuestion.setDependencyCondition(question.getDependencyCondition());
+                                                editorQuestion.setBranchingRule(question.getBranchingRule());
+                                                editorQuestion.setHiddenScore(question.getHiddenScore());
                                                 editorQuestion.setRequired(question.getRequired());
                                                 editorQuestion.setAllowNotApplicable(question.getAllowNotApplicable());
                                                 editorQuestion.setNotApplicableScore(question.getNotApplicableScore());
@@ -959,6 +965,8 @@ public class MaturityModelService {
                                                 question.setHelp(editorQuestion.getHelp());
                                                 question.setDependsOnQuestionCode(editorQuestion.getDependsOnQuestionCode());
                                                 question.setDependencyCondition(editorQuestion.getDependencyCondition());
+                                                question.setBranchingRule(editorQuestion.getBranchingRule());
+                                                question.setHiddenScore(editorQuestion.getHiddenScore());
                                                 question.setRequired(editorQuestion.getRequired());
                                                 question.setAllowNotApplicable(editorQuestion.getAllowNotApplicable());
                                                 question.setNotApplicableScore(editorQuestion.getNotApplicableScore());
@@ -1133,6 +1141,7 @@ public class MaturityModelService {
                                         }
                                         validateEvidenceRequirements(practice, generateMissingCodes);
                                         validatePracticeDependencies(practice, generateMissingCodes);
+                                        com.master_thesis.maturity_assessment.maturity_models.services.QuestionBranching.validate(practice);
                                 }
                         }
                 }

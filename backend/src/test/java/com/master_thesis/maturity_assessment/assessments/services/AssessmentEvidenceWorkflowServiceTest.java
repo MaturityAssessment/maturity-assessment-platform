@@ -461,6 +461,32 @@ class AssessmentEvidenceWorkflowServiceTest {
         assertEquals(2, submitModel(model, List.of(report, policy)).getEvidence().size());
     }
 
+    @Test
+    void choiceIdentityControlsGroupedEvidenceEvenWhenParentOptionsHaveEqualScores() throws Exception {
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        org.springframework.test.util.ReflectionTestUtils.setField(assessmentService, "objectMapper", mapper);
+        org.springframework.test.util.ReflectionTestUtils.setField(assessmentService, "maturityModelRepository", maturityModelRepository);
+        org.mockito.Mockito.doCallRealMethod().when(assessmentService).responseValues(any());
+        var model = requiredEvidenceModel();
+        var practice = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        var parent = practice.getQuestions().getFirst();parent.setCode("Q1");parent.setType("multiple_choice");
+        parent.setChoiceOptions("[{\"id\":\"a\",\"label\":\"A\",\"score\":0.5},{\"id\":\"b\",\"label\":\"B\",\"score\":0.5}]");
+        var child = new Question();child.setId(31L);child.setCode("Q2");child.setType("boolean");child.setPractice(practice);child.setHiddenScore(0.5);
+        child.setBranchingRule(new com.master_thesis.maturity_assessment.maturity_models.models.BranchingRule(1,
+                mapper.readTree("{\"kind\":\"parent\",\"code\":\"Q1\",\"predicate\":{\"kind\":\"in\",\"values\":[\"b\"]}}")));
+        practice.setQuestions(List.of(parent,child));
+        var requirement = new com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement("report", "Report", "", true,
+                com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement.Format.ANY);
+        requirement.setQuestionCodes(List.of("Q2"));practice.setEvidenceRequirements(List.of(requirement));
+        var request = request(Map.of(RESPONSE_KEY, 0.5));request.getQuestionResponses().get(RESPONSE_KEY).setChoiceIndex(1);
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        when(assessmentService.createAssessment(request,user)).thenReturn(savedAssessment);
+        when(evidenceService.synchronizeEvidence(eq(ASSESSMENT_ID),eq(MODEL_ID),eq(user),any(),any(),any(),eq(true))).thenReturn(List.of());
+        assertThrows(ResponseStatusException.class, () -> workflowService.submitAssessment(request,user,List.of(),List.of(),List.of(),true));
+        request.getQuestionResponses().get(RESPONSE_KEY).setChoiceIndex(0);
+        assertEquals(List.of(),workflowService.submitAssessment(request,user,List.of(),List.of(),List.of(),true).getEvidence());
+    }
+
     private AssessmentResponse submitModel(MaturityModel model, List<EvidenceDTO> items) throws Exception {
         AssessmentRequest request = request(Map.of());
         when(assessmentService.createAssessment(request, user)).thenReturn(savedAssessment);

@@ -1,3 +1,4 @@
+import { rewritePracticeBranchingReferences } from "../../../../lib/questionBranching.ts";
 import type {
   AggregationRule,
   MaturityLevel,
@@ -281,7 +282,9 @@ export function hydrateDocument(
             ? { ...question, dependencyCondition: { type: "boolean" as const, answers: [true] } } : question;
         });
         const questions = renumberSiblingCodes(practice.questions, "Q");
-        practice.questions = questions.items;
+        const rewritten = rewritePracticeBranchingReferences(practice, { ...practice, questions: questions.items });
+        practice.questions = rewritten.questions;
+        practice.evidenceRequirements = rewritten.evidenceRequirements;
       }
     }
   }

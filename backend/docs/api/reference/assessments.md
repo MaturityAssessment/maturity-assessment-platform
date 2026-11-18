@@ -536,6 +536,12 @@ percentages (0–100). `elementResults` stores the evaluated snapshot for every
 visible question, practice, module, dimension and global result, with public
 location codes, the question's `responseKey`, `name`, `state`, nullable
 `normalizedScore` (0–1), `includedCount`, and `coverage`.
+Participating question rows also expose nullable `visible` and `scoreSource`
+(`respondent` or `default`). Hidden questions with a configured default have
+`visible: false`, a computed score, and no respondent evaluation row. They count
+in aggregation/completion and score/state gates. Hidden questions without a
+default are omitted. Visible optional unanswered questions retain their completion
+weight. See [question branching](maturity-models.md#question-branching-v59).
 
 A `withheld` result has null score and maturity-level fields. Do not interpret
 those nulls as zero or Level 1. Withheld scores are excluded from aggregation;

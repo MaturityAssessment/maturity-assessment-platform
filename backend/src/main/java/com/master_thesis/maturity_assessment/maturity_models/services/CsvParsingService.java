@@ -518,6 +518,14 @@ public class CsvParsingService {
                 try { questionDTO.setDependencyCondition(objectMapper.readValue(row.getDependencyCondition(), com.master_thesis.maturity_assessment.maturity_models.dto.DependencyCondition.class)); }
                 catch (Exception exception) { errors.add("Row " + rowNumber + ": invalid dependencyCondition JSON"); }
             }
+            if (!isBlank(row.getBranchingRule())) {
+                try { questionDTO.setBranchingRule(objectMapper.readValue(row.getBranchingRule(), com.master_thesis.maturity_assessment.maturity_models.models.BranchingRule.class)); }
+                catch (Exception exception) { errors.add("Row " + rowNumber + ": invalid branchingRule JSON"); }
+            }
+            if (!isBlank(row.getQuestionHiddenScore())) {
+                try { questionDTO.setHiddenScore(Double.parseDouble(row.getQuestionHiddenScore().trim())); }
+                catch (Exception exception) { errors.add("Row " + rowNumber + ": invalid questionHiddenScore"); }
+            }
             questionDTO.setWeight(questionWeight);
             questionDTO.setText(row.getQuestionText());
             String qType = row.getQuestionType().toLowerCase(Locale.ROOT);

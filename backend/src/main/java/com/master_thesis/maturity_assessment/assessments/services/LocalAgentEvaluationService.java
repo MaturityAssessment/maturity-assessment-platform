@@ -1,5 +1,7 @@
 package com.master_thesis.maturity_assessment.assessments.services;
 
+import com.master_thesis.maturity_assessment.maturity_models.services.QuestionDependencies;
+import com.master_thesis.maturity_assessment.maturity_models.services.QuestionBranching;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,9 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StreamUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
-
 import com.master_thesis.maturity_assessment.maturity_models.services.NotApplicableAnswers;
-
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -93,10 +93,29 @@ public class LocalAgentEvaluationService {
             );
         }
 
-        Map<String, Object> responses = readQuestionResponses(assessment.getId());
+        var responseRows = questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(assessment.getId());
+        Map<String, Object> responses = readQuestionResponses(responseRows);
+        Map<Long, Boolean> visibleQuestions = new HashMap<>();
+        Map<Long, QuestionDependencies.Answer> branchingAnswers = new HashMap<>();
+        for (var row : responseRows)
+            branchingAnswers.put(row.getQuestionId(), new QuestionDependencies.Answer(
+                    row.getResponse() == null ? null : objectMapper.convertValue(row.getResponse(), Object.class), row.getChoiceIndex()));
+        for (var dimension : safeList(model.getDimensions())) for (var module : safeList(dimension.getModules()))
+            for (var practice : safeList(module.getPractices()))
+                QuestionBranching.resolve(safeList(practice.getQuestions()), branchingAnswers::get, objectMapper)
+                        .forEach((question, visible) -> {
+                            visibleQuestions.put(question.getId(), visible);
+                            if (!visible) responses.remove(buildResponseKey(dimension, module,
+                                    practice.getId() == null ? nullToEmpty(practice.getName()) : practice.getId().toString(), question));
+                        });
         List<Evidence> evidenceItems = evidenceRepository.findByAssessmentIdOrderByIdAsc(assessment.getId()).stream()
                 .filter(item -> item.getPractice() == null || item.getPractice().getModule() == null
                         || !Boolean.FALSE.equals(item.getPractice().getModule().getVisible()))
+                .filter(item -> item.getPractice() == null || item.getRequirementCode() == null
+                        || safeList(item.getPractice().getEvidenceRequirements()).stream()
+                            .filter(requirement -> item.getRequirementCode().equals(requirement.getCode()))
+                            .allMatch(requirement -> com.master_thesis.maturity_assessment.maturity_models.services.EvidenceApplicability.active(requirement,
+                                    item.getPractice(), question -> Boolean.TRUE.equals(visibleQuestions.get(question.getId())))))
                 .toList();
         int maxLevel = Math.max(2, maturityScoringService.resolveMaxLevelNumber(model.getLevels()));
 
@@ -644,10 +663,9 @@ public class LocalAgentEvaluationService {
         return Map.of("type", "string");
     }
 
-    private Map<String, Object> readQuestionResponses(Long assessmentId) {
+    private Map<String, Object> readQuestionResponses(List<QuestionEvaluation> rows) {
         Map<String, Object> responses = new LinkedHashMap<>();
-        for (QuestionEvaluation row :
-                questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(assessmentId)) {
+        for (QuestionEvaluation row : rows) {
             if (row.getResponseKey() != null && row.getResponse() != null) {
                 responses.put(
                         row.getResponseKey(),

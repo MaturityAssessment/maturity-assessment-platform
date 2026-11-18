@@ -256,7 +256,7 @@ export default function AssessmentStep({
               className={cn(
                 "absolute inset-0 h-full min-h-0 overflow-y-auto overscroll-y-contain bg-gray-50 px-1 pb-8 pt-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-300 hover:scrollbar-thumb-slate-400 sm:px-2 sm:pb-10 sm:pr-3",
                 animatePracticeTransition &&
-                  "transform-gpu transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+                  "transform-gpu transition-transform duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
                 practiceIndex < visiblePracticeIndex && "-translate-y-full",
                 practiceIndex === visiblePracticeIndex && "translate-y-0",
                 practiceIndex > visiblePracticeIndex && "translate-y-full"

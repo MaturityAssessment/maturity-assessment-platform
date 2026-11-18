@@ -165,3 +165,19 @@ test("N/A is optional, mutually exclusive with normal answers, and respects revi
     assert.equal(locked.props.onClear, undefined);
   }
 });
+
+test("multiple-selection N/A replaces all selected options and removing N/A does not restore them", () => {
+  const calls: unknown[] = [];
+  const configured = { ...question, type: "multiple_selection", allowNotApplicable: true, notApplicableScore: 0.65,
+    choices: [{ id: "a", label: "A", score: 0.5, rawValue: 1 }, { id: "b", label: "B", score: 1, rawValue: 1 }] };
+  const initial = card({ question: configured, value: [0, 1], onInputChange: (...args: unknown[]) => calls.push(args) });
+  initial.props.children.props.children[1].props.children[0].props.onChange({ target: { checked: true } });
+  assert.deepEqual(calls.pop(), ["D_M_10_1", { notApplicable: true }]);
+  const selected = card({ question: configured, value: { notApplicable: true }, onInputChange: (...args: unknown[]) => calls.push(args) });
+  const [options, na] = selected.props.children.props.children;
+  assert.equal(options.props.value, undefined);
+  na.props.children[0].props.onChange({ target: { checked: false } });
+  assert.deepEqual(calls.pop(), ["D_M_10_1", undefined]);
+  options.props.onChange([1]);
+  assert.deepEqual(calls.pop(), ["D_M_10_1", [1]]);
+});

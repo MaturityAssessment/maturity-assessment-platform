@@ -67,6 +67,8 @@ public class CsvMaturityModelRow {
     private String questionCode;
     private String dependsOnQuestionCode;
     private String dependencyCondition;
+    private String branchingRule;
+    private String questionHiddenScore;
     private String questionText;
     private String questionType;
     private String questionHelp;

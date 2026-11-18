@@ -1,5 +1,6 @@
 "use client";
 
+import { evidenceIndicatorActive } from "../../lib/questionBranching.ts";
 import type {
   AssessmentEvidenceInputItem,
   AssessmentEvidenceMetadataItem,
@@ -210,9 +211,9 @@ export function acceptsEvidenceType(requirement: EvidenceRequirement, type: Asse
     || requirement.format === (type === "link" ? "URL" : type.toUpperCase());
 }
 
-export function missingEvidenceRequirements(practice: Practice, items: AssessmentEvidenceInputItem[] = []) {
+export function missingEvidenceRequirements(practice: Practice, items: AssessmentEvidenceInputItem[] = [], visible: (question: Practice["questions"][number]) => boolean = () => true) {
   if (practice.evidenceRequirements?.length) {
-    return practice.evidenceRequirements.filter(requirement => requirement.required && !items.some(item =>
+    return practice.evidenceRequirements.filter(requirement => requirement.required && (requirement.questionCodes == null || evidenceIndicatorActive(requirement, practice.questions, visible)) && !items.some(item =>
       item.requirementCode === requirement.code && isValidEvidenceItem(item) && acceptsEvidenceType(requirement, item.type)
       && (item.collectedAt ? isValidCollectedAt(item.collectedAt) : Boolean(item.evidenceId && !item.file)))).length;
   }

@@ -50,6 +50,13 @@ public class Question {
     @Column(name = "dependency_condition", columnDefinition = "TEXT")
     private com.master_thesis.maturity_assessment.maturity_models.dto.DependencyCondition dependencyCondition;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "branching_rule", columnDefinition = "jsonb")
+    private BranchingRule branchingRule;
+
+    @Column(name = "hidden_score")
+    private Double hiddenScore;
+
     @Column(name = "required", nullable = false, columnDefinition = "boolean default false")
     private Boolean required = false;
 

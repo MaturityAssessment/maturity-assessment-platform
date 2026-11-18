@@ -96,7 +96,7 @@ public class MaturityModelExcelService {
             "questionHelp", "questionRequired", "questionRanges",
             "questionLikertScaleMax", "questionScalePointCount", "questionScaleMinLabel",
             "questionScaleMaxLabel", "questionScaleHighPointIsMaximum",
-            "questionRangeMin", "questionRangeMax", "questionRangeHighValueIsMaximum", "questionBooleanCorrectAnswer", "dependencyCondition", "questionAllowNotApplicable", "questionNotApplicableScore"
+            "questionRangeMin", "questionRangeMax", "questionRangeHighValueIsMaximum", "questionBooleanCorrectAnswer", "dependencyCondition", "questionAllowNotApplicable", "questionNotApplicableScore", "branchingRule", "questionHiddenScore"
     );
 
     /** Questions sheet columns written by {@link #exportMaturityModelToXlsx}. */
@@ -108,7 +108,7 @@ public class MaturityModelExcelService {
                     Stream.of("questionScalePointCount", "questionScaleMinLabel", "questionScaleMaxLabel",
                             "questionScaleHighPointIsMaximum", "questionHelp",
                             "questionRequired", "questionRangeMin", "questionRangeMax",
-                            "questionRangeHighValueIsMaximum", "questionRanges", "questionBooleanCorrectAnswer", "dependencyCondition", "questionAllowNotApplicable", "questionNotApplicableScore"))
+                            "questionRangeHighValueIsMaximum", "questionRanges", "questionBooleanCorrectAnswer", "dependencyCondition", "questionAllowNotApplicable", "questionNotApplicableScore", "branchingRule", "questionHiddenScore"))
     ).toList();
 
     private final CsvParsingService csvParsingService;
@@ -289,6 +289,8 @@ public class MaturityModelExcelService {
                 m.setQuestionCode(q.get("questionCode"));
                 m.setDependsOnQuestionCode(q.get("dependsOnQuestionCode"));
                 m.setDependencyCondition(q.get("dependencyCondition"));
+                m.setBranchingRule(q.get("branchingRule"));
+                m.setQuestionHiddenScore(q.get("questionHiddenScore"));
                 m.setQuestionText(q.get("questionText"));
                 m.setQuestionType(q.get("questionType"));
                 m.setQuestionHelp(q.get("questionHelp"));
@@ -875,10 +877,14 @@ public class MaturityModelExcelService {
                             condition = com.master_thesis.maturity_assessment.maturity_models.dto.DependencyCondition.affirmative();
                         }
                         row.createCell(20).setCellValue(writeJson(condition));
+                        row.createCell(23).setCellValue(writeJson(q.getBranchingRule()));
+                        if (q.getHiddenScore() != null) row.createCell(24).setCellValue(q.getHiddenScore());
                         row.createCell(21).setCellValue(Boolean.TRUE.equals(q.getAllowNotApplicable()));
                         if (Boolean.TRUE.equals(q.getAllowNotApplicable()) && q.getNotApplicableScore() != null) {
                             row.createCell(22).setCellValue(q.getNotApplicableScore());
                         }
+                        for (int column = 0; column < QUESTION_EXPORT_HEADERS.size(); column++)
+                            if (row.getCell(column) == null) row.createCell(column).setCellValue("");
                     }
                 }
             }

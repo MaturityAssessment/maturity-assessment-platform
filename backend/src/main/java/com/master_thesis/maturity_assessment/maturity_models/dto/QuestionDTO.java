@@ -1,7 +1,7 @@
 package com.master_thesis.maturity_assessment.maturity_models.dto;
 
+import com.master_thesis.maturity_assessment.maturity_models.models.BranchingRule;
 import lombok.Data;
-
 import java.util.List;
 
 @Data
@@ -18,6 +18,8 @@ public class QuestionDTO {
     private Long dependsOnQuestionId; // Reference to parent question ID (numeric) within same practice
     private String dependsOnQuestionCode; // Stable editor/API dependency reference
     private DependencyCondition dependencyCondition;
+    private BranchingRule branchingRule;
+    private Double hiddenScore;
     private Boolean required;
     private Boolean allowNotApplicable;
     private Double notApplicableScore;

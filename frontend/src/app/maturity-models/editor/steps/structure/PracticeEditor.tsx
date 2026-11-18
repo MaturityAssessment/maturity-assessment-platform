@@ -22,6 +22,8 @@ import type {
 import { validateDocument } from "../../model/editorValidation";
 import QuestionEditor from "./QuestionEditor";
 import QuestionReorderList from "./QuestionReorderList";
+import QuestionDependenciesPreview from "./QuestionDependenciesPreview";
+import { editableBranching, parentCodes } from "../../model/questionBranchingEditor";
 import ItemHeader from "./ItemHeader";
 import { TEXT_LIMITS } from "@/config/textLimits";
 import AggregationRuleField from "../../components/AggregationRuleField";
@@ -43,6 +45,7 @@ export default function PracticeEditor({
   commands: StructureEditorCommands;
 }) {
   const [selectedQuestionKey, setSelectedQuestionKey] = useState<string | null>(null);
+  const [questionEditorSection, setQuestionEditorSection] = useState<"details" | "dependencies">("details");
   const [questionCount, setQuestionCount] = useState(practice.questions.length);
   if (questionCount !== practice.questions.length) {
     setQuestionCount(practice.questions.length);
@@ -63,11 +66,11 @@ export default function PracticeEditor({
   const deleteQuestion = (question: ModelEditorQuestion) => {
     const dependents = practice.questions.filter(
       (candidate) =>
-        candidate.dependsOnQuestionCode?.toLowerCase() ===
-        question.code.toLowerCase()
+        parentCodes(editableBranching(candidate, practice.questions)).some(code => code.toLowerCase() === question.code.toLowerCase())
     );
-    if (dependents.length && !window.confirm(
-      `Deleting this question will remove ${dependents.length} dependency link${dependents.length === 1 ? "" : "s"}. Continue?`
+    const evidenceLinks = practice.evidenceRequirements?.filter(requirement => requirement.questionCodes?.some(code => code.toLowerCase() === question.code.toLowerCase())).length ?? 0;
+    if ((dependents.length || evidenceLinks) && !window.confirm(
+      `This question is used by ${dependents.length} question dependency rule(s) and ${evidenceLinks} evidence group(s). Legacy links will be removed; branching rules and evidence groups will need updating before saving. Delete this question?`
     )) return;
     commands.deleteQuestion(practice.clientKey, question.clientKey);
     setSelectedQuestionKey(null);
@@ -173,7 +176,7 @@ export default function PracticeEditor({
             id: "evidence",
             label: "Evidence",
             count: practice.evidenceRequirements?.length ?? 0,
-            content: <PracticeEvidenceEditor requirements={practice.evidenceRequirements ?? []}
+            content: <PracticeEvidenceEditor requirements={practice.evidenceRequirements ?? []} questions={practice.questions}
               onChange={evidenceRequirements => update({ ...practice, evidenceRequirements, requiresEvidence: evidenceRequirements.some(item => item.required) })} />,
           },
           {
@@ -221,6 +224,12 @@ export default function PracticeEditor({
             ),
           },
           {
+            id: "dependencies",
+            label: "Dependencies",
+            count: practice.questions.filter(question => editableBranching(question, practice.questions)).length,
+            content: <QuestionDependenciesPreview practice={practice} onSelect={key => { setQuestionEditorSection("dependencies"); setSelectedQuestionKey(key); }} />,
+          },
+          {
             id: "questions",
             label: "Questions",
             issueCount: questionIssues.length,
@@ -232,6 +241,7 @@ export default function PracticeEditor({
                     ? "Drag a question number or use its arrows to reorder. Set relative weights on the right."
                     : "Open a question to edit it. Drag its number or use the arrows to reorder."} />
                   <button type="button" onClick={() => {
+                    setQuestionEditorSection("details");
                     setSelectedQuestionKey("__new__");
                     commands.addQuestion(practice.clientKey);
                   }} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500">
@@ -243,7 +253,7 @@ export default function PracticeEditor({
                     const question = practice.questions.find((item) => item.clientKey === questionKey);
                     if (question) commands.updateQuestion(practice.clientKey, questionKey, { ...question, weight });
                   } : undefined}
-                  onSelect={setSelectedQuestionKey}
+                  onSelect={key => { setQuestionEditorSection("details"); setSelectedQuestionKey(key); }}
                   onDelete={deleteQuestion}
                   onReorder={(activeKey, overKey) => commands.reorderQuestion(practice.clientKey, activeKey, overKey)} />
               </>
@@ -253,6 +263,7 @@ export default function PracticeEditor({
       />
       {selectedQuestion && (
         <QuestionEditor question={selectedQuestion} issues={questionIssues.filter((issue) => issue.questionKey === selectedQuestion.clientKey)}
+          initialSection={questionEditorSection}
           questionIndex={practice.questions.findIndex((question) => question.clientKey === selectedQuestion.clientKey)}
           practice={practice} maxLevel={document.levels.length}
           onClose={() => setSelectedQuestionKey(null)}

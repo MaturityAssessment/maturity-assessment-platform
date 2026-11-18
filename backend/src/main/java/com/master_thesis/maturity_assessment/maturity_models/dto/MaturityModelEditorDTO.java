@@ -1,10 +1,9 @@
 package com.master_thesis.maturity_assessment.maturity_models.dto;
 
+import com.master_thesis.maturity_assessment.maturity_models.models.BranchingRule;
 import com.master_thesis.maturity_assessment.maturity_models.models.AggregationRule;
-
 import lombok.Data;
 import com.master_thesis.maturity_assessment.maturity_models.models.EvidenceRequirement;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -100,6 +99,8 @@ public class MaturityModelEditorDTO {
         private String help;
         private String dependsOnQuestionCode;
         private DependencyCondition dependencyCondition;
+        private BranchingRule branchingRule;
+        private Double hiddenScore;
         private Boolean required;
         private Boolean allowNotApplicable;
         private Double notApplicableScore;

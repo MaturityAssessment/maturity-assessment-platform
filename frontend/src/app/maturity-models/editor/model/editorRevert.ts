@@ -1,3 +1,4 @@
+import { mapBranchingReferences } from "../../../../lib/questionBranching.ts";
 import { encodeConditionalReferences, decodeConditionalReferences } from "./conditionalGating.ts";
 import { MODULE_BADGE_REFERENCE_FIELDS } from "./moduleBadges.ts";
 import { moduleRelationshipIssues, normalizeModuleRelationships, synchronizeModuleRelationships, SYMMETRIC_RELATION_FIELDS } from "./moduleRelationships.ts";
@@ -40,6 +41,10 @@ function encodeReferences(items: Item[]) {
     }
     if ("dependsOnQuestionCode" in item && item.dependsOnQuestionCode) item.dependsOnQuestionCode = resolve(item.dependsOnQuestionCode, items);
 
+    if ("questions" in item) {
+      for (const question of item.questions) if (question.branchingRule) question.branchingRule = mapBranchingReferences(question.branchingRule, code => resolve(code, item.questions)!);
+      for (const requirement of item.evidenceRequirements ?? []) if (requirement.questionCodes) requirement.questionCodes = requirement.questionCodes.map(code => resolve(code, item.questions)!);
+    }
     encodeReferences(children(item));
   }
 }
@@ -56,6 +61,11 @@ function finishReferences(items: Item[], deleted: Set<string>, depth = 0) {
   };
   for (const item of items) {
     finishReferences(children(item), deleted, depth + 1);
+    if ("questions" in item) {
+      const reference = (code: string) => resolve(code, item.questions) ?? `missing:${code}`;
+      for (const question of item.questions) if (question.branchingRule) question.branchingRule = mapBranchingReferences(question.branchingRule, reference);
+      for (const requirement of item.evidenceRequirements ?? []) if (requirement.questionCodes) requirement.questionCodes = requirement.questionCodes.map(reference);
+    }
     if ("practices" in item) {
       item.prerequisiteModuleCodes = (item.prerequisiteModuleCodes ?? []).map(code => resolve(code, items) ?? code);
       for (const field of [...SYMMETRIC_RELATION_FIELDS, ...MODULE_BADGE_REFERENCE_FIELDS]) item[field] = (item[field] ?? []).flatMap(code => { const target = resolve(code, items); return target ? [target] : []; });

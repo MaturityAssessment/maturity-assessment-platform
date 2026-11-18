@@ -1,4 +1,6 @@
 import { gatingIndex, mapGatingReferences } from "./conditionalGating.ts";
+import { mapBranchingReferences } from "../../../../lib/questionBranching.ts";
+import { branchingSummary } from "./questionBranchingEditor.ts";
 import type { MaturityModelEditorDocument, ModelEditorDimension, ModelEditorModule, ModelEditorPractice, ModelEditorQuestion } from "@/api/types";
 import { codeSuffix } from "./editorCodes.ts";
 
@@ -26,7 +28,7 @@ const locationPath = (location: ChangeLocation[]) => location.map(item => `${ite
 const title = (item: Item) => `${item.code} — ${("text" in item ? item.text : item.name) || "Untitled"}`;
 const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const human = (value: string) => value.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().replace(/^./, c => c.toUpperCase());
-const labels: Record<string, string> = { allowNotApplicable: "Allow N/A", notApplicableScore: "N/A score", mandatoryBadge: "Mandatory badge", reinforcesModuleCodes: "Reinforces", substitutesModuleCodes: "Substitutes", coRequisiteModuleCodes: "Co-requisite modules", mutexModuleCodes: "Mutually exclusive modules", prerequisiteModuleCodes: "Prerequisite modules", visible: "Visible in assessments", text: "Question text", help: "Help text", autoEvaluated: "Automatic evaluation", domainId: "Domain", aggregationRule: "Aggregation", requiresEvidence: "Evidence required", evidenceRequirements: "Evidence requirements", instructions: "Acceptance criteria", format: "Accepted formats", frequency: "Frequency", maxAgeDays: "Maximum evidence age (days)", dependsOnQuestionCode: "Depends on question", dependencyCondition: "Dependency condition", mappingRules: "Maturity mapping", completionGatingMetadata: "Completion rule details", scoreLimits: "Score limits", conditionalGatingRules: "Conditional gating rules", childStateGatingRules: "Child-state gating rules", minimumCoverage: "Minimum coverage (%)", minimumIncludedCount: "Minimum included count (%)", changelogMarkdown: "Release notes" };
+const labels: Record<string, string> = { branchingRule: "Visibility rules", hiddenScore: "Hidden question score", questionCodes: "Linked questions", allowNotApplicable: "Allow N/A", notApplicableScore: "N/A score", mandatoryBadge: "Mandatory badge", reinforcesModuleCodes: "Reinforces", substitutesModuleCodes: "Substitutes", coRequisiteModuleCodes: "Co-requisite modules", mutexModuleCodes: "Mutually exclusive modules", prerequisiteModuleCodes: "Prerequisite modules", visible: "Visible in assessments", text: "Question text", help: "Help text", autoEvaluated: "Automatic evaluation", domainId: "Domain", aggregationRule: "Aggregation", requiresEvidence: "Evidence required", evidenceRequirements: "Evidence requirements", instructions: "Acceptance criteria", format: "Accepted formats", frequency: "Frequency", maxAgeDays: "Maximum evidence age (days)", dependsOnQuestionCode: "Depends on question", dependencyCondition: "Dependency condition", mappingRules: "Maturity mapping", completionGatingMetadata: "Completion rule details", scoreLimits: "Score limits", conditionalGatingRules: "Conditional gating rules", childStateGatingRules: "Child-state gating rules", minimumCoverage: "Minimum coverage (%)", minimumIncludedCount: "Minimum included count (%)", changelogMarkdown: "Release notes" };
 function display(value: unknown): string {
   if (value === undefined || value === null || value === "") return "Not provided";
   if (typeof value === "boolean") return value ? "Yes" : "No";
@@ -61,6 +63,17 @@ function fields(item: Item, siblings: Item[], references?: Map<string, Item>): F
       const target = reference(q?.dependsOnQuestionCode, siblings);
       value = target?.clientKey ?? value;
       text = target ? title(target) : display(original);
+    }
+    if (key === "branchingRule" && q?.branchingRule) {
+      value = mapBranchingReferences(q.branchingRule, code => reference(code, siblings)?.clientKey ?? code);
+      text = branchingSummary(q.branchingRule.when, siblings.filter((sibling): sibling is ModelEditorQuestion => "type" in sibling));
+    }
+    if (key === "evidenceRequirements" && "questions" in item) {
+      const requirements = item.evidenceRequirements ?? [];
+      value = requirements.map(requirement => ({ ...requirement,
+        ...(requirement.questionCodes && { questionCodes: requirement.questionCodes.map(code => reference(code, item.questions)?.clientKey ?? code).sort() }),
+      }));
+      text = display(requirements);
     }
     if (key === "dependencyCondition" && q?.dependencyCondition?.type === "multiple_choice") {
       const parent = reference(q.dependsOnQuestionCode, siblings);

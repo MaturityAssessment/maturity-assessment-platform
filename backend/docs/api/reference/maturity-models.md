@@ -399,8 +399,8 @@ These settings affect results, not which REST endpoints are available.
 ## Question types
 
 Common question fields are `code`, `weight`, `text`, `type`, `help`,
-`dependsOnQuestionCode`, `dependencyCondition`, `required`, `allowNotApplicable`
-and `notApplicableScore`.
+`dependsOnQuestionCode`, `dependencyCondition`, `branchingRule`, `hiddenScore`,
+`required`, `allowNotApplicable` and `notApplicableScore`.
 
 `allowNotApplicable` defaults to false. Enabling it adds an N/A answer and requires
 a finite `notApplicableScore` between 0 and 1, including zero. The configured
@@ -503,6 +503,69 @@ Scores for objective questions normalize to 0–1 according to their configurati
 Open answers need reviewer scores for manual evaluation. Maturity levels and
 overall/dimension results are calculated by the backend; clients should use the
 returned results instead of deriving them from a fixed five-level formula.
+
+## Question branching (V59)
+
+Questions may use `branchingRule` instead of a legacy dependency. This versioned
+answer-only expression supports multiple parents within one practice:
+
+```json
+{
+  "version": 1,
+  "when": {
+    "kind": "and",
+    "conditions": [
+      {"kind":"parent","code":"Q1","predicate":{"kind":"answered"}},
+      {"kind":"not","condition":{"kind":"parent","code":"Q2","predicate":{"kind":"in","values":[true]}}}
+    ]
+  }
+}
+```
+
+Parent codes are local question codes, matched case-insensitively, as for existing
+dependencies. Each parent appears once. AND/OR use `conditions`; NOT uses one
+`condition`. A parent predicate is either `answered` (a valid answer exists) or
+`in` with a nonempty accepted-values array. Booleans use JSON booleans;
+scale/numeric/percentage answers use integers within the configured range; text
+uses exact case-sensitive strings; choice answers use stable option IDs. For
+multiple selection **all** listed IDs must be selected, and extras are allowed.
+If the accepted list also contains N/A, it is an alternative to those option IDs.
+A respondent selecting N/A replaces ordinary selections; only N/A and its configured score apply.
+A permitted scored N/A matches `{"notApplicable":true}` or the presence predicate.
+Scores and reviewer adjustments do not determine answer identity.
+
+Missing or hidden parents produce an unknown predicate. NOT preserves unknown;
+AND is false if any operand is false; OR is true if any operand is true; otherwise
+unknown propagates. Only true presents the question. Parentless questions remain
+visible. Conditions cannot reference scores, evidence, result states, completion
+or other practices. Backend writes reject cycles across legacy/new dependencies,
+self-reference, repeated parents, invalid accepted values, dangling references,
+and simultaneous legacy/new conditions with `400 INVALID_QUESTION_BRANCHING`
+(or the existing dependency error when a legacy field is invalid). Limits are
+200 expression nodes, depth 20, 100 conditions per AND/OR and 1000 accepted values.
+
+`hiddenScore` is an optional finite normalized number from 0 to 1, including zero,
+on a question with branching or a legacy dependency. When hidden, the question
+uses that score and its normal weight in aggregation and completion metrics.
+Its result is computed and available to score/state gates. It has no answer and
+cannot activate a descendant through answer predicates. When visible, the default
+is ignored. Hidden questions without a default leave scores, completion denominators
+and gate selections. Visible unanswered optional questions retain their completion
+weight. Existing scored N/A remains allowed on required questions; hidden defaults
+are never persisted as respondent answer rows. A hidden module excludes defaults.
+
+Evidence indicators may add `questionCodes`, a nonempty array of distinct local
+question codes. An indicator is active when any linked question is visible,
+regardless of whether it is answered. Inactive indicators impose no evidence
+requirement and are omitted from freshness summaries. Without `questionCodes`,
+an indicator retains whole-practice scope. Empty/dangling groups are invalid;
+renames must update references in the same document. Uploads and their question
+references are retained when an indicator becomes inactive.
+
+Both DTO families, model versions, and workbook round trips preserve these fields.
+Questions sheets append optional `branchingRule` JSON and `questionHiddenScore`
+columns; indicator groups are carried inside `practiceEvidenceRequirements` JSON.
+Older workbooks default to no new branching/default/group configuration.
 
 ## Model summary
 

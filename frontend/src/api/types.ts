@@ -39,6 +39,13 @@ export type DependencyCondition =
   | { type: "multiple_choice"; optionIds: string[] }
   | { type: "likert"; points: number[] };
 
+export type BranchingExpression =
+  | { kind: "parent"; code: string; predicate: { kind: "answered" } | { kind: "in"; values: Array<string | number | boolean | { notApplicable: true }> } }
+  | { kind: "and" | "or"; conditions: BranchingExpression[] }
+  | { kind: "not"; condition: BranchingExpression };
+
+export interface BranchingRule { version: 1; when: BranchingExpression }
+
 export interface QuestionChoice {
   id?: string;
   label: string;
@@ -66,6 +73,8 @@ export interface Question {
   dependsOnQuestionId?: number; // Reference to parent question ID (numeric) within same practice
   dependsOnQuestionCode?: string;
   dependencyCondition?: DependencyCondition | null;
+  branchingRule?: BranchingRule | null;
+  hiddenScore?: number | null;
   required?: boolean; // Whether this question must be answered
   /** Boolean answer that receives normalized score 1; the other receives 0. */
   booleanCorrectAnswer?: boolean;
@@ -88,6 +97,8 @@ export interface Question {
 }
 
 export interface EvidenceRequirement {
+  /** Local question codes; omitted means whole-practice scope. */
+  questionCodes?: string[] | null;
   code: string;
   name: string;
   instructions: string;
@@ -618,6 +629,8 @@ export interface ModelEditorQuestion {
   help: string;
   dependsOnQuestionCode?: string;
   dependencyCondition?: DependencyCondition | null;
+  branchingRule?: BranchingRule | null;
+  hiddenScore?: number | null;
   required: boolean;
   booleanCorrectAnswer: boolean;
   allowNotApplicable?: boolean;
@@ -753,6 +766,8 @@ export interface RefreshTokenRequest {
 
 /** Stored evaluation snapshot; completion metrics are percentages and scores use 0..1. */
 export interface AssessmentElementResult {
+  visible?: boolean | null;
+  scoreSource?: "respondent" | "default" | null;
   elementType: "question" | "practice" | "module" | "dimension" | "global";
   dimensionId: string | null;
   moduleCode: string | null;

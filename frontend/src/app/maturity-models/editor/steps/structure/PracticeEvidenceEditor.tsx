@@ -1,11 +1,12 @@
-import type { EvidenceRequirement } from "@/api/types";
+import type { EvidenceRequirement, ModelEditorQuestion } from "@/api/types";
 import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { inputClass, labelClass } from "../../components/FormFields";
 import { TEXT_LIMITS } from "@/config/textLimits";
 import { EVIDENCE_AGE_DEFAULTS, effectiveMaxAgeDays } from "@/app/assessment/evidenceLifecycle";
 
-export default function PracticeEvidenceEditor({ requirements, onChange }: {
+export default function PracticeEvidenceEditor({ requirements, questions = [], onChange }: {
   requirements: EvidenceRequirement[];
+  questions?: ModelEditorQuestion[];
   onChange: (requirements: EvidenceRequirement[]) => void;
 }) {
   const update = (index: number, patch: Partial<EvidenceRequirement>) =>
@@ -30,6 +31,32 @@ export default function PracticeEvidenceEditor({ requirements, onChange }: {
           onChange={event => update(index, { instructions: event.target.value })} />
         <span className="text-xs font-normal text-slate-500">Informational guidance for respondents and evaluators during manual review.</span>
       </label>
+      <section aria-label={`Evidence visibility for requirement ${index + 1}`} className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+        <label className={labelClass}>Evidence visibility
+          <select className={inputClass} value={item.questionCodes == null ? "practice" : "questions"}
+            onChange={event => update(index, { questionCodes: event.target.value === "practice" ? undefined : [] })}>
+            <option value="practice">Whole practice</option><option value="questions">Link to selected questions</option>
+          </select>
+        </label>
+        {item.questionCodes != null && <fieldset className="space-y-2">
+          <legend className="mb-2 text-xs font-semibold text-slate-700">Show when any of these questions is visible</legend>
+          <div className="max-h-60 space-y-2 overflow-y-auto">
+            {questions.map(question => <label key={question.clientKey} className="flex items-start gap-2 rounded-md border border-slate-200 bg-white p-2 text-sm text-slate-700">
+              <input type="checkbox" className="mt-0.5 rounded border-gray-300 text-blue-600"
+                checked={item.questionCodes!.some(code => code.toLowerCase() === question.code.toLowerCase())}
+                onChange={event => update(index, { questionCodes: event.target.checked ? [...item.questionCodes!, question.code]
+                  : item.questionCodes!.filter(code => code.toLowerCase() !== question.code.toLowerCase()) })} />
+              <span className="min-w-0 [overflow-wrap:anywhere]"><span className="font-mono text-xs">{question.code}</span> — {question.text || "Untitled question"}</span>
+            </label>)}
+          </div>
+          {item.questionCodes.filter(code => !questions.some(question => question.code.toLowerCase() === code.toLowerCase())).map(code =>
+            <p key={code} role="alert" className="text-xs text-red-600">Missing question: {code} <button type="button" className="ml-2 underline"
+              onClick={() => update(index, { questionCodes: item.questionCodes!.filter(candidate => candidate !== code) })}>Remove link</button></p>)}
+          {!item.questionCodes.length && <p role="alert" className="text-xs text-red-600">Select at least one question.</p>}
+        </fieldset>}
+        <p className="text-xs leading-5 text-slate-500">{item.questionCodes == null ? "This evidence applies to the practice as a whole."
+          : "Hidden and not required when all linked questions are hidden. Default scores do not make evidence visible. Existing evidence is retained."}</p>
+      </section>
       <section aria-label={`Evidence freshness for requirement ${index + 1}`} className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4">
         <div>
           <h3 className="text-sm font-semibold text-slate-900">Evidence freshness</h3>

@@ -1,5 +1,5 @@
 import ElementListFrame from "./ElementListFrame";
-import { dependencySummary } from "@/lib/questionDependencies";
+import { branchingSummary, editableBranching } from "../../model/questionBranchingEditor";
 import {
   DndContext,
   KeyboardSensor,
@@ -70,7 +70,7 @@ export default function QuestionReorderList({
             <SortableQuestionOrderItem
               key={question.clientKey}
               question={question}
-              dependencyText={dependencySummary(questions.find((candidate) => candidate.code.toLowerCase() === question.dependsOnQuestionCode?.toLowerCase()), question.dependencyCondition)}
+              dependencyText={branchingSummary(editableBranching(question, questions), questions)}
               issues={issues.filter((issue) => issue.questionKey === question.clientKey)}
               questionIndex={questionIndex}
               questionCount={questions.length}
@@ -170,7 +170,7 @@ function SortableQuestionOrderItem({
             </span>
             <span className="font-mono text-[11px] [overflow-wrap:anywhere]">{question.code}</span>
             <span>{question.required ? "Required" : "Optional"}</span>
-            {question.dependsOnQuestionCode && (
+            {(question.dependsOnQuestionCode || question.branchingRule) && (
               <span className="inline-flex min-w-0 items-center gap-1.5 text-gray-600">
                 <LinkIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
                 <span className="[overflow-wrap:anywhere]">{dependencyText}</span>

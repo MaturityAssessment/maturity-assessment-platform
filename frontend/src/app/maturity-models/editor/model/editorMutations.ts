@@ -1,3 +1,4 @@
+import { rewritePracticeBranchingReferences } from "../../../../lib/questionBranching.ts";
 import type {
   MaturityModelEditorDocument,
   ModelEditorDimension,
@@ -158,6 +159,7 @@ function updatePracticeParent(
     const result = renumberSiblingCodes(next.questions, "Q");
     next = { ...next, questions: result.items };
   }
+  next = rewritePracticeBranchingReferences(found.practice, next);
   return updateModule(document, found.dimension.clientKey, found.module.clientKey, {
     ...found.module,
     practices: replaceByKey(found.module.practices, practiceKey, next),
@@ -486,7 +488,7 @@ export function deleteQuestion(
         .map((candidate) =>
           candidate.dependsOnQuestionCode?.toLowerCase() ===
           question.code.toLowerCase()
-            ? { ...candidate, dependsOnQuestionCode: undefined, dependencyCondition: undefined }
+            ? { ...candidate, dependsOnQuestionCode: undefined, dependencyCondition: undefined, hiddenScore: undefined }
             : candidate
         ),
     };

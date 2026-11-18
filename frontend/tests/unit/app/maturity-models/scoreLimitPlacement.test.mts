@@ -9,6 +9,7 @@ import * as editorCodes from "../../../../src/app/maturity-models/editor/model/e
 import * as moduleBadges from "../../../../src/app/maturity-models/editor/model/moduleBadges.ts";
 import * as conditionalGating from "../../../../src/app/maturity-models/editor/model/conditionalGating.ts";
 import * as editorValidation from "../../../../src/app/maturity-models/editor/model/editorValidation.ts";
+import * as questionBranchingEditor from "../../../../src/app/maturity-models/editor/model/questionBranchingEditor.ts";
 import { TEXT_LIMITS } from "../../../../src/config/textLimits.ts";
 
 const require = createRequire(import.meta.url);
@@ -27,6 +28,7 @@ for (const kind of ["Dimension", "Module", "Practice"]) {
       if (name === "../../model/moduleBadges") return moduleBadges;
       if (name === "../../model/conditionalGating") return conditionalGating;
       if (name === "../../model/editorValidation") return editorValidation;
+      if (name === "../../model/questionBranchingEditor") return questionBranchingEditor;
       if (name === "@/config/textLimits") return { TEXT_LIMITS };
       if (name === "../../components/FormFields") return { CodeField: "code-field", inputClass: "", labelClass: "" };
       if (name === "@/components/ui/badge") return { Badge: "badge" };

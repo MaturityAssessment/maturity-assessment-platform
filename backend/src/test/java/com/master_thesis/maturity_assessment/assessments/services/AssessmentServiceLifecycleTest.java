@@ -2742,6 +2742,80 @@ class AssessmentServiceLifecycleTest {
         assertEquals("computed", element(response, "dimension", "D1").state());
     }
 
+    private void branchOnTopAnswer(Practice practice, Double hiddenScore) throws Exception {
+        var child = practice.getQuestions().get(1);
+        child.setBranchingRule(new com.master_thesis.maturity_assessment.maturity_models.models.BranchingRule(1,
+                new ObjectMapper().readTree("{\"kind\":\"parent\",\"code\":\"" + practice.getQuestions().getFirst().getCode()
+                        + "\",\"predicate\":{\"kind\":\"in\",\"values\":[5]}}")));
+        child.setHiddenScore(hiddenScore);
+    }
+
+    @Test
+    void hiddenDefaultsEnterCoverageScoreGatesAndLimitsWithoutBecomingAnswers() throws Exception {
+        var model = hierarchicalAggregationModel();
+        var practice = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        practice.setAggregationRule(AggregationRule.AVERAGE);
+        branchOnTopAnswer(practice, 0.6);
+        var flag = conditionalRule("D1.M1.P1.Q1002", "score", "<", "{\"kind\":\"literal\",\"value\":0.7}", "flagForReview");
+        practice.setConditionalGatingRules(List.of(flag));
+        practice.setScoreLimits(List.of(new com.master_thesis.maturity_assessment.maturity_models.models.ScoreLimit("floor", 0.4, null, flag)));
+        var response = submitForGating(model, Map.of("D1_M1_101_1001", 1));
+        var child = element(response, "question", "Q1002");
+        assertEquals(0.6, child.normalizedScore()); assertEquals(false, child.visible()); assertEquals("default", child.scoreSource());
+        assertEquals(100, child.coverage());
+        var result = element(response, "practice", "P1");
+        assertEquals(0.4, result.normalizedScore()); assertEquals(100, result.coverage());
+        assertEquals("flagForReview", result.state());
+    }
+
+    @Test
+    void visibleOptionalMissingStillReducesCoverageWhileHiddenUnscoredChildIsExcluded() throws Exception {
+        var model = hierarchicalAggregationModel();
+        var practice = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        practice.setAggregationRule(AggregationRule.WEIGHTED_AVERAGE);
+        branchOnTopAnswer(practice, null);
+        var response = submitForGating(model, Map.of("D1_M1_101_1001", 1));
+        assertEquals(100, element(response, "practice", "P1").coverage());
+        assertEquals(0, element(response, "practice", "P1").normalizedScore());
+        response = submitForGating(model, Map.of("D1_M1_101_1001", 5));
+        assertEquals(50, element(response, "practice", "P1").coverage());
+        assertEquals(1, element(response, "practice", "P1").normalizedScore());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(AggregationRule.class)
+    void zeroHiddenDefaultParticipatesForEveryAggregationMethod(AggregationRule method) throws Exception {
+        var model = hierarchicalAggregationModel();
+        var practice = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        practice.setAggregationRule(method);
+        branchOnTopAnswer(practice, 0.0);
+        var response = submitForGating(model, Map.of("D1_M1_101_1001", 1));
+        assertEquals(0, element(response, "practice", "P1").normalizedScore());
+        assertEquals(100, element(response, "practice", "P1").coverage());
+        assertEquals("computed", element(response, "question", "Q1002").state());
+    }
+
+    @Test
+    void reviewedScoresDoNotChangeBranchingOrOverwriteHiddenDefaults() throws Exception {
+        var model = booleanScoringModel(); model.setAutoEvaluated(false);
+        var practice = model.getDimensions().getFirst().getModules().getFirst().getPractices().getFirst();
+        practice.setAggregationRule(AggregationRule.AVERAGE);
+        practice.getQuestions().get(1).setBranchingRule(new com.master_thesis.maturity_assessment.maturity_models.models.BranchingRule(1,
+                new ObjectMapper().readTree("{\"kind\":\"parent\",\"code\":\"Q1001\",\"predicate\":{\"kind\":\"in\",\"values\":[true]}}")));
+        practice.getQuestions().get(1).setHiddenScore(0.6);
+        var assessment = pendingAssessment("{}");
+        var row = questionRow(assessment, "D1_M1_101_1001", false, 0);
+        when(questionEvaluationRepository.findByAssessmentIdOrderByIdAsc(ASSESSMENT_ID)).thenReturn(List.of(row));
+        when(assessmentRepository.findById(ASSESSMENT_ID)).thenReturn(Optional.of(assessment));
+        when(maturityModelRepository.findById(MODEL_ID)).thenReturn(Optional.of(model));
+        var review = new QuestionEvaluationRequest(); review.setValidationStatus("ADJUSTED"); review.setManualScore(1.0); review.setReviewerNote("Reviewed evidence");
+        var request = new ManualEvaluationRequest(); request.setQuestionEvaluations(Map.of("D1_M1_101_1001",review));
+        var response = assessmentService.evaluateAssessment(ASSESSMENT_ID, request, user);
+        assertEquals(0.8, element(response,"practice","P1").normalizedScore());
+        assertEquals(false, element(response,"question","Q1002").visible());
+        assertEquals(0.6, element(response,"question","Q1002").normalizedScore());
+    }
+
     private Question question(Long id) {
         Question question = new Question();
         question.setId(id);

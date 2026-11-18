@@ -10,7 +10,10 @@ preserved; their new metrics remain null until evaluated again.
 For each visible question, included count and coverage are 100% when answered and
 0% when unanswered. An N/A response with a configured numeric score is answered.
 An answered question awaiting a manual score still counts as answered. Hidden
-modules and dependent questions whose conditions were not triggered are omitted.
+modules are omitted. Hidden questions are omitted unless they have a configured
+`hiddenScore`; those defaults count as computed inputs with 100% included count
+and coverage, using the normal question weight. Visible optional unanswered
+questions retain their completion-denominator weight and contribute no score.
 
 At a practice, included count is the percentage of visible questions answered,
 including both required and optional questions. At a module, dimension or global
@@ -243,3 +246,25 @@ V58 adds JSONB columns to the three element tables. Limits survive model/editor
 conversion and new model versions. Excel adds optional `dimensionScoreLimits`,
 `moduleScoreLimits` and `practiceScoreLimits` JSON columns; older workbooks use
 empty arrays. The minimal editor controls are in each element's Gating rules tab.
+
+## Question branching and defaults (V59)
+
+Branching is evaluated from respondent answers before scoring. It cannot read
+scores, result state, coverage, review decisions or evidence. Parent conditions
+are restricted to the same practice. Backend validation rejects cycles across
+both branching and legacy dependencies. NOT waits for an unavailable answer;
+OR can succeed through another answered parent.
+
+A hidden question without a default is absent from scoring and gating selections.
+A configured `hiddenScore` (0–1, including zero) is a computed scoring input.
+Practice score/state gates can see it and matching flag gates can activate limits.
+Its answer is absent and `answered` is false: a numeric default cannot activate
+a descendant or match an answer-value comparison. Withholding precedence and
+propagation of finalized limited scores remain unchanged. A hidden module also
+excludes its questions' defaults.
+
+Participating question snapshots include `visible` and `scoreSource` (`respondent`,
+`default`, or null). Older snapshots remain readable. New fields are optional;
+existing model behavior and historical results remain unchanged when absent.
+See the [branching contract](../backend/docs/api/reference/maturity-models.md#question-branching-v59)
+and [migration verification](../backend/docs/migrations/question-branching.md).

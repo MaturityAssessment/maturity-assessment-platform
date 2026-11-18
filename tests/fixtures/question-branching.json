@@ -1,0 +1,531 @@
+{
+  "cases": [
+    {
+      "name": "NOT waits for an unanswered parent",
+      "expression": {
+        "kind": "not",
+        "condition": {
+          "kind": "parent",
+          "code": "A",
+          "predicate": {
+            "kind": "in",
+            "values": [
+              true
+            ]
+          }
+        }
+      },
+      "answers": {},
+      "expected": null
+    },
+    {
+      "name": "NOT waits for a hidden parent",
+      "expression": {
+        "kind": "not",
+        "condition": {
+          "kind": "parent",
+          "code": "A",
+          "predicate": {
+            "kind": "in",
+            "values": [
+              true
+            ]
+          }
+        }
+      },
+      "answers": {
+        "A": null
+      },
+      "expected": null
+    },
+    {
+      "name": "NOT matches an answered nonmatching value",
+      "expression": {
+        "kind": "not",
+        "condition": {
+          "kind": "parent",
+          "code": "A",
+          "predicate": {
+            "kind": "in",
+            "values": [
+              true
+            ]
+          }
+        }
+      },
+      "answers": {
+        "A": false
+      },
+      "expected": true
+    },
+    {
+      "name": "OR succeeds despite another missing parent",
+      "expression": {
+        "kind": "or",
+        "conditions": [
+          {
+            "kind": "parent",
+            "code": "A",
+            "predicate": {
+              "kind": "in",
+              "values": [
+                true
+              ]
+            }
+          },
+          {
+            "kind": "parent",
+            "code": "B",
+            "predicate": {
+              "kind": "in",
+              "values": [
+                true
+              ]
+            }
+          }
+        ]
+      },
+      "answers": {
+        "A": true
+      },
+      "expected": true
+    },
+    {
+      "name": "OR does not invent an answer",
+      "expression": {
+        "kind": "or",
+        "conditions": [
+          {
+            "kind": "parent",
+            "code": "A",
+            "predicate": {
+              "kind": "in",
+              "values": [
+                true
+              ]
+            }
+          },
+          {
+            "kind": "parent",
+            "code": "B",
+            "predicate": {
+              "kind": "in",
+              "values": [
+                true
+              ]
+            }
+          }
+        ]
+      },
+      "answers": {
+        "A": false
+      },
+      "expected": null
+    },
+    {
+      "name": "AND waits for a required alternative",
+      "expression": {
+        "kind": "and",
+        "conditions": [
+          {
+            "kind": "parent",
+            "code": "A",
+            "predicate": {
+              "kind": "in",
+              "values": [
+                true
+              ]
+            }
+          },
+          {
+            "kind": "parent",
+            "code": "B",
+            "predicate": {
+              "kind": "in",
+              "values": [
+                true
+              ]
+            }
+          }
+        ]
+      },
+      "answers": {
+        "A": true
+      },
+      "expected": null
+    },
+    {
+      "name": "AND false dominates unknown",
+      "expression": {
+        "kind": "and",
+        "conditions": [
+          {
+            "kind": "parent",
+            "code": "A",
+            "predicate": {
+              "kind": "in",
+              "values": [
+                true
+              ]
+            }
+          },
+          {
+            "kind": "parent",
+            "code": "B",
+            "predicate": {
+              "kind": "in",
+              "values": [
+                true
+              ]
+            }
+          }
+        ]
+      },
+      "answers": {
+        "A": false
+      },
+      "expected": false
+    },
+    {
+      "name": "double NOT still waits",
+      "expression": {
+        "kind": "not",
+        "condition": {
+          "kind": "not",
+          "condition": {
+            "kind": "parent",
+            "code": "A",
+            "predicate": {
+              "kind": "in",
+              "values": [
+                true
+              ]
+            }
+          }
+        }
+      },
+      "answers": {},
+      "expected": null
+    },
+    {
+      "name": "has answer accepts false",
+      "expression": {
+        "kind": "parent",
+        "code": "A",
+        "predicate": {
+          "kind": "answered"
+        }
+      },
+      "answers": {
+        "A": false
+      },
+      "expected": true
+    },
+    {
+      "name": "has answer accepts zero",
+      "expression": {
+        "kind": "parent",
+        "code": "A",
+        "predicate": {
+          "kind": "answered"
+        }
+      },
+      "answers": {
+        "A": 0
+      },
+      "expected": true
+    },
+    {
+      "name": "has answer accepts an empty multi-selection",
+      "expression": {
+        "kind": "parent",
+        "code": "A",
+        "predicate": {
+          "kind": "answered"
+        }
+      },
+      "answers": {
+        "A": []
+      },
+      "expected": true
+    },
+    {
+      "name": "multiple selection requires every accepted option",
+      "expression": {
+        "kind": "parent",
+        "code": "A",
+        "predicate": {
+          "kind": "in",
+          "values": [
+            "one",
+            "two"
+          ]
+        }
+      },
+      "answers": {
+        "A": [
+          "one"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "multiple selection permits extra options",
+      "expression": {
+        "kind": "parent",
+        "code": "A",
+        "predicate": {
+          "kind": "in",
+          "values": [
+            "one",
+            "two"
+          ]
+        }
+      },
+      "answers": {
+        "A": [
+          "one",
+          "two",
+          "three"
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "multiple selection does not match scalar NA against empty selection",
+      "expression": {
+        "kind": "parent",
+        "code": "A",
+        "predicate": {
+          "kind": "in",
+          "values": [
+            {
+              "notApplicable": true
+            }
+          ]
+        }
+      },
+      "answers": {
+        "A": []
+      },
+      "expected": false
+    },
+    {
+      "name": "scored NA can explicitly activate",
+      "expression": {
+        "kind": "parent",
+        "code": "A",
+        "predicate": {
+          "kind": "in",
+          "values": [
+            {
+              "notApplicable": true
+            }
+          ]
+        }
+      },
+      "answers": {
+        "A": {
+          "notApplicable": true
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "numeric values ignore JSON encoding precision",
+      "expression": {
+        "kind": "parent",
+        "code": "A",
+        "predicate": {
+          "kind": "in",
+          "values": [
+            1
+          ]
+        }
+      },
+      "answers": {
+        "A": 1.0
+      },
+      "expected": true
+    },
+    {
+      "name": "text comparison preserves case",
+      "expression": {
+        "kind": "parent",
+        "code": "A",
+        "predicate": {
+          "kind": "in",
+          "values": [
+            "Yes"
+          ]
+        }
+      },
+      "answers": {
+        "A": "yes"
+      },
+      "expected": false
+    },
+    {
+      "name": "grouped boolean expression",
+      "expression": {
+        "kind": "and",
+        "conditions": [
+          {
+            "kind": "or",
+            "conditions": [
+              {
+                "kind": "parent",
+                "code": "A",
+                "predicate": {
+                  "kind": "in",
+                  "values": [
+                    true
+                  ]
+                }
+              },
+              {
+                "kind": "parent",
+                "code": "B",
+                "predicate": {
+                  "kind": "in",
+                  "values": [
+                    true
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "kind": "not",
+            "condition": {
+              "kind": "parent",
+              "code": "C",
+              "predicate": {
+                "kind": "in",
+                "values": [
+                  false
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "answers": {
+        "B": true,
+        "C": true
+      },
+      "expected": true
+    },
+    {
+      "name": "Multiple selection accepts all options when N/A is also allowed",
+      "expression": {
+        "kind": "parent",
+        "code": "A",
+        "predicate": {
+          "kind": "in",
+          "values": [
+            "policy",
+            "review",
+            {
+              "notApplicable": true
+            }
+          ]
+        }
+      },
+      "answers": {
+        "A": [
+          "policy",
+          "review",
+          "extra"
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "Multiple selection with N/A still requires every listed option",
+      "expression": {
+        "kind": "parent",
+        "code": "A",
+        "predicate": {
+          "kind": "in",
+          "values": [
+            "policy",
+            "review",
+            {
+              "notApplicable": true
+            }
+          ]
+        }
+      },
+      "answers": {
+        "A": [
+          "policy"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "Multiple selection accepts N/A as an alternative to listed options",
+      "expression": {
+        "kind": "parent",
+        "code": "A",
+        "predicate": {
+          "kind": "in",
+          "values": [
+            "policy",
+            "review",
+            {
+              "notApplicable": true
+            }
+          ]
+        }
+      },
+      "answers": {
+        "A": {
+          "notApplicable": true
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "N/A-only rule does not match an ordinary selection",
+      "expression": {
+        "kind": "parent",
+        "code": "A",
+        "predicate": {
+          "kind": "in",
+          "values": [
+            {
+              "notApplicable": true
+            }
+          ]
+        }
+      },
+      "answers": {
+        "A": [
+          "policy"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "N/A-only rule does not match an empty selection",
+      "expression": {
+        "kind": "parent",
+        "code": "A",
+        "predicate": {
+          "kind": "in",
+          "values": [
+            {
+              "notApplicable": true
+            }
+          ]
+        }
+      },
+      "answers": {
+        "A": []
+      },
+      "expected": false
+    }
+  ]
+}

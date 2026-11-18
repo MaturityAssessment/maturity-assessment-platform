@@ -1,10 +1,10 @@
 package com.master_thesis.maturity_assessment.assessments.services;
 
+import com.master_thesis.maturity_assessment.maturity_models.services.EvidenceApplicability;
 import com.master_thesis.maturity_assessment.assessments.dto.AssessmentRequest;
 import com.master_thesis.maturity_assessment.assessments.dto.AssessmentResponse;
 import com.master_thesis.maturity_assessment.assessments.dto.EvidenceDTO;
 import com.master_thesis.maturity_assessment.assessments.dto.EvidenceSubmissionItemRequest;
-import com.master_thesis.maturity_assessment.assessments.dto.QuestionResponseRequest;
 import com.master_thesis.maturity_assessment.auth.models.User;
 import com.master_thesis.maturity_assessment.campaigns.models.CampaignParticipant;
 import com.master_thesis.maturity_assessment.maturity_models.models.MaturityModel;
@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -250,7 +249,7 @@ public class AssessmentEvidenceWorkflowService {
 
     private void validateRequiredEvidence(AssessmentRequest request, List<EvidenceDTO> evidence) {
         MaturityModel model = requireModel(request.getMaturityModelId());
-        Map<String, Object> responses = responseValues(request);
+        Map<String, Object> responses = assessmentService.responseValues(request);
         Set<Long> practiceIds = evidence.stream().map(EvidenceDTO::getPracticeId)
                 .collect(java.util.stream.Collectors.toSet());
         for (var dimension : Optional.ofNullable(model.getDimensions()).orElse(List.of())) {
@@ -261,7 +260,10 @@ public class AssessmentEvidenceWorkflowService {
                             .anyMatch(question -> assessmentService.isQuestionVisible(question, responses));
                     if (active && practice.getEvidenceRequirements() != null && !practice.getEvidenceRequirements().isEmpty()) {
                         for (var requirement : practice.getEvidenceRequirements()) {
-                            if (Boolean.TRUE.equals(requirement.getRequired()) && evidence.stream().noneMatch(item ->
+                            if (Boolean.TRUE.equals(requirement.getRequired())
+                                    && EvidenceApplicability.active(requirement, practice,
+                                        question -> assessmentService.isQuestionVisible(question, responses))
+                                    && evidence.stream().noneMatch(item ->
                                     practice.getId().equals(item.getPracticeId())
                                     && requirement.getCode().equals(item.getRequirementCode()))) {
                                 throw badRequest("Missing required evidence: " + requirement.getName() + " (practiceId: " + practice.getId() + ")");
@@ -282,19 +284,6 @@ public class AssessmentEvidenceWorkflowService {
         }
         return maturityModelRepository.findById(maturityModelId)
                 .orElseThrow(() -> badRequest("Maturity model not found."));
-    }
-
-    private Map<String, Object> responseValues(AssessmentRequest request) {
-        if (request == null || request.getQuestionResponses() == null) {
-            return Map.of();
-        }
-        Map<String, Object> responses = new java.util.LinkedHashMap<>();
-        for (Map.Entry<String, QuestionResponseRequest> entry : request.getQuestionResponses().entrySet()) {
-            if (entry.getValue() != null) {
-                responses.put(entry.getKey(), entry.getValue().getResponse());
-            }
-        }
-        return responses;
     }
 
     private ResponseStatusException badRequest(String message) {
