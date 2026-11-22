@@ -112,7 +112,7 @@ The remaining behavior follows the defaults presented during discovery:
    draft save/resume/reset, correction locks, and assessment access controls.
 4. Extend editor state, serialization, reference updates, change previews, model
    versioning, and Excel round trips before enabling new authoring controls.
-5. Build the Target profiles tab and respondent profiling step, then dashboard
+5. Build the Target profiles tab and respondent profiling dialog, then dashboard
    identity and accessible visual comparisons with explicit unavailable states.
 6. Verify tree paths and invalid definitions, minimum boundaries including zero,
    optional requirements, maturity-level ordering, missing/withheld/review states,
@@ -121,6 +121,35 @@ The remaining behavior follows the defaults presented during discovery:
 7. Run focused backend/frontend tests, type checking, scoped lint, database
    migration/integration checks in a disposable database, and browser checks for
    creator and respondent flows. Update API, schema, and feature documentation.
+
+## Dashboard UI refinement — 22 November 2026
+
+- Newly created or reset individual assessments open the interview in an
+  accessible modal over the assessment dashboard. Resuming a draft opens the
+  dashboard without automatically repeating the interview.
+- Skip for now, Escape, the close button, and the backdrop dismiss the interview
+  while retaining draft answers through the existing autosave flow.
+- A compact, neutral summary inside Overall progress replaces the separate
+  profile banner. It offers Set up profile, Continue setup, or Review answers
+  according to the saved state. Evaluators see the same context in Review progress.
+- Results begin with Final evaluation. The target comparison follows as a
+  collapsed summary of profile identity, outcome, and targets met. Its keyboard
+  accessible disclosure expands into compact rows with actual scores, minimums,
+  requirement outcomes, and unavailable-score explanations.
+- Branching questions and the matched-profile preview remain available in a
+  scrollable body with persistent dialog actions on smaller screens.
+- Profiling remains required before first submission. Attempting final review
+  with an incomplete profile opens the interview from the dashboard. Respondents
+  can still dismiss it and keep working on the assessment.
+
+Validation: TypeScript, scoped ESLint, assessment/dashboard/library tests, and
+Chromium checks of the actual AssessmentFlow with intercepted API fixtures passed.
+Browser checks covered creation, skip/reload, partial-answer recovery, branching,
+matched/no-profile results, save failure/retry, keyboard focus/Escape, mobile bounds,
+and the final-review prompt. Desktop and 390px screenshots were inspected.
+Results checks also verified panel order, collapsed sizing, mouse/keyboard
+expansion, minimum-score details, unavailable outcomes, long mobile labels,
+and assessments without a target comparison.
 
 ## Verification
 

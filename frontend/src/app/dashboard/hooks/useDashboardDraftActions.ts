@@ -129,7 +129,7 @@ export default function useDashboardDraftActions({
         : await apiClient.put<AssessmentResponse>(
             `/api/v1/assessments/drafts/by-model/${activeModelId}`
           );
-      router.push(`/assessment?draftId=${response.data.id}`);
+      router.push(`/assessment?draftId=${response.data.id}&profiling=setup`);
     } catch (actionError) {
       console.error("Error preparing a new assessment:", actionError);
       setDraftSelectionError(

@@ -16,6 +16,7 @@ import {
 } from "@/api/types";
 import { getModulePrerequisiteStates } from "./assessmentModulePrerequisites";
 import { visibleAssessmentModel } from "@/lib/moduleVisibility";
+import { profilingPath } from "@/lib/targetProfiles";
 import apiClient from "@/api/axios";
 import { ACCESS_TOKEN_STORAGE_KEY } from "@/config/authStorage";
 import { TopNavbar } from "@/components";
@@ -27,7 +28,7 @@ import useEvaluation from "./evaluation/useEvaluation";
 import EvaluationPanel from "./evaluation/EvaluationPanel";
 import { assessmentCapabilities, reviewNeedsAttention } from "./evaluation/evaluationState";
 import EvaluationNavigation from "./evaluation/EvaluationNavigation";
-import AssessmentProfilingStep from "./AssessmentProfilingStep";
+import AssessmentProfilingDialog from "./AssessmentProfilingDialog";
 import AssessmentDashboard from "./AssessmentDashboard";
 import type { AssessmentDashboardTab } from "./AssessmentDashboard";
 import AssessmentModuleOverview from "./AssessmentModuleOverview";
@@ -500,7 +501,8 @@ export default function AssessmentFlow() {
       setMaturityModel(model);
       setLoadedAssessment(draft);
       setProfilingAnswers(draft.profiling?.answers ?? {});
-      setProfilingOpen(Boolean(model.targetProfiles && !draft.profiling?.complete));
+      setProfilingOpen(Boolean(model.targetProfiles && !draft.profiling?.complete &&
+        new URLSearchParams(window.location.search).get("profiling") === "setup"));
       setReferenceDate(draft.referenceDate || evidenceToday());
       setRespondentUpdatedResponseKeys(
         new Set(
@@ -949,6 +951,15 @@ export default function AssessmentFlow() {
       return;
     }
 
+    if (!campaignId && maturityModel?.targetProfiles && loadedAssessment?.status === "DRAFT" &&
+      !profilingPath(maturityModel.targetProfiles, profilingAnswers).selection.complete) {
+      setDashboardTab("overview");
+      setAssessmentStep("dashboard");
+      setProfilingOpen(true);
+      router.push(buildAssessmentOverviewHref(routeContext), { scroll: false });
+      return;
+    }
+
     setIsPreparingReview(true);
 
     try {
@@ -1108,6 +1119,7 @@ export default function AssessmentFlow() {
       viewReady: Boolean(maturityModel && loadedAssessment),
       tourAvailable: steps.length > 0,
       obstructionOpen:
+        profilingOpen ||
         campaignPendingReview ||
         isPreparingReview ||
         isSavingAndLeaving ||
@@ -1132,6 +1144,7 @@ export default function AssessmentFlow() {
     isSubmitting,
     loadedAssessment,
     maturityModel,
+    profilingOpen,
     requestedTour,
     tourInvitationView,
     tourViewer,
@@ -1241,14 +1254,6 @@ export default function AssessmentFlow() {
     );
   }, [activeTour, campaignId, completeHelpTour]);
 
-  if (profilingOpen && !campaignId && maturityModel?.targetProfiles && loadedAssessment?.status === "DRAFT" && capabilities.canEditResponses && !isLoadingDraft) {
-    return <AssessmentProfilingStep modelName={maturityModel.name} config={maturityModel.targetProfiles} answers={profilingAnswers}
-      saving={autosave.status === "saving" || isSavingAndLeaving} error={autosave.error}
-      onChange={answers => { setProfilingAnswers(answers); setChangeRevision(revision => revision + 1); }}
-      onContinue={() => { void autosave.flush().then(saved => { if (saved) { setProfilingOpen(false); setAssessmentStep("dashboard"); router.replace(buildAssessmentOverviewHref(routeContext)); } }); }}
-      onLeave={() => { void prepareToGoHome().then(saved => { if (saved) router.push("/dashboard"); }); }} />;
-  }
-
   if (campaignPendingReview && maturityModel && !isLoadingDraft) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
@@ -1329,6 +1334,18 @@ export default function AssessmentFlow() {
             void (capabilities.canEditEvaluation ? evaluation.flush() : autosave.retry());
           }}
         />
+        {!campaignId && maturityModel.targetProfiles && loadedAssessment.status === "DRAFT" && capabilities.canEditResponses && (
+          <AssessmentProfilingDialog
+            open={profilingOpen}
+            config={maturityModel.targetProfiles}
+            answers={profilingAnswers}
+            saving={autosave.status === "saving"}
+            error={autosave.error}
+            onChange={answers => { setProfilingAnswers(answers); setChangeRevision(revision => revision + 1); }}
+            onSave={() => { void autosave.flush().then(saved => { if (saved) { setProfilingOpen(false); router.replace(buildAssessmentOverviewHref(routeContext), { scroll: false }); } }); }}
+            onDismiss={() => { setProfilingOpen(false); router.replace(buildAssessmentOverviewHref(routeContext), { scroll: false }); }}
+          />
+        )}
         <GuidedTour
           open={
             activeTour?.view === "dashboard" &&

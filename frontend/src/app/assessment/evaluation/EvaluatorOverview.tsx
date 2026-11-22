@@ -5,8 +5,9 @@ import { ArrowRight, CheckCircle2, ClipboardCheck, Flag, Layers3 } from "lucide-
 import type { MaturityModel } from "@/api/types";
 import type { EvaluationController } from "./useEvaluation";
 
-export default function EvaluatorOverview({ model, evaluation, onQuestion, sidebarContent }: {
+export default function EvaluatorOverview({ model, evaluation, onQuestion, sidebarContent, targetProfileContent }: {
   sidebarContent?: ReactNode;
+  targetProfileContent?: ReactNode;
   model: MaturityModel;
   evaluation: EvaluationController;
   onQuestion: (responseKey: string) => void;
@@ -65,6 +66,7 @@ export default function EvaluatorOverview({ model, evaluation, onQuestion, sideb
               <div className="flex justify-between gap-2 border-t border-slate-100 pt-3"><dt className="text-slate-600">Needs attention</dt><dd className="font-semibold tabular-nums text-indigo-700">{outstanding.length}</dd></div>
             </dl>
             <p className="mt-4 text-xs leading-5 text-slate-500">Reviewed questions have an evaluation status. Flagged questions and incomplete scores or notes still need attention.</p>
+            {targetProfileContent}
           </section>
           {sidebarContent}
         </aside>

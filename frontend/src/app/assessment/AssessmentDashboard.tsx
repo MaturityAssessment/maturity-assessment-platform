@@ -53,6 +53,7 @@ import type { AssessmentSaveStatus } from "./assessmentAutosave";
 import type { AssessmentTourInvitationContent } from "./assessmentTour";
 import AssessmentFeedbackReviewTab from "./AssessmentFeedbackReviewTab";
 import AssessmentResultsTab from "./AssessmentResultsTab";
+import AssessmentTargetProfileSummary from "./AssessmentTargetProfileSummary";
 import type { AssessmentRouteContext } from "./assessmentRoutes";
 import EvaluatorOverview from "./evaluation/EvaluatorOverview";
 import type { EvaluationController } from "./evaluation/useEvaluation";
@@ -195,6 +196,9 @@ export default function AssessmentDashboard({
     <EvidenceLifecyclePanel assessment={assessment} referenceDate={referenceDate} onReferenceDateChange={onReferenceDateChange}
       readOnly={readOnly} practiceSteps={practiceSteps} routeContext={routeContext} refreshingError={freshnessError} pending={saveStatus !== "saved"} />
   ) : null;
+  const targetProfileContent = !routeContext?.campaignId && !assessment.campaignId && model.targetProfiles ? (
+    <AssessmentTargetProfileSummary profiling={assessment.profiling} onEdit={onEditProfiling} />
+  ) : null;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -317,16 +321,12 @@ export default function AssessmentDashboard({
         </div>
       )}
 
-      {!routeContext?.campaignId && !assessment.campaignId && model.targetProfiles && <div className="mx-auto mt-5 flex w-full max-w-[1440px] flex-wrap items-center justify-between gap-3 px-4 sm:px-6 lg:px-10">
-        <p className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-950"><span className="font-semibold">Target profile: </span>{assessment.profiling?.complete ? assessment.profiling.profileName || "No target profile applies" : "Profiling incomplete"}</p>
-        {onEditProfiling && <button type="button" className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700" onClick={onEditProfiling}>Edit profiling answers</button>}
-      </div>}
-
       {activeTab === "evaluation" ? evaluationPanel : activeTab === "overview" ? (
         evaluationActive && evaluation && onEvaluationQuestion ? (
-          <EvaluatorOverview model={model} evaluation={evaluation} onQuestion={onEvaluationQuestion} sidebarContent={evidenceLifecycle} />
+          <EvaluatorOverview model={model} evaluation={evaluation} onQuestion={onEvaluationQuestion} sidebarContent={evidenceLifecycle} targetProfileContent={targetProfileContent} />
         ) : <OverviewTab
           sidebarContent={evidenceLifecycle}
+          targetProfileContent={targetProfileContent}
           summary={summary}
           evaluationActive={evaluationActive}
           readOnly={readOnly}
@@ -423,6 +423,7 @@ function DashboardTab({
 
 function OverviewTab({
   sidebarContent,
+  targetProfileContent,
   evaluationActive,
   readOnly,
   summary,
@@ -435,6 +436,7 @@ function OverviewTab({
   onReview,
 }: {
   sidebarContent?: ReactNode;
+  targetProfileContent?: ReactNode;
   evaluationActive: boolean;
   readOnly: boolean;
   summary: ReturnType<typeof buildAssessmentDashboardSummary>;
@@ -625,6 +627,7 @@ function OverviewTab({
             summary={summary}
             changesRequested={changesRequested}
             evaluatorInsight={evaluatorInsight}
+            targetProfileContent={targetProfileContent}
           />
           {sidebarContent}
           {canReview && !completed && (
@@ -868,10 +871,12 @@ function ProgressCard({
   summary,
   changesRequested,
   evaluatorInsight,
+  targetProfileContent,
 }: {
   summary: ReturnType<typeof buildAssessmentDashboardSummary>;
   changesRequested: boolean;
   evaluatorInsight?: string | null;
+  targetProfileContent?: ReactNode;
 }) {
   const regularAnsweredCount = changesRequested
     ? Math.max(
@@ -933,6 +938,8 @@ function ProgressCard({
           value={summary.unansweredCount}
         />
       </dl>
+
+      {targetProfileContent}
 
       {changesRequested && (
         <div className="mt-4 border-t border-slate-100 pt-4">

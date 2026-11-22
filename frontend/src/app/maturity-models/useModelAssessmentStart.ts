@@ -25,7 +25,7 @@ export default function useModelAssessmentStart() {
       const response = await apiClient.put<AssessmentResponse>(
         `/api/v1/assessments/drafts/by-model/${modelId}`
       );
-      router.push(`/assessment?draftId=${response.data.id}`);
+      router.push(`/assessment?draftId=${response.data.id}&profiling=setup`);
     },
     [router]
   );
@@ -83,7 +83,7 @@ export default function useModelAssessmentStart() {
         : await apiClient.put<AssessmentResponse>(
             `/api/v1/assessments/drafts/by-model/${selectedModel.id}`
           );
-      router.push(`/assessment?draftId=${response.data.id}`);
+      router.push(`/assessment?draftId=${response.data.id}&profiling=setup`);
     } catch (startError) {
       console.error("Error preparing a new assessment:", startError);
       setError(

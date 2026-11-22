@@ -361,6 +361,33 @@ test("lifecycle warnings appear below the chart only on overview with outdated e
 });
 
 
+test("target profile context stays inside overall progress with draft actions and campaign exclusion", () => {
+  const Dashboard = load(resolve(sourceRoot, "app/assessment/AssessmentDashboard.tsx")).default;
+  const props = { model: { ...model, targetProfiles: {} }, practiceSteps: [], formData: {}, evidenceFiles: new Map(), activeTab: "overview",
+    completed: false, assessment: { ...assessment, status: "DRAFT" }, onEditProfiling: noOp,
+    isLeaving: false, isPreparingReview: false, canReview: false, error: null, saveStatus: "saved", saveError: null,
+    changesRequested: false, respondentUpdatedResponseKeys: new Set(), tourInvitation: null,
+    onStartTour: noOp, onDismissTourInvitation: noOp, onTabChange: noOp, onDimensionSelect: noOp,
+    onLeave: noOp, onReview: noOp, onRetrySave: noOp, onInputChange: noOp, onClearAnswer: noOp, onEvidenceItemsChange: noOp };
+  const render = (patch = {}) => renderToStaticMarkup(createElement(Dashboard, { ...props, ...patch }));
+  const html = render();
+  const sidebar = html.slice(html.indexOf("<aside"), html.indexOf("</aside>") + 8);
+  assert.match(sidebar, /Overall progress/);
+  assert.match(sidebar, /Target profile/);
+  assert.match(sidebar, /Not set up yet/);
+  assert.match(sidebar, /Set up profile/);
+  assert.doesNotMatch(html.slice(0, html.indexOf("<aside")), /Target profile/);
+  const profiling = { answers: { size: "small" }, complete: true, profileId: "small", profileName: "Small organization" };
+  assert.match(render({ assessment: { ...props.assessment, profiling } }), /Small organization/);
+  assert.match(render({ assessment: { ...props.assessment, profiling } }), /Review answers/);
+  assert.match(render({ assessment: { ...props.assessment, profiling: { ...profiling, complete: false } } }), /Continue setup/);
+  assert.match(render({ assessment: { ...props.assessment, profiling: { ...profiling, profileId: null, profileName: null } } }), /No target profile applies/);
+  assert.doesNotMatch(render({ onEditProfiling: undefined, assessment: { ...props.assessment, profiling } }), /Review answers/);
+  assert.doesNotMatch(render({ model }), /Target profile/);
+  assert.doesNotMatch(render({ routeContext: { campaignId: "invitation" } }), /Target profile/);
+  assert.doesNotMatch(render({ assessment: { ...props.assessment, campaignId: 12 } }), /Target profile/);
+});
+
 test("fresh module and upcoming practices show neutral progress instead of missing answers", () => {
   const fresh = { ...completionPractice, warningIssues: undefined, answeredCount: 0, missingRequiredAnswerCount: 3, missingEvidenceCount: 0 };
   const started = { ...fresh, key: "started", answeredCount: 1 };

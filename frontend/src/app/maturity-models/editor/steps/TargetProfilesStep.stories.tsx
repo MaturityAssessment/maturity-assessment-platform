@@ -1,10 +1,12 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import type { TargetProfileConfiguration, TargetProfileComparison } from "@/api/types";
+import type { MaturityModel, TargetProfileConfiguration, TargetProfileComparison } from "@/api/types";
 import { createEmptyDocument } from "../model/editorDocument";
 import { profilingPath } from "@/lib/targetProfiles";
 import TargetProfilesStep from "./TargetProfilesStep";
-import AssessmentProfilingStep from "@/app/assessment/AssessmentProfilingStep";
+import AssessmentProfilingDialog from "@/app/assessment/AssessmentProfilingDialog";
+import AssessmentDashboard from "@/app/assessment/AssessmentDashboard";
+import { buildPracticeSteps } from "@/app/assessment/assessmentRoutes";
 import TargetProfileResults from "@/app/assessment/TargetProfileResults";
 
 const config: TargetProfileConfiguration = {
@@ -35,9 +37,20 @@ function CreatorExample() {
 }
 function RespondentExample() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [done, setDone] = useState(false);
+  const [open, setOpen] = useState(true);
   const selected = profilingPath(config, answers).selection;
-  return done ? <div className="p-8"><h1 className="text-xl font-semibold">Assessment overview</h1><p className="mt-4">Target profile: {selected.profileName || "No target profile applies"}</p><button className="mt-5 rounded border p-3" onClick={() => setDone(false)}>Edit profiling answers</button></div> : <AssessmentProfilingStep modelName="Organizational maturity" config={config} answers={answers} saving={false} error={null} onChange={setAnswers} onContinue={() => setDone(true)} onLeave={() => {}} />;
+  const model: MaturityModel = { id: 7, name: "Organizational maturity", description: "Assess organizational capability.", isActive: true, targetProfiles: config,
+    dimensions: ["Governance", "People & culture", "Operations"].map((name, index) => ({ id: `D${index + 1}`, name, modules: [{ code: "M1", name: "Management", practices: [{ id: index + 1, code: "P1", name: "Organizational capability", questions: [{ id: index + 1, text: "Is a documented process in place?", type: "boolean", required: true, weight: 1, help: "" }] }] }] })) };
+  const noOp = () => {};
+  return <>
+    <AssessmentDashboard model={model} practiceSteps={buildPracticeSteps(model)} formData={{}} evidenceFiles={new Map()} activeTab="overview"
+      assessment={{ id: 41, status: "DRAFT", profiling: selected, createdAt: "2026-11-22", overallAverage: 0, overallMaturityLevel: "", isCompleted: false }}
+      onEditProfiling={() => setOpen(true)} isLeaving={false} isPreparingReview={false} canReview={false} error={null} saveStatus="saved" saveError={null}
+      changesRequested={false} completed={false} respondentUpdatedResponseKeys={new Set()} tourInvitation={null}
+      onStartTour={noOp} onDismissTourInvitation={noOp} onTabChange={noOp} onDimensionSelect={noOp} onLeave={noOp} onReview={noOp}
+      onRetrySave={noOp} onInputChange={noOp} onClearAnswer={noOp} onEvidenceItemsChange={noOp} />
+    <AssessmentProfilingDialog open={open} config={config} answers={answers} saving={false} error={null} onChange={setAnswers} onSave={() => setOpen(false)} onDismiss={() => setOpen(false)} />
+  </>;
 }
 const comparison: TargetProfileComparison = { status: "NOT_MET", reason: null, profileId: "small", profileName: "Small organization", requirements: [
   { elementType: "dimension", dimensionCode: "D1", moduleCode: null, name: "Governance", target: 0.6, actual: 0.75, status: "MET", reason: null },
